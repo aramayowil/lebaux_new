@@ -1,0 +1,87 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+/* --- DM SANS , SYNE Y JETBRAINS MONO (LOCAL) --- */
+
+/* --- SYNE (Títulos de impacto) --- */
+@font-face {
+  font-family: "Syne";
+  src: url("./assets/fonts/Syne-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* --- JETBRAINS MONO (Datos técnicos y Medidas) --- */
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("./assets/fonts/JetBrainsMono-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* --- DM SANS (Cuerpo y UI) --- */
+@font-face {
+  font-family: "DM Sans";
+  src: url("./assets/fonts/DMSans-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "DM Sans";
+  src: url("./assets/fonts/DMSans-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "DM Sans";
+  src: url("./assets/fonts/DMSans-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    /* Paleta Identidad LEBAUX (Acentos) */
+    --lebaux-amber: #fbc278; /* Color exacto del logo */
+    --lebaux-amber-dark: #d97706; /* Para texto legible sobre fondo claro */
+    --lebaux-amber-light: #fff4e6; /* Para fondos de selección/focus */
+    --lebaux-gray: #8e9191; /* Gris del texto del logo */
+  }
+
+  body {
+    /* Cambiado de steel-50 a zinc-50 */
+    @apply bg-zinc-50 text-zinc-900 font-sans antialiased;
+  }
+
+  .dark body {
+    /* Cambiado de steel-950 a zinc-950 */
+    @apply bg-zinc-950 text-zinc-100;
+  }
+
+  * {
+    /* Cambiado de steel-200 a zinc-200 */
+    @apply border-zinc-200;
+  }
+
+  .dark * {
+    /* Cambiado de steel-700 a zinc-700 */
+    @apply border-zinc-700;
+  }
+}
+
+@layer components {
+  /* Asegúrate de actualizar también tus componentes personalizados */
+  .card-surface {
+    @apply bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl;
+  }
+
+  .currency-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-mono font-medium
+           bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300;
+  }
+}

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es" class="antialiased">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="./images/logos/url_logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Lebaux | Sistema de Gestión</title>
+
+    <style>
+      /* Pre-configuración para evitar el destello blanco antes de que cargue el JS */
+      html {
+        background-color: #fafafa;
+      }
+      html.dark {
+        background-color: #09090b;
+      }
+
+      /* Aplicamos una fuente genérica del sistema mientras se cargan 
+         tus fuentes locales definidas en el index.css 
+      */
+      body {
+        margin: 0;
+        padding: 0;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
+    </style>
+  </head>
+
+  <body class="bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,268 @@
+import { useState, useCallback } from 'react'
+import {
+  Button, Select, SelectItem, useDisclosure, Chip,
+  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input,
+} from '@heroui/react'
+import { Trash2, Square } from 'lucide-react'
+import { useCatalogosStore } from '@/store/catalogosStore'
+import { useInlineEdit } from '@/hooks/useInlineEdit'
+import EditableCell from '@/components/ui/EditableCell'
+import CatalogToolbar from '@/components/ui/CatalogToolbar'
+import EmptyState from '@/components/ui/EmptyState'
+import { formatPesos } from '@/lib/calculoDespiece'
+import type { Vidrio } from '@/types'
+
+// Helper: convierte número RGB (formato Access/VB) a hex CSS
+// Access guarda colores como BGR en decimal: ej 16777150 = #FEFFFE (casi blanco)
+function rgbNumToHex(n: number): string {
+  if (!n && n !== 0) return '#ffffff'
+  const r = n & 0xff
+  const g = (n >> 8) & 0xff
+  const b = (n >> 16) & 0xff
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+}
+
+function hexToRgbNum(hex: string): number {
+  const clean = hex.replace('#', '')
+  const r = parseInt(clean.substring(0, 2), 16) || 0
+  const g = parseInt(clean.substring(2, 4), 16) || 0
+  const b = parseInt(clean.substring(4, 6), 16) || 0
+  return r | (g << 8) | (b << 16)
+}
+
+const BLANK: Vidrio = {
+  codigo: '', descri: '', precio: 0, base: 3660,
+  altura: 2440, espesor: 4, tipoRev: 1, moneda: 1, color: 16777215, bloqueado: false,
+}
+
+export default function VidriosTab() {
+  const { vidrios, monedas, tiposInterior, setVidrio, deleteVidrio, toPesos } = useCatalogosStore()
+  const { isOpen, onOpen, onOpenChange } = useDisclosure()
+  const { isEditing, startEdit, cancelEdit, draft, setDraft } = useInlineEdit()
+
+  const [search, setSearch]     = useState('')
+  const [filterTipo, setFilterTipo] = useState<string>('all')
+  const [newForm, setNewForm]   = useState<Vidrio>(BLANK)
+
+  const filtered = vidrios.filter(v => {
+    const matchSearch = `${v.codigo} ${v.descri}`.toLowerCase().includes(search.toLowerCase())
+    const matchTipo   = filterTipo === 'all' || String(v.tipoRev) === filterTipo
+    return matchSearch && matchTipo
+  })
+
+  const getTipo = (id: number) => tiposInterior.find(t => t.id === id)
+
+  const areaM2  = (v: Vidrio) => (v.base * v.altura / 1_000_000).toFixed(2)
+  const precioM2 = (v: Vidrio) => {
+    const area = v.base * v.altura / 1_000_000
+    return area > 0 ? toPesos(v.precio / area, v.moneda) : 0
+  }
+
+  const commit = useCallback((v: Vidrio, field: keyof Vidrio, raw: string) => {
+    const numFields: (keyof Vidrio)[] = ['precio', 'base', 'altura', 'espesor', 'tipoRev', 'moneda']
+    const value = numFields.includes(field) ? (parseFloat(raw) || 0) : raw
+    setVidrio({ ...v, [field]: value })
+    cancelEdit()
+  }, [setVidrio, cancelEdit])
+
+  const cell = (v: Vidrio, field: keyof Vidrio, opts?: { type?: 'text' | 'number'; align?: 'left' | 'right'; mono?: boolean }) => (
+    <EditableCell
+      value={v[field] as string | number}
+      isEditing={isEditing(v.codigo, field)}
+      draft={draft}
+      onDraftChange={setDraft}
+      onStartEdit={() => startEdit(v.codigo, field, v[field] as string | number)}
+      onCommit={r => commit(v, field, r)}
+      onCancel={cancelEdit}
+      type={opts?.type} align={opts?.align} mono={opts?.mono}
+    />
+  )
+
+  function handleNew(close: () => void) {
+    if (!newForm.codigo.trim() || !newForm.descri.trim()) return
+    setVidrio(newForm)
+    setNewForm(BLANK)
+    close()
+  }
+
+  return (
+    <>
+      <CatalogToolbar
+        search={search} onSearch={setSearch}
+        onNew={onOpen} newLabel="Nuevo vidrio"
+        placeholder="Buscar por código, descripción o color..."
+        extra={
+          <Select size="sm" className="w-44" selectedKeys={[filterTipo]}
+            onSelectionChange={k => setFilterTipo([...k][0] as string)}
+            aria-label="Tipo de interior"
+            classNames={{ trigger: 'bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-700 h-8 min-h-unit-8' }}>
+            <SelectItem key="all">Todos los tipos</SelectItem>
+            {tiposInterior.map(t => <SelectItem key={String(t.id)}>{t.descripcion}</SelectItem>)}
+          </Select>
+        }
+      />
+
+      <p className="text-xs text-steel-400 mb-2">
+        {filtered.length} item{filtered.length !== 1 ? 's' : ''}
+        <span className="ml-2 text-steel-300 dark:text-steel-600">· Hacé click para editar</span>
+      </p>
+
+      <div className="card-surface overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="border-b border-steel-200 dark:border-steel-700 bg-steel-50 dark:bg-steel-800/60">
+              {[
+                ['Código', 'w-24 text-left'],
+                ['Descripción', 'text-left'],
+                ['Tipo', 'w-36 text-left'],
+                ['Esp.', 'w-16 text-right'],
+                ['Color', 'w-24 text-left'],
+                ['Plancha (mm)', 'w-32 text-right'],
+                ['Área m²', 'w-20 text-right'],
+                ['Precio plancha', 'w-32 text-right'],
+                ['$/m²', 'w-28 text-right'],
+                ['', 'w-10'],
+              ].map(([h, cls], i) => (
+                <th key={i} className={`px-3 py-2.5 text-xs font-semibold text-steel-500 uppercase tracking-wide ${cls}`}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-steel-100 dark:divide-steel-800">
+            {filtered.length === 0 && (
+              <tr><td colSpan={10}>
+                <EmptyState icon={Square} title="Sin vidrios / interiores" />
+              </td></tr>
+            )}
+            {filtered.map(v => {
+              const tipo = getTipo(v.tipoRev)
+              return (
+                <tr key={v.codigo} className={`hover:bg-steel-50/70 dark:hover:bg-steel-800/30 transition-colors group ${v.bloqueado ? 'opacity-50' : ''}`}>
+                  <td className="px-3 py-1.5">
+                    <span className="font-mono text-xs bg-steel-100 dark:bg-steel-800 text-steel-600 dark:text-steel-300 px-2 py-0.5 rounded">
+                      {v.codigo}
+                    </span>
+                  </td>
+                  <td className="px-3 py-1 min-w-[160px]">{cell(v, 'descri')}</td>
+                  <td className="px-3 py-1.5">
+                    <Chip size="sm" variant="flat"
+                      classNames={{ base: 'bg-steel-100 dark:bg-steel-800 text-steel-600 dark:text-steel-300' }}>
+                      {tipo?.descripcion ?? '?'}
+                    </Chip>
+                  </td>
+                  <td className="px-3 py-1 text-right">
+                    {v.espesor > 0
+                      ? <span className="font-mono text-xs">{v.espesor}mm</span>
+                      : <span className="text-steel-300">—</span>}
+                  </td>
+                  <td className="px-3 py-1">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3.5 h-3.5 rounded-full border border-steel-200 dark:border-steel-600 flex-shrink-0"
+                        style={{ background: rgbNumToHex(v.color) }} />
+                      <span className="font-mono text-xs text-steel-500">{v.color}</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-1 text-right">
+                    <div className="flex items-center justify-end gap-0.5">
+                      {cell(v, 'base', { type: 'number', align: 'right', mono: true })}
+                      <span className="text-[10px] text-steel-400">×</span>
+                      {cell(v, 'altura', { type: 'number', align: 'right', mono: true })}
+                    </div>
+                  </td>
+                  <td className="px-3 py-1.5 text-right">
+                    <span className="font-mono text-xs text-steel-500">{areaM2(v)}</span>
+                  </td>
+                  <td className="px-3 py-1">
+                    {cell(v, 'precio', { type: 'number', align: 'right', mono: true })}
+                  </td>
+                  <td className="px-3 py-1.5 text-right">
+                    <span className="currency-badge">{formatPesos(precioM2(v))}/m²</span>
+                  </td>
+                  <td className="px-2 py-1">
+                    <Button isIconOnly size="sm" variant="light" color="danger"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      onPress={() => deleteVidrio(v.codigo)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="font-display">Nuevo vidrio / interior</ModalHeader>
+              <ModalBody className="gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="Código *" value={newForm.codigo}
+                    onValueChange={v => setNewForm(f => ({ ...f, codigo: v }))} size="sm" />
+                  <Input label="Descripción *" value={newForm.descri}
+                    onValueChange={v => setNewForm(f => ({ ...f, descri: v }))} size="sm" />
+                </div>
+                <div className="grid grid-cols-4 gap-3">
+                  <Input label="Base (mm)" type="number" value={String(newForm.base)}
+                    onValueChange={v => setNewForm(f => ({ ...f, base: parseInt(v)||3660 }))} size="sm" />
+                  <Input label="Altura (mm)" type="number" value={String(newForm.altura)}
+                    onValueChange={v => setNewForm(f => ({ ...f, altura: parseInt(v)||2440 }))} size="sm" />
+                  <Input label="Espesor (mm)" type="number" value={String(newForm.espesor)}
+                    onValueChange={v => setNewForm(f => ({ ...f, espesor: parseInt(v)||0 }))} size="sm" />
+                  <div className="flex flex-col gap-1">
+                    <p className="text-xs text-steel-500">Color</p>
+                    <div className="flex items-center gap-2">
+                      <label className="cursor-pointer w-8 h-8 rounded-lg border-2 border-steel-200 dark:border-steel-600 shadow-sm hover:scale-110 transition-transform flex-shrink-0"
+                        style={{ background: rgbNumToHex(newForm.color) }}>
+                        <input type="color" value={rgbNumToHex(newForm.color)}
+                          onChange={e => setNewForm(f => ({ ...f, color: hexToRgbNum(e.target.value) }))}
+                          className="sr-only" />
+                      </label>
+                      <span className="font-mono text-xs text-steel-400">{newForm.color}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <Input label="Precio plancha" type="number" value={String(newForm.precio)}
+                    onValueChange={v => setNewForm(f => ({ ...f, precio: parseFloat(v)||0 }))} size="sm" />
+                  <Select label="Moneda" selectedKeys={[String(newForm.moneda)]}
+                    onSelectionChange={k => setNewForm(f => ({ ...f, moneda: parseInt([...k][0] as string) }))} size="sm">
+                    {monedas.map(m => <SelectItem key={String(m.id)}>{m.descripcion}</SelectItem>)}
+                  </Select>
+                  <Select label="Tipo de interior" selectedKeys={[String(newForm.tipoRev)]}
+                    onSelectionChange={k => setNewForm(f => ({ ...f, tipoRev: parseInt([...k][0] as string) }))} size="sm">
+                    {tiposInterior.map(t => <SelectItem key={String(t.id)}>{t.descripcion}</SelectItem>)}
+                  </Select>
+                </div>
+                {newForm.precio > 0 && newForm.base > 0 && newForm.altura > 0 && (
+                  <div className="bg-steel-50 dark:bg-steel-800/60 rounded-lg px-4 py-3 grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-xs text-steel-400 mb-0.5">Área de plancha</p>
+                      <p className="font-mono font-semibold text-steel-700 dark:text-steel-200">
+                        {(newForm.base * newForm.altura / 1_000_000).toFixed(3)} m²
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-steel-400 mb-0.5">Precio por m²</p>
+                      <p className="font-mono font-semibold text-steel-700 dark:text-steel-200">
+                        {formatPesos(toPesos(newForm.precio / (newForm.base * newForm.altura / 1_000_000), newForm.moneda))}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" onPress={onClose}>Cancelar</Button>
+                <Button color="primary" onPress={() => handleNew(onClose)}
+                  isDisabled={!newForm.codigo.trim() || !newForm.descri.trim()}>
+                  Crear
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+    </>
+  )
+}
