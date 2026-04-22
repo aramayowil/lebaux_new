@@ -152,7 +152,7 @@ function PageTitle({ pathname }: { pathname: string }) {
   };
   const base = "/" + pathname.split("/")[1];
   return (
-    <h1 className="font-display font-700  text-zinc-800 dark:text-zinc-100 text-xl tracking-tight">
+    <h1 className="font-display font-bold  text-zinc-800 dark:text-zinc-100 text-xl ">
       {map[base] ?? "Lebaux"}
     </h1>
   );

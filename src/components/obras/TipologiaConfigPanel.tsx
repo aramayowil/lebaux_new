@@ -1,5 +1,5 @@
 import { Select, SelectItem, Input, Divider, Button } from "@heroui/react";
-import { Plus, Trash2 } from "lucide-react";
+import { Box, Grid2X2, Palette, Plus, Proportions, Trash2 } from "lucide-react";
 import { useProductosStore } from "@/store/productosStore";
 import { useCatalogosStore } from "@/store/catalogosStore";
 import { useObrasStore, type TipologiaConfig } from "@/store/obrasStore";
@@ -7,11 +7,11 @@ import clsx from "clsx";
 
 const TW = {
   trigger:
-    "bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-700",
+    "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700",
 };
 const IW = {
   inputWrapper:
-    "bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-700",
+    "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700",
 };
 
 interface Props {
@@ -121,12 +121,17 @@ export default function TipologiaConfigPanel({
   return (
     <div className="space-y-4 py-1">
       {/* ── ACABADO ── */}
-      <div className="space-y-2">
-        <p className="section-label">Color / Acabado</p>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-zinc-400 mb-2">
+          <Palette className="w-4.5 h-4.5" />
+          <p className="font-sans uppercase tracking-widest text-xs font-bold text-zinc-500 dark:text-zinc-400">
+            Acabado del Perfil
+          </p>
+        </div>
         <div className="flex items-center gap-3">
           {tratamiento && (
             <div
-              className="w-8 h-8 rounded-lg border border-steel-200 dark:border-steel-600 shrink-0"
+              className="w-8 h-8 rounded-lg border border-zinc-200 dark:border-zinc-600 shrink-0"
               style={{ background: tratamiento.color }}
             />
           )}
@@ -143,7 +148,7 @@ export default function TipologiaConfigPanel({
               <SelectItem key={String(t.id)} textValue={t.descripcion}>
                 <div className="flex items-center gap-2">
                   <div
-                    className="w-3.5 h-3.5 rounded-full border border-steel-200 shrink-0"
+                    className="w-3.5 h-3.5 rounded-full border border-zinc-200 shrink-0"
                     style={{ background: t.color }}
                   />
                   {t.descripcion}
@@ -157,12 +162,17 @@ export default function TipologiaConfigPanel({
       <Divider />
 
       {/* ── VIDRIO Y REVESTIMIENTOS ── */}
-      <div className="space-y-2">
-        <p className="section-label">Vidrio y Revestimientos</p>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-zinc-400 mb-2">
+          <Box className="w-4.5 h-4.5" />
+          <p className="font-sans uppercase tracking-widest text-xs font-bold text-zinc-500 dark:text-zinc-400">
+            Vidrio y Rellenos
+          </p>
+        </div>
 
         {/* Sin cruces: configuración global */}
         {cfg.tipoCruce === 0 && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {/* Separar vidrios por tipo para mostrar agrupados */}
             {(() => {
               const vidrosCrudos = vidrios.filter((v) => {
@@ -197,7 +207,7 @@ export default function TipologiaConfigPanel({
                   >
                     {vidrosCrudos.length > 0 && (
                       <SelectItem key="__grp_vidrios" isReadOnly textValue="">
-                        <span className="text-[10px] font-semibold text-steel-400 uppercase tracking-wide">
+                        <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">
                           Vidrios
                         </span>
                       </SelectItem>
@@ -205,14 +215,14 @@ export default function TipologiaConfigPanel({
                     {vidrosCrudos.map((v) => (
                       <SelectItem key={v.codigo} textValue={v.descri}>
                         <span>{v.descri}</span>
-                        <span className="text-xs text-steel-400 ml-2">
+                        <span className="text-xs text-zinc-400 ml-2">
                           {v.espesor}mm
                         </span>
                       </SelectItem>
                     ))}
                     {revestimientos.length > 0 && (
                       <SelectItem key="__grp_rev" isReadOnly textValue="">
-                        <span className="text-[10px] font-semibold text-steel-400 uppercase tracking-wide">
+                        <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">
                           Revestimientos
                         </span>
                       </SelectItem>
@@ -224,7 +234,7 @@ export default function TipologiaConfigPanel({
                       return (
                         <SelectItem key={v.codigo} textValue={v.descri}>
                           <span>{v.descri}</span>
-                          <span className="text-xs text-steel-400 ml-2">
+                          <span className="text-xs text-zinc-400 ml-2">
                             {tipo?.descripcion ?? ""}
                           </span>
                         </SelectItem>
@@ -232,7 +242,7 @@ export default function TipologiaConfigPanel({
                     })}
                     {telas.length > 0 && (
                       <SelectItem key="__grp_tela" isReadOnly textValue="">
-                        <span className="text-[10px] font-semibold text-steel-400 uppercase tracking-wide">
+                        <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">
                           Telas / Mosquitero
                         </span>
                       </SelectItem>
@@ -259,7 +269,7 @@ export default function TipologiaConfigPanel({
                       classNames={TW}
                     >
                       <SelectItem key="" textValue="Sin revestimiento">
-                        <span className="text-steel-400 italic text-xs">
+                        <span className="text-zinc-400 italic text-xs">
                           Sin revestimiento
                         </span>
                       </SelectItem>
@@ -270,7 +280,7 @@ export default function TipologiaConfigPanel({
                         return (
                           <SelectItem key={v.codigo} textValue={v.descri}>
                             <span>{v.descri}</span>
-                            <span className="text-xs text-steel-400 ml-2">
+                            <span className="text-xs text-zinc-400 ml-2">
                               {tipo?.descripcion ?? ""}
                             </span>
                           </SelectItem>
@@ -300,7 +310,7 @@ export default function TipologiaConfigPanel({
                   <SelectItem key={String(cv.id)} textValue={cv.descripcion}>
                     {cv.descripcion}
                     {cv.predeterminado && (
-                      <span className="text-xs text-steel-400 ml-1">
+                      <span className="text-xs text-zinc-400 ml-1">
                         (pred.)
                       </span>
                     )}
@@ -329,7 +339,7 @@ export default function TipologiaConfigPanel({
                   <SelectItem key={String(cv.id)} textValue={cv.descripcion}>
                     {cv.descripcion}
                     {cv.predeterminado && (
-                      <span className="text-xs text-steel-400 ml-1">
+                      <span className="text-xs text-zinc-400 ml-1">
                         (pred.)
                       </span>
                     )}
@@ -359,7 +369,7 @@ export default function TipologiaConfigPanel({
                       <div className="flex flex-col">
                         <span>{vr.descripcion}</span>
                         {despVR && (
-                          <span className="text-xs text-steel-400">
+                          <span className="text-xs text-zinc-400">
                             {despVR.formulaAnchoInterior} ×{" "}
                             {despVR.formulaAltoInterior}
                           </span>
@@ -375,7 +385,7 @@ export default function TipologiaConfigPanel({
 
         {/* Con cruces: aviso de configuración por módulo */}
         {cfg.tipoCruce > 0 && (
-          <p className="text-[11px] text-steel-500 bg-steel-50 dark:bg-steel-800/40 rounded-lg px-3 py-2 leading-relaxed">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/40 rounded-lg px-3 py-2 leading-relaxed">
             El vidrio y revestimiento se configura por paño ↓ en la grilla de la
             sección Cruces.
           </p>
@@ -385,7 +395,12 @@ export default function TipologiaConfigPanel({
       <Divider />
 
       <div className="space-y-3">
-        <p className="section-label">Opciones</p>
+        <div className="flex items-center gap-2 text-zinc-400 mb-2">
+          <Proportions className="w-4.5 h-4.5" />
+          <p className="font-sans uppercase tracking-widest text-xs font-bold text-zinc-500 dark:text-zinc-400">
+            Opciones
+          </p>
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <Button
             size="sm"
@@ -412,8 +427,12 @@ export default function TipologiaConfigPanel({
 
       {/* ── CRUCES ── */}
       <div className="space-y-3">
-        <p className="section-label">Cruces / divisiones internas</p>
-
+        <div className="flex items-center gap-2 text-zinc-400 mb-2">
+          <Grid2X2 className="w-4.5 h-4.5" />
+          <p className="font-sans uppercase tracking-widest text-xs font-bold text-zinc-500 dark:text-zinc-400">
+            Cruces y Divisiones
+          </p>
+        </div>
         <Select
           label="Tipo de cruces"
           size="sm"
@@ -502,9 +521,9 @@ export default function TipologiaConfigPanel({
             {/* Horizontales */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-steel-600 dark:text-steel-300">
+                <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
                   Horizontales ({posH.length})
-                  <span className="font-normal text-steel-400 ml-1 text-[10px]">
+                  <span className="font-normal text-zinc-400 ml-1 text-[10px]">
                     desde abajo
                   </span>
                 </p>
@@ -520,13 +539,13 @@ export default function TipologiaConfigPanel({
                 </Button>
               </div>
               {posH.length === 0 && (
-                <p className="text-[10px] text-steel-400 italic">
+                <p className="text-[10px] text-zinc-400 italic">
                   Sin cruces horizontales
                 </p>
               )}
               {posH.map((pos, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <span className="text-[10px] text-steel-400 w-4 text-right">
+                  <span className="text-[10px] text-zinc-400 w-4 text-right">
                     {i + 1}.
                   </span>
                   <Input
@@ -537,15 +556,15 @@ export default function TipologiaConfigPanel({
                     value={String(pos)}
                     onValueChange={(v: any) => setPosH(i, parseInt(v) || 0)}
                     endContent={
-                      <span className="text-[10px] text-steel-400">mm</span>
+                      <span className="text-[10px] text-zinc-400">mm</span>
                     }
                     classNames={{
                       base: "flex-1",
                       inputWrapper:
-                        "bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-700 h-8",
+                        "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 h-8",
                     }}
                   />
-                  <span className="text-[10px] text-steel-400 w-9">
+                  <span className="text-[10px] text-zinc-400 w-9">
                     ({((pos / alto) * 100).toFixed(0)}%)
                   </span>
                   <Button
@@ -565,9 +584,9 @@ export default function TipologiaConfigPanel({
             {/* Verticales */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-steel-600 dark:text-steel-300">
+                <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
                   Verticales ({posV.length})
-                  <span className="font-normal text-steel-400 ml-1 text-[10px]">
+                  <span className="font-normal text-zinc-400 ml-1 text-[10px]">
                     desde izquierda
                   </span>
                 </p>
@@ -583,13 +602,13 @@ export default function TipologiaConfigPanel({
                 </Button>
               </div>
               {posV.length === 0 && (
-                <p className="text-[10px] text-steel-400 italic">
+                <p className="text-[10px] text-zinc-400 italic">
                   Sin cruces verticales
                 </p>
               )}
               {posV.map((pos, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <span className="text-[10px] text-steel-400 w-4 text-right">
+                  <span className="text-[10px] text-zinc-400 w-4 text-right">
                     {i + 1}.
                   </span>
                   <Input
@@ -600,15 +619,15 @@ export default function TipologiaConfigPanel({
                     value={String(pos)}
                     onValueChange={(v: any) => setPosV(i, parseInt(v) || 0)}
                     endContent={
-                      <span className="text-[10px] text-steel-400">mm</span>
+                      <span className="text-[10px] text-zinc-400">mm</span>
                     }
                     classNames={{
                       base: "flex-1",
                       inputWrapper:
-                        "bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-700 h-8",
+                        "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 h-8",
                     }}
                   />
-                  <span className="text-[10px] text-steel-400 w-9">
+                  <span className="text-[10px] text-zinc-400 w-9">
                     ({((pos / ancho) * 100).toFixed(0)}%)
                   </span>
                   <Button
@@ -737,15 +756,15 @@ function GrillaModulos({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-semibold text-steel-500 uppercase tracking-wide">
+        <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wide">
           Vidrio y revestimiento por paño
-          <span className="font-normal ml-1 text-steel-400">
+          <span className="font-normal ml-1 text-zinc-400">
             — {nFilas} fila{nFilas !== 1 ? "s" : ""} × {nCols} col
             {nCols !== 1 ? "umnas" : "umna"}
           </span>
         </p>
         <button
-          className="text-[10px] text-steel-400 hover:text-steel-600 underline"
+          className="text-[10px] text-zinc-400 hover:text-zinc-600 underline"
           onClick={() => {
             for (let f = 0; f < nFilas; f++)
               for (let c = 0; c < nCols; c++)
@@ -761,25 +780,25 @@ function GrillaModulos({
         </button>
       </div>
 
-      <div className="border border-steel-200 dark:border-steel-700 rounded-lg overflow-hidden">
+      <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
         {Array.from({ length: nFilas }, (_, displayRow) => {
           const fila = nFilas - 1 - displayRow;
           return (
             <div
               key={fila}
               className={clsx(
-                "flex divide-x divide-steel-200 dark:divide-steel-700",
+                "flex divide-x divide-zinc-200 dark:divide-zinc-700",
                 displayRow > 0 &&
-                  "border-t border-steel-200 dark:border-steel-700",
+                  "border-t border-zinc-200 dark:border-zinc-700",
               )}
             >
               {/* Etiqueta de fila */}
-              <div className="w-11 shrink-0 flex flex-col items-center justify-center bg-steel-50 dark:bg-steel-800/50 px-1 py-2 gap-0.5">
-                <span className="text-[9px] text-steel-400 font-mono leading-none">
+              <div className="w-11 shrink-0 flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-800/50 px-1 py-2 gap-0.5">
+                <span className="text-[9px] text-zinc-400 font-mono leading-none">
                   {Math.round(filasAltos[fila]!)}mm
                 </span>
                 {nFilas > 1 && (
-                  <span className="text-[8px] text-steel-300 dark:text-steel-600 leading-none mt-0.5">
+                  <span className="text-[8px] text-zinc-300 dark:text-zinc-600 leading-none mt-0.5">
                     F{fila + 1}
                   </span>
                 )}
@@ -810,12 +829,12 @@ function GrillaModulos({
                     {/* Header de celda */}
                     {(nFilas > 1 || nCols > 1) && (
                       <div className="flex items-center justify-between">
-                        <span className="text-[9px] text-steel-400 font-mono">
+                        <span className="text-[9px] text-zinc-400 font-mono">
                           {nCols > 1 ? `C${col + 1}` : ""}
                           {nCols > 1 && nFilas > 1 ? "·" : ""}
                           {nFilas > 1 ? `F${fila + 1}` : ""}
                         </span>
-                        <span className="text-[9px] text-steel-300 dark:text-steel-600 font-mono">
+                        <span className="text-[9px] text-zinc-300 dark:text-zinc-600 font-mono">
                           {Math.round(colsAnchos[col]!)}mm
                         </span>
                       </div>
@@ -840,12 +859,12 @@ function GrillaModulos({
                             "h-7 min-h-unit-7 text-[10px] border",
                             diffInterior
                               ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700"
-                              : "bg-white dark:bg-steel-900 border-steel-200 dark:border-steel-700",
+                              : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700",
                           ),
                         }}
                       >
                         <SelectItem key="" textValue="= interior global">
-                          <span className="text-steel-400 italic text-[10px]">
+                          <span className="text-zinc-400 italic text-[10px]">
                             = interior global
                           </span>
                         </SelectItem>
@@ -856,7 +875,7 @@ function GrillaModulos({
                           >
                             {i.descripcion}
                             {i.id === interiorDefault && (
-                              <span className="text-[9px] text-steel-400 ml-1">
+                              <span className="text-[9px] text-zinc-400 ml-1">
                                 (pred.)
                               </span>
                             )}
@@ -879,19 +898,19 @@ function GrillaModulos({
                           "h-7 min-h-unit-7 text-[10px] border",
                           diffVidrio
                             ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700"
-                            : "bg-white dark:bg-steel-900 border-steel-200 dark:border-steel-700",
+                            : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700",
                         ),
                       }}
                     >
                       <SelectItem key="" textValue="= vidrio global">
-                        <span className="text-steel-400 italic text-[10px]">
+                        <span className="text-zinc-400 italic text-[10px]">
                           = vidrio global
                         </span>
                       </SelectItem>
                       {vidrosCrudos.map((v) => (
                         <SelectItem key={v.codigo} textValue={v.descri}>
                           <span className="text-[10px]">{v.descri}</span>
-                          <span className="text-[9px] text-steel-400 ml-1">
+                          <span className="text-[9px] text-zinc-400 ml-1">
                             {v.espesor}mm
                           </span>
                         </SelectItem>
@@ -914,11 +933,11 @@ function GrillaModulos({
                         }}
                         classNames={{
                           trigger:
-                            "h-7 min-h-unit-7 text-[10px] border bg-white dark:bg-steel-900 border-steel-200 dark:border-steel-700",
+                            "h-7 min-h-unit-7 text-[10px] border bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700",
                         }}
                       >
                         <SelectItem key="" textValue="Sin revestimiento">
-                          <span className="text-steel-400 italic text-[10px]">
+                          <span className="text-zinc-400 italic text-[10px]">
                             Sin revestimiento
                           </span>
                         </SelectItem>
@@ -929,7 +948,7 @@ function GrillaModulos({
                           return (
                             <SelectItem key={v.codigo} textValue={v.descri}>
                               <span className="text-[10px]">{v.descri}</span>
-                              <span className="text-[9px] text-steel-400 ml-1">
+                              <span className="text-[9px] text-zinc-400 ml-1">
                                 {tipo?.descripcion ?? ""}
                               </span>
                             </SelectItem>
@@ -957,12 +976,12 @@ function GrillaModulos({
                             "h-7 min-h-unit-7 text-[10px] border",
                             diffCV
                               ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700"
-                              : "bg-white dark:bg-steel-900 border-steel-200 dark:border-steel-700",
+                              : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700",
                           ),
                         }}
                       >
                         <SelectItem key="" textValue="= CV global">
-                          <span className="text-steel-400 italic text-[10px]">
+                          <span className="text-zinc-400 italic text-[10px]">
                             = CV Int. global
                           </span>
                         </SelectItem>
@@ -975,7 +994,7 @@ function GrillaModulos({
                               {cv.descripcion}
                             </span>
                             {cv.predeterminado && (
-                              <span className="text-[9px] text-steel-400 ml-1">
+                              <span className="text-[9px] text-zinc-400 ml-1">
                                 (pred.)
                               </span>
                             )}
@@ -1005,12 +1024,12 @@ function GrillaModulos({
                             "h-7 min-h-unit-7 text-[10px] border",
                             diffCVE
                               ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700"
-                              : "bg-white dark:bg-steel-900 border-steel-200 dark:border-steel-700",
+                              : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700",
                           ),
                         }}
                       >
                         <SelectItem key="" textValue="= CVE global">
-                          <span className="text-steel-400 italic text-[10px]">
+                          <span className="text-zinc-400 italic text-[10px]">
                             = CV Ext. global
                           </span>
                         </SelectItem>
@@ -1023,7 +1042,7 @@ function GrillaModulos({
                               {cv.descripcion}
                             </span>
                             {cv.predeterminado && (
-                              <span className="text-[9px] text-steel-400 ml-1">
+                              <span className="text-[9px] text-zinc-400 ml-1">
                                 (pred.)
                               </span>
                             )}
@@ -1039,11 +1058,11 @@ function GrillaModulos({
         })}
 
         {/* Footer anchos */}
-        <div className="flex divide-x divide-steel-200 dark:divide-steel-700 border-t border-steel-200 dark:border-steel-700 bg-steel-50 dark:bg-steel-800/40">
+        <div className="flex divide-x divide-zinc-200 dark:divide-zinc-700 border-t border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/40">
           <div className="w-11 shrink-0" />
           {colsAnchos.map((w, col) => (
             <div key={col} className="flex-1 text-center py-1">
-              <span className="text-[9px] text-steel-400 font-mono">
+              <span className="text-[9px] text-zinc-400 font-mono">
                 {Math.round(w)}mm
               </span>
             </div>
@@ -1052,7 +1071,7 @@ function GrillaModulos({
       </div>
 
       {soloUnInterior && interioresDeHoja.length > 0 && (
-        <p className="text-[10px] text-steel-400 italic">
+        <p className="text-[10px] text-zinc-400 italic">
           Interior: todos los paños usarán «{interioresDeHoja[0]?.descripcion}».
           Agregá más interiores en Productos para poder diferenciarlos.
         </p>

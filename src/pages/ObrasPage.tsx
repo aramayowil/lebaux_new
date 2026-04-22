@@ -1,128 +1,200 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  Button, Input, Table, TableHeader, TableColumn,
-  TableBody, TableRow, TableCell, Chip, useDisclosure,
-  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
-} from '@heroui/react'
-import { Plus, Search, Folder, Trash2, Pencil, ChevronRight } from 'lucide-react'
-import { useObrasStore } from '@/store/obrasStore'
-import type { Obra } from '@/types'
+  Button,
+  Input,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  useDisclosure,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from "@heroui/react";
+import { Plus, Search, Folder, Trash2, Pencil } from "lucide-react";
+import { useObrasStore } from "@/store/obrasStore";
+import type { Obra } from "@/types";
 
 export default function ObrasPage() {
-  const navigate = useNavigate()
-  const { obras, addObra, updateObra, deleteObra } = useObrasStore()
-  const [search, setSearch] = useState('')
-  const { isOpen, onOpen, onOpenChange } = useDisclosure()
-  const [editing, setEditing] = useState<Obra | null>(null)
-  const [form, setForm] = useState<Omit<Obra, 'id'>>({
-    apellido: '', nombre: '', direccion: '', telefono: '', ciudad: ''
-  })
+  const navigate = useNavigate();
+  const { obras, addObra, updateObra, deleteObra } = useObrasStore();
+  const [search, setSearch] = useState("");
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const [editing, setEditing] = useState<Obra | null>(null);
+  const [form, setForm] = useState<Omit<Obra, "id">>({
+    apellido: "",
+    nombre: "",
+    direccion: "",
+    telefono: "",
+    ciudad: "",
+  });
 
-  const filtered = obras.filter(o =>
-    `${o.apellido} ${o.nombre} ${o.ciudad}`.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = obras.filter((o) =>
+    `${o.apellido} ${o.nombre} ${o.ciudad}`
+      .toLowerCase()
+      .includes(search.toLowerCase()),
+  );
 
   function openNew() {
-    setEditing(null)
-    setForm({ apellido: '', nombre: '', direccion: '', telefono: '', ciudad: '' })
-    onOpen()
+    setEditing(null);
+    setForm({
+      apellido: "",
+      nombre: "",
+      direccion: "",
+      telefono: "",
+      ciudad: "",
+    });
+    onOpen();
   }
 
   function openEdit(o: Obra) {
-    setEditing(o)
-    setForm({ apellido: o.apellido, nombre: o.nombre, direccion: o.direccion, telefono: o.telefono, ciudad: o.ciudad })
-    onOpen()
+    setEditing(o);
+    setForm({ ...o });
+    onOpen();
   }
 
   function handleSave(close: () => void) {
-    if (!form.apellido.trim()) return
-    if (editing) {
-      updateObra(editing.id, form)
-    } else {
-      addObra(form)
-    }
-    close()
+    if (!form.apellido.trim()) return;
+    if (editing) updateObra(editing.id, form);
+    else addObra(form);
+    close();
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-5 fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
+      {/* Header Minimalista */}
+      <div className="flex items-end justify-between border-b border-zinc-100 dark:border-zinc-900 pb-6">
         <div>
-          <h2 className="font-display text-xl font-700 text-steel-800 dark:text-steel-100">Obras</h2>
-          <p className="text-sm text-steel-400 mt-0.5">{obras.length} proyectos registrados</p>
+          <h2 className="font-sans text-3xl font-bold text-zinc-800 dark:text-zinc-100 tracking-tight">
+            Obras
+          </h2>
+          <p className="text-zinc-500 text-sm mt-1">
+            Gestión de proyectos y presupuestos de clientes.
+          </p>
         </div>
         <Button
-          color="primary"
-          startContent={<Plus className="w-4 h-4" />}
+          variant="flat"
+          startContent={<Plus className="w-4 h-4" strokeWidth={2.5} />}
           onPress={openNew}
-          size="sm"
+          className="font-sans font-medium bg-lebaux-amber-dark text-white dark:text-black px-6 rounded-full"
         >
           Nueva obra
         </Button>
       </div>
 
-      {/* Buscador */}
-      <Input
-        placeholder="Buscar por apellido, nombre o ciudad..."
-        value={search}
-        onValueChange={setSearch}
-        startContent={<Search className="w-4 h-4 text-steel-400" />}
-        classNames={{ inputWrapper: 'bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-700 shadow-none' }}
-        size="sm"
-      />
+      {/* Buscador liviano */}
+      <div className="max-w-md">
+        <Input
+          placeholder="Buscar cliente o ciudad..."
+          value={search}
+          onValueChange={setSearch}
+          startContent={<Search className="w-4 h-4 text-zinc-400" />}
+          variant="underlined"
+          classNames={{
+            input: "font-sans",
+          }}
+        />
+      </div>
 
-      {/* Tabla */}
-      <div className="card-surface overflow-hidden">
+      {/* Tabla Estilo Boutique */}
+      <div className="mt-4">
         <Table
           aria-label="Lista de obras"
           removeWrapper
-          classNames={{ th: 'bg-steel-50 dark:bg-steel-800/60 text-xs text-steel-500 font-semibold uppercase tracking-wide' }}
+          classNames={{
+            th: "bg-transparent text-zinc-400 font-bold font-sans text-xs uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800 py-4",
+            td: "py-5 border-b border-zinc-50 dark:border-zinc-900 font-sans text-sm",
+          }}
         >
           <TableHeader>
-            <TableColumn>Cliente</TableColumn>
-            <TableColumn>Ciudad</TableColumn>
-            <TableColumn>Teléfono</TableColumn>
-            <TableColumn>Dirección</TableColumn>
-            <TableColumn className="w-24">Acciones</TableColumn>
+            <TableColumn>CLIENTE</TableColumn>
+            <TableColumn>UBICACIÓN</TableColumn>
+            <TableColumn>CONTACTO</TableColumn>
+            <TableColumn className="w-20 text-left">ACCIONES</TableColumn>
           </TableHeader>
-          <TableBody emptyContent={
-            <div className="py-12 text-center text-steel-400">
-              <Folder className="w-8 h-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">No hay obras registradas</p>
-            </div>
-          }>
-            {filtered.map(obra => (
+          <TableBody
+            emptyContent={
+              <div className="py-20 text-center text-zinc-400 dark:text-zinc-300">
+                <Folder
+                  className="w-12 h-12 mx-auto mb-4 opacity-20 text-zinc-900 dark:text-zinc-300"
+                  strokeWidth={1}
+                />
+                <p className="font-sans font-bold text-lg">
+                  No hay proyectos todavía
+                </p>
+              </div>
+            }
+          >
+            {filtered.map((obra) => (
               <TableRow
                 key={obra.id}
-                className="cursor-pointer hover:bg-steel-50 dark:hover:bg-steel-800/50 transition-colors"
-                onClick={() => navigate(`/obras/${obra.id}`)}
+                className="group cursor-pointer hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors"
               >
                 <TableCell>
-                  <div>
-                    <p className="font-medium text-steel-800 dark:text-steel-100">
-                      {obra.apellido}, {obra.nombre}
-                    </p>
+                  <span className="font-sans font-bold text-zinc-600 dark:text-zinc-200 uppercase tracking-tight">
+                    {obra.apellido}, {obra.nombre}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="text-zinc-600 dark:text-zinc-400 font-medium">
+                      {obra.ciudad || "—"}
+                    </span>
+                    <span className="text-xs text-zinc-400 truncate max-w-48">
+                      {obra.direccion || "—"}
+                    </span>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <Chip size="sm" variant="flat" classNames={{ base: 'bg-steel-100 dark:bg-steel-800' }}>
-                    {obra.ciudad || '—'}
-                  </Chip>
+                <TableCell className="text-zinc-500 font-mono text-xs">
+                  {obra.telefono || "—"}
                 </TableCell>
-                <TableCell className="text-steel-500 text-sm">{obra.telefono || '—'}</TableCell>
-                <TableCell className="text-steel-500 text-sm max-w-xs truncate">{obra.direccion || '—'}</TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                    <Button isIconOnly size="sm" variant="light" onPress={() => openEdit(obra)}>
-                      <Pencil className="w-3.5 h-3.5 text-steel-400" />
+                  <div
+                    className="flex items-center justify-start gap-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Ver detalles - Azul suave / Zinc */}
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      radius="full"
+                      className="text-zinc-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all"
+                      onPress={() => navigate(`/obras/${obra.id}`)}
+                      title="Ver detalles"
+                    >
+                      <Folder className="w-4 h-4" />
                     </Button>
-                    <Button isIconOnly size="sm" variant="light" color="danger" onPress={() => deleteObra(obra.id)}>
-                      <Trash2 className="w-3.5 h-3.5" />
+
+                    {/* Editar - Zinc / Ambar */}
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      radius="full"
+                      className="text-zinc-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-all"
+                      onPress={() => openEdit(obra)}
+                      title="Editar"
+                    >
+                      <Pencil className="w-4 h-4" />
                     </Button>
-                    <Button isIconOnly size="sm" variant="light" onPress={() => navigate(`/obras/${obra.id}`)}>
-                      <ChevronRight className="w-3.5 h-3.5 text-steel-400" />
+
+                    {/* Eliminar - Rojo sutil */}
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      radius="full"
+                      className="text-zinc-400 hover:text-danger hover:bg-danger/10 transition-all"
+                      onPress={() => deleteObra(obra.id)}
+                      title="Eliminar"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </TableCell>
@@ -132,55 +204,84 @@ export default function ObrasPage() {
         </Table>
       </div>
 
-      {/* Modal */}
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md">
+      {/* Modal - Input placement "outside" para mayor claridad */}
+      <Modal
+        isOpen={isOpen}
+        onOpenChange={onOpenChange}
+        size="md"
+        backdrop="blur"
+        classNames={{
+          base: "dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800",
+          header: "font-display text-xl font-bold",
+        }}
+      >
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="font-display">
-                {editing ? 'Editar obra' : 'Nueva obra'}
+              <ModalHeader>
+                {editing ? "Editar Información" : "Registrar Obra"}
               </ModalHeader>
-              <ModalBody className="gap-3">
-                <div className="grid grid-cols-2 gap-3">
+              <ModalBody className="gap-5 py-6">
+                <div className="grid grid-cols-2 gap-4">
                   <Input
                     label="Apellido"
+                    labelPlacement="outside"
+                    placeholder="Escribí el apellido"
                     value={form.apellido}
-                    onValueChange={v => setForm(f => ({ ...f, apellido: v }))}
+                    onValueChange={(v) =>
+                      setForm((f) => ({ ...f, apellido: v }))
+                    }
                     isRequired
-                    size="sm"
+                    variant="bordered"
                   />
                   <Input
                     label="Nombre"
+                    labelPlacement="outside"
+                    placeholder="Escribí el nombre"
                     value={form.nombre}
-                    onValueChange={v => setForm(f => ({ ...f, nombre: v }))}
-                    size="sm"
+                    onValueChange={(v) => setForm((f) => ({ ...f, nombre: v }))}
+                    variant="bordered"
                   />
                 </div>
                 <Input
                   label="Dirección"
+                  labelPlacement="outside"
+                  placeholder="Calle, número, barrio..."
                   value={form.direccion}
-                  onValueChange={v => setForm(f => ({ ...f, direccion: v }))}
-                  size="sm"
+                  onValueChange={(v) =>
+                    setForm((f) => ({ ...f, direccion: v }))
+                  }
+                  variant="bordered"
                 />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-4">
                   <Input
                     label="Ciudad"
+                    labelPlacement="outside"
                     value={form.ciudad}
-                    onValueChange={v => setForm(f => ({ ...f, ciudad: v }))}
-                    size="sm"
+                    onValueChange={(v) => setForm((f) => ({ ...f, ciudad: v }))}
+                    variant="bordered"
                   />
                   <Input
                     label="Teléfono"
+                    labelPlacement="outside"
                     value={form.telefono}
-                    onValueChange={v => setForm(f => ({ ...f, telefono: v }))}
-                    size="sm"
+                    onValueChange={(v) =>
+                      setForm((f) => ({ ...f, telefono: v }))
+                    }
+                    variant="bordered"
                   />
                 </div>
               </ModalBody>
-              <ModalFooter>
-                <Button variant="light" onPress={onClose}>Cancelar</Button>
-                <Button color="primary" onPress={() => handleSave(onClose)}>
-                  {editing ? 'Guardar cambios' : 'Crear obra'}
+              <ModalFooter className="border-t border-zinc-100 dark:border-zinc-800">
+                <Button variant="light" onPress={onClose} className="font-sans">
+                  Cancelar
+                </Button>
+                <Button
+                  color="primary"
+                  onPress={() => handleSave(onClose)}
+                  className="font-sans font-bold px-8"
+                >
+                  {editing ? "Guardar cambios" : "Crear obra"}
                 </Button>
               </ModalFooter>
             </>
@@ -188,5 +289,5 @@ export default function ObrasPage() {
         </ModalContent>
       </Modal>
     </div>
-  )
+  );
 }
