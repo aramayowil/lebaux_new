@@ -33,6 +33,7 @@ import NuevaTipologiaModal from "@/components/obras/NuevaTipologiaModal";
 import type { TipologiaConfig } from "@/store/obrasStore";
 import { useDespiece } from "@/hooks/useDespiece";
 import DespieceView from "@/components/obras/DespieceView";
+import { Image } from "@heroui/react";
 
 interface CruceModal {
   tipo: "H" | "V";
@@ -172,20 +173,20 @@ export default function ObraEditorPage() {
               </Chip>
             )}
           </div>
-          {obra.telefono && (
-            <span className="text-[11px] text-zinc-400 hidden md:block truncate mt-0.5">
-              {obra.telefono}
-            </span>
-          )}
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
-            <LayoutGrid className="w-3.5 h-3.5 text-zinc-400" />
+            <Image
+              alt="HeroUI hero Image"
+              src="/src/assets/images/obra/acciones_globales.png"
+              className="w-3.5 h-3.5 text-zinc-400"
+            />
             <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
               {tipologias.length} Tipo{tipologias.length !== 1 ? "s" : ""}
             </span>
           </div>
+
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
             <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
               {totalUnidades} Unid.

@@ -48,8 +48,8 @@ export default function AppLayout() {
           <img
             src={
               collapsed
-                ? "./images/logos/url_logo.png"
-                : "./images/logos/LEBAUX-LOGO.png"
+                ? "/images/logos/url_logo.png"
+                : "/images/logos/LEBAUX-LOGO.png"
             }
             alt="Lebaux Logo"
             className={clsx(

@@ -38,12 +38,14 @@ let nextDespMosqId = 100;
 // ─── Mock data ───────────────────────────────────────────────────────────────
 const MOCK_TIPOS: { id: number; formaTipo: string; orden: number }[] = [
   { id: 1, formaTipo: "Corrediza", orden: 1 },
-  { id: 2, formaTipo: "Desplazable", orden: 2 },
-  { id: 3, formaTipo: "Oscilobatiente", orden: 3 },
-  { id: 4, formaTipo: "Paño Fijo", orden: 4 },
-  { id: 5, formaTipo: "Proyectante", orden: 5 },
-  { id: 6, formaTipo: "Puerta", orden: 6 },
-  { id: 7, formaTipo: "Rebatible", orden: 7 },
+  { id: 2, formaTipo: "Banderola", orden: 2 },
+  { id: 3, formaTipo: "Desplazable", orden: 3 },
+  { id: 4, formaTipo: "Oscilobatiente", orden: 4 },
+  { id: 5, formaTipo: "Paño Fijo", orden: 5 },
+  { id: 6, formaTipo: "Proyectante", orden: 6 },
+  { id: 7, formaTipo: "Ventana de abrir", orden: 7 },
+  { id: 8, formaTipo: "Puerta", orden: 8 },
+  { id: 9, formaTipo: "Rebatible", orden: 9 },
 ];
 
 const MOCK_PRODUCTOS: Producto[] = [

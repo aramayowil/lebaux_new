@@ -16,7 +16,7 @@ import {
   ModalBody,
   ModalFooter,
 } from "@heroui/react";
-import { Plus, Search, Folder, Trash2, Pencil } from "lucide-react";
+import { Plus, Search, Folder, Trash2, Pencil, Phone } from "lucide-react";
 import { useObrasStore } from "@/store/obrasStore";
 import type { Obra } from "@/types";
 
@@ -150,8 +150,11 @@ export default function ObrasPage() {
                     </span>
                   </div>
                 </TableCell>
-                <TableCell className="text-zinc-500 font-mono text-xs">
-                  {obra.telefono || "—"}
+                <TableCell className="text-zinc-500 font-roboto text-sm">
+                  <div className="flex gap-2">
+                    <Phone className="w-4 h-4" />
+                    {obra.telefono || "—"}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div

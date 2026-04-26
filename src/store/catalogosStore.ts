@@ -272,22 +272,14 @@ const MOCK_VIDRIOS: Vidrio[] = [
 const MOCK_TRATAMIENTOS: Tratamiento[] = [
   {
     id: 1,
-    descripcion: "Anodizado plata",
-    precioPorKilo: 280,
-    color: "#C0C0C0",
+    descripcion: "Pintado blanco",
+    precioPorKilo: 390,
+    color: "#DBDBDB",
     moneda: 1,
     bloqueado: false,
   },
   {
     id: 2,
-    descripcion: "Anodizado bronce",
-    precioPorKilo: 310,
-    color: "#8B6914",
-    moneda: 1,
-    bloqueado: false,
-  },
-  {
-    id: 3,
     descripcion: "Anodizado negro",
     precioPorKilo: 320,
     color: "#1a1a1a",
@@ -295,13 +287,22 @@ const MOCK_TRATAMIENTOS: Tratamiento[] = [
     bloqueado: false,
   },
   {
-    id: 4,
-    descripcion: "Pintado blanco",
-    precioPorKilo: 390,
-    color: "#FFFFFF",
+    id: 3,
+    descripcion: "Anodizado plata",
+    precioPorKilo: 280,
+    color: "#C0C0C0",
     moneda: 1,
     bloqueado: false,
   },
+  {
+    id: 4,
+    descripcion: "Anodizado bronce",
+    precioPorKilo: 310,
+    color: "#8B6914",
+    moneda: 1,
+    bloqueado: false,
+  },
+
   {
     id: 5,
     descripcion: "Pintado champagne",
