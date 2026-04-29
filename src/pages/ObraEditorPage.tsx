@@ -22,8 +22,15 @@ import {
   SplitSquareHorizontal,
   SplitSquareVertical,
   Calculator,
+  LayoutPanelLeft,
+  Layers,
+  Square,
+  SquaresSubtract,
+  Eraser,
+  Palette,
+  ChartPie,
 } from "lucide-react";
-import clsx from "clsx";
+
 import { useObrasStore } from "@/store/obrasStore";
 import { useProductosStore } from "@/store/productosStore";
 import TipologiaCanvas from "@/components/canvas/TipologiaCanvas";
@@ -32,8 +39,12 @@ import TravesanoModal from "@/components/obras/TravesanoModal";
 import NuevaTipologiaModal from "@/components/obras/NuevaTipologiaModal";
 import type { TipologiaConfig } from "@/store/obrasStore";
 import { useDespiece } from "@/hooks/useDespiece";
-import DespieceView from "@/components/obras/DespieceView";
-import { Image } from "@heroui/react";
+
+import { Divider } from "@heroui/react";
+import { PopoverContent } from "@heroui/react";
+import { PopoverTrigger } from "@heroui/react";
+import { Popover } from "@heroui/react";
+import DespieceModal from "@/components/obras/DespieceModal";
 
 interface CruceModal {
   tipo: "H" | "V";
@@ -67,6 +78,9 @@ export default function ObraEditorPage() {
 
   const [showNuevoModal, setShowNuevoModal] = useState(false);
   const [travesanoOpen, setTravesanoOpen] = useState(false);
+  const [showDespieceModal, setShowDespieceModal] = useState(false);
+
+  const onCloseDespieceModal = () => setShowDespieceModal(false);
 
   function handleCrearTipologia(
     datos: {
@@ -136,11 +150,6 @@ export default function ObraEditorPage() {
     );
   }
 
-  const totalUnidades = tipologias.reduce((s, t) => s + t.cantidad, 0);
-  const asignadas = tipologias.filter(
-    (t) => getConfig(t.id).idProducto !== null,
-  ).length;
-
   return (
     <div className="flex flex-col h-[calc(100vh-56px)] -m-6 fade-in">
       {/* ── Top bar ── */}
@@ -150,7 +159,7 @@ export default function ObraEditorPage() {
           isIconOnly
           size="sm"
           onPress={() => navigate("/obras")}
-          className="text-zinc-400 hover:text-zinc-600"
+          className="text-zinc-300 hover:text-zinc-600 "
         >
           <ArrowLeft className="w-4.5 h-4.5" />
         </Button>
@@ -160,52 +169,121 @@ export default function ObraEditorPage() {
             <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 text-md">
               {obra.apellido}, {obra.nombre}
             </h2>
-            {obra.ciudad && (
-              <Chip
-                size="sm"
-                variant="flat"
-                classNames={{
-                  base: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 h-5",
-                  content: "text-xs font-medium",
-                }}
-              >
-                {obra.ciudad}
-              </Chip>
+
+            <Divider orientation="vertical" className="h-8 mx-2" />
+
+            {configurado && (
+              <div className="flex items-center gap-2">
+                <Tooltip content="Despiece del producto">
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="light"
+                    onPress={() => {
+                      setShowDespiece(true);
+                      setShowDespieceModal(true);
+                    }}
+                    className="bg-zinc-100 dark:bg-zinc-800 hover:bg-[#db924b]/20 transition-colors  rounded-lg border border-zinc-200 dark:border-zinc-700"
+                  >
+                    <ChartPie size={18} />
+                  </Button>
+                </Tooltip>
+
+                <Divider orientation="vertical" className="h-8 mx-1" />
+
+                <Popover showArrow offset={10} placement="bottom">
+                  <PopoverTrigger>
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      className="bg-zinc-100 dark:bg-zinc-800 hover:bg-[#db924b]/20 transition-colors rounded-lg border border-zinc-200 dark:border-zinc-700"
+                    >
+                      <Tooltip content="Acciones globales" offset={17}>
+                        <Layers size={18} />
+                      </Tooltip>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-48" placement="bottom">
+                    <div className="px-1 py-2 w-full">
+                      <p className="text-small font-bold text-foreground px-2 mb-2">
+                        Acciones
+                      </p>
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          size="sm"
+                          variant="light"
+                          className="justify-start px-2"
+                          startContent={<Square size={18} />}
+                        >
+                          Agregar premarcos
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="light"
+                          className="justify-start px-2"
+                          startContent={<SquaresSubtract size={18} />}
+                        >
+                          Agregar tapajuntas
+                        </Button>
+
+                        <Divider className="my-1" />
+
+                        <Button
+                          size="sm"
+                          variant="light"
+                          className="justify-start px-2"
+                          startContent={<Eraser size={18} />}
+                        >
+                          Borrar premarcos
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="light"
+                          className="justify-start px-2"
+                          startContent={<Eraser size={18} />}
+                        >
+                          Borrar tapajuntas
+                        </Button>
+
+                        <Divider className="my-1" />
+
+                        <Button
+                          size="sm"
+                          variant="light"
+                          className="justify-start px-2"
+                          startContent={<Palette size={18} />}
+                        >
+                          Cambiar color
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="light"
+                          className="justify-start px-2"
+                          startContent={<Copy size={18} />}
+                        >
+                          Cambiar interiores
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
             )}
           </div>
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
-            <Image
-              alt="HeroUI hero Image"
-              src="/src/assets/images/obra/acciones_globales.png"
-              className="w-3.5 h-3.5 text-zinc-400"
-            />
-            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
-              {tipologias.length} Tipo{tipologias.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
-            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
-              {totalUnidades} Unid.
-            </span>
-          </div>
-          {tipologias.length > 0 && (
-            <div
-              className={clsx(
-                "flex items-center gap-1.5 px-3 py-1 rounded-full border",
-                asignadas === tipologias.length
-                  ? "bg-emerald-50 border-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-400"
-                  : "bg-amber-50 border-amber-100 text-amber-600 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400",
-              )}
+          <Tooltip content="Presupuesto">
+            <Button
+              isIconOnly
+              variant="light"
+              size="sm"
+              className="bg-zinc-100 dark:bg-zinc-800 hover:bg-[#db924b]/20 transition-colors  rounded-lg border border-zinc-200 dark:border-zinc-700"
             >
-              <span className="text-[11px] font-medium">
-                {asignadas}/{tipologias.length} Asignados
-              </span>
-            </div>
-          )}
+              <Calculator size={19} />
+            </Button>
+          </Tooltip>
         </div>
       </div>
 
@@ -393,7 +471,7 @@ export default function ObraEditorPage() {
                       updateTipologia(tipSel.id, { ancho: parseInt(v) || 600 })
                     }
                     size="sm"
-                    className="w-20"
+                    className="w-30"
                     classNames={{
                       inputWrapper:
                         "h-7 min-h-unit-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700",
@@ -481,31 +559,6 @@ export default function ObraEditorPage() {
                     </Button>
                   </Tooltip>
                 </div>
-
-                <Button
-                  size="sm"
-                  variant={showConfig ? "flat" : "light"}
-                  onPress={() => setShowConfig((s) => !s)}
-                  className="text-xs"
-                >
-                  {showConfig ? "Ocultar config" : "Configurar"}
-                </Button>
-
-                {configurado && (
-                  <Button
-                    size="sm"
-                    variant={showDespiece ? "solid" : "flat"}
-                    color={showDespiece ? "primary" : "default"}
-                    onPress={() => {
-                      setShowDespiece((s) => !s);
-                      setShowConfig(false);
-                    }}
-                    className="text-xs"
-                    startContent={<Calculator className="w-3 h-3" />}
-                  >
-                    {showDespiece ? "Ocultar despiece" : "Calcular"}
-                  </Button>
-                )}
               </div>
 
               {/* Canvas */}
@@ -547,31 +600,15 @@ export default function ObraEditorPage() {
               </aside>
             )}
 
-            {/* Right panel: despiece */}
+            {/* Modal despiece */}
             {showDespiece && (
-              <aside className="w-96 shrink-0 border-l border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-y-auto scrollbar-thin">
-                <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-2">
-                  <Calculator className="w-3.5 h-3.5 text-zinc-400" />
-                  <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wide">
-                    Despiece — {tipSel.descripcion}
-                  </p>
-                </div>
-                <div className="p-4">
-                  {despieceError && (
-                    <div className="flex items-start gap-2 text-danger-600 bg-danger-50 dark:bg-danger-900/20 rounded-lg p-3 mb-3 text-sm">
-                      <span>⚠ Error: {despieceError}</span>
-                    </div>
-                  )}
-                  {despieceResult ? (
-                    <DespieceView resultado={despieceResult} />
-                  ) : (
-                    <div className="text-center py-8 text-zinc-400 text-sm">
-                      <Calculator className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                      <p>Configurá un producto para calcular el despiece</p>
-                    </div>
-                  )}
-                </div>
-              </aside>
+              <DespieceModal
+                isOpen={showDespieceModal}
+                onOpenChange={onCloseDespieceModal}
+                tipSel={tipSel}
+                despieceError={despieceError}
+                despieceResult={despieceResult}
+              />
             )}
           </div>
         )}

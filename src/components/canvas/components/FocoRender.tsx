@@ -6,7 +6,7 @@ interface RenderFocoProps {
 }
 
 export const RenderFoco = ({ width, height }: RenderFocoProps) => {
-  const step = 10; // Espaciado entre líneas
+  const step = 6; // Espaciado entre líneas
   const lines = [];
 
   // Generamos las líneas diagonales

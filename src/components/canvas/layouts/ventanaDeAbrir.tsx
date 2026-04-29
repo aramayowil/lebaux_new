@@ -3,7 +3,7 @@ import { ObraTipologia } from "@/types";
 import { TipologiaConfig } from "@/store/obrasStore";
 import { RenderContravidrio } from "../components/RenderContravidrios";
 import RenderCruces from "../components/RenderCruces";
-import { RenderFoco } from "../FocoRender";
+import { RenderFoco } from "../components/FocoRender";
 
 interface LayoutProps {
   drawW: number;
@@ -38,7 +38,7 @@ export const VentanaDeAbrirLayout = ({
 
   // Perfiles del marco
   const jamba_Umbral_DintelDeMarco = 47.5 * scale;
-  const encuentroCentral = 61.3 * scale; //perfil de encuentro cuando son 2 hojas
+  const encuentroCentral = 20 * scale; //perfil de encuentro cuando son 2 hojas
 
   // Dimensiones de las hojas
   const hojaW = drawW - jamba_Umbral_DintelDeMarco * 2;
@@ -281,7 +281,7 @@ export const VentanaDeAbrirLayout = ({
         {/* CERRADURA */}
         {index === 0 && hojas === 1 && (
           <Rect
-            x={width - jamba_Zocalo_CabezalDeHoja}
+            x={width - jamba_Zocalo_CabezalDeHoja + cerraduraW}
             y={height / 2 - cerraduraH / 2}
             width={cerraduraW}
             height={cerraduraH}
@@ -293,7 +293,7 @@ export const VentanaDeAbrirLayout = ({
 
         {index === 1 && hojas === 2 && (
           <Rect
-            x={-encuentroCentral / 2 - cerraduraW / 2}
+            x={jamba_Zocalo_CabezalDeHoja - cerraduraW * 2}
             y={height / 2 - cerraduraH / 2}
             width={cerraduraW}
             height={cerraduraH}
@@ -311,8 +311,8 @@ export const VentanaDeAbrirLayout = ({
               : [0, 0, width, height / 2, 0, height]
           }
           stroke={lineasCotas}
-          strokeWidth={0.4}
-          dash={[4, 4]}
+          strokeWidth={0.6}
+          dash={[6, 6]}
         />
       </Group>
     );

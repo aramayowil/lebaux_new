@@ -1,478 +1,408 @@
-import { useCatalogosStore } from "@/store/catalogosStore";
 import { Group, Rect, Line } from "react-konva";
-import invertirColor from "@/utils/invertirColor";
 import { ObraTipologia } from "@/types";
 import { TipologiaConfig } from "@/store/obrasStore";
-import { RenderFoco } from "../FocoRender";
+import { RenderContravidrio } from "../components/RenderContravidrios";
+import RenderCruces from "../components/RenderCruces";
+import { RenderFoco } from "../components/FocoRender";
 
 interface LayoutProps {
-  drawW: number; // Ancho total exterior
-  drawH: number; // Alto total exterior
-  frameThick: number;
+  drawW: number;
+  drawH: number;
   scale: number;
   tipologia: ObraTipologia;
-  config: TipologiaConfig & { isFocused: boolean; focusedHoja: number };
+  config: TipologiaConfig;
   hojas: number;
+  isFocused: boolean;
+  focusedHoja: number;
+  colors: {
+    colorDeAluminio: string;
+    vidrio: string;
+    contorno: string;
+    lineasCotas: string;
+  };
   onContextMenu?: (e: any, index: number) => void;
 }
 
 export const OscilobatienteLayout = ({
   drawW,
   drawH,
-  frameThick,
   scale,
   config,
   hojas,
+  isFocused,
+  focusedHoja,
+  colors,
   onContextMenu,
 }: LayoutProps) => {
-  const { idTratamiento } = config;
-  const { tratamientos } = useCatalogosStore();
-  const tratamiento = tratamientos.find((t) => t.id === idTratamiento);
-  // Paleta de colores técnica y limpia
-  const COLORS = {
-    frame: tratamiento?.color || "#f2f2f2", // Gris perla para el marco
-    glass: "#C5DDE8", // Blanco azulado para el vidrio
-    stroke: tratamiento?.color ? invertirColor(tratamiento.color) : "#94a3b8", // Borde de los perfiles
-    refAbrir: "#878484",
-  };
+  const { colorDeAluminio, vidrio, contorno, lineasCotas } = colors;
 
-  // Definimos un grosor para el perfil de división (aprox 40mm reales)
-  const divThick = 40 * scale;
+  // Perfiles del marco
+  const jamba_Umbral_DintelDeMarco = 47.5 * scale;
+  const encuentroCentral = 20 * scale; //perfil de encuentro cuando son 2 hojas
+
+  // Dimensiones de las hojas
+  const hojaW = drawW - jamba_Umbral_DintelDeMarco * 2;
+  //Ancho de cada hoja
+  const anchoHojaIndividual =
+    hojas === 2 ? (hojaW - encuentroCentral) / 2 : hojaW;
+  const hojaH = drawH - jamba_Umbral_DintelDeMarco * 2;
+
+  //Perfiles de la hoja
+  const jamba_Zocalo_CabezalDeHoja = 59.2 * scale;
+
+  // Grosor del perfil de cruces
+  const contravidrioThick = 17 * scale;
+
+  //Bisagras de la hoja
+  const bisagrasH = 90 * scale;
+  const bisagrasW = 20 * scale;
+  const colorBisagras = "#595959";
+
+  //Color de Cerradura
+  const cerraduraW = 20 * scale;
+  const cerraduraH = 130 * scale;
+  const colorCerradura = "#595959";
+
+  //perfil de cruce
+  const perfilCruce = 61 * scale;
 
   const RenderMarco = () => (
     <Group>
-      {/* Perfil Exterior */}
-      <Rect
-        width={drawW}
-        height={drawH}
-        fill={COLORS.frame}
-        stroke={COLORS.stroke}
+      {/* Dintel a 45 */}
+      <Line
+        points={[
+          0,
+          0,
+          drawW,
+          0,
+          drawW - jamba_Umbral_DintelDeMarco,
+          jamba_Umbral_DintelDeMarco,
+          jamba_Umbral_DintelDeMarco,
+          jamba_Umbral_DintelDeMarco,
+        ]}
+        closed
+        fill={colorDeAluminio}
+        stroke={contorno}
+        strokeWidth={1}
+      />
+      {/* Jamba izquierda a 45 */}
+      <Line
+        points={[
+          0,
+          0,
+          0,
+          drawH,
+          jamba_Umbral_DintelDeMarco,
+          drawH,
+          jamba_Umbral_DintelDeMarco,
+          jamba_Umbral_DintelDeMarco,
+        ]}
+        closed
+        fill={colorDeAluminio}
+        stroke={contorno}
+        strokeWidth={1}
+      />
+      {/* Jamba derecha a 45 */}
+      <Line
+        points={[
+          drawW,
+          0,
+          drawW,
+          drawH,
+          drawW - jamba_Umbral_DintelDeMarco,
+          drawH,
+          drawW - jamba_Umbral_DintelDeMarco,
+          jamba_Umbral_DintelDeMarco,
+        ]}
+        closed
+        fill={colorDeAluminio}
+        stroke={contorno}
+        strokeWidth={1}
+      />
+      {/* Umbral a 45 */}
+      <Line
+        points={[
+          0,
+          drawH,
+          drawW,
+          drawH,
+
+          drawW - jamba_Umbral_DintelDeMarco,
+          drawH - jamba_Umbral_DintelDeMarco,
+
+          jamba_Umbral_DintelDeMarco,
+          drawH - jamba_Umbral_DintelDeMarco,
+        ]}
+        closed
+        fill={colorDeAluminio}
+        stroke={contorno}
         strokeWidth={1}
       />
 
+      {hojas === 2 && (
+        <Rect
+          x={drawW / 2 - encuentroCentral / 2}
+          y={jamba_Umbral_DintelDeMarco}
+          width={encuentroCentral}
+          height={hojaH}
+          fill={colorDeAluminio}
+          stroke={contorno}
+          strokeWidth={1}
+        />
+      )}
+
       {/* Lineas a 45 grados */}
-      {/* linea arriba-izquierda */}
       <Line
-        points={[0, 0, frameThick / 2, frameThick / 2]}
-        stroke={COLORS.stroke}
+        points={[0, 0, jamba_Umbral_DintelDeMarco, jamba_Umbral_DintelDeMarco]}
+        stroke={contorno}
         strokeWidth={1}
       />
-      {/* linea abajo-izquierda */}
+
       <Line
-        points={[0, drawH, frameThick / 2, drawH - frameThick / 2]}
-        stroke={COLORS.stroke}
-        strokeWidth={1}
-      />
-      {/* linea arriba-derecha */}
-      <Line
-        points={[drawW, 0, drawW - frameThick / 2, frameThick / 2]}
-        stroke={COLORS.stroke}
-        strokeWidth={1}
-      />
-      {/* linea abajo-derecha */}
-      <Line
-        points={[drawW, drawH, drawW - frameThick / 2, drawH - frameThick / 2]}
-        stroke={COLORS.stroke}
+        points={[
+          drawW,
+          0,
+          drawW - jamba_Umbral_DintelDeMarco,
+          jamba_Umbral_DintelDeMarco,
+        ]}
+        stroke={contorno}
         strokeWidth={1}
       />
     </Group>
   );
 
-  interface RenderHojaProps {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    index: number;
-    invertida?: boolean;
-    isHojaOscilobatiente?: boolean;
-  }
   const RenderHoja = ({
-    x,
-    y,
     width,
     height,
     index,
-    invertida = false,
-    isHojaOscilobatiente = true,
-  }: RenderHojaProps) => {
-    // La hoja solo tiene foco si el layout general está enfocado Y este es su índice
-    const isThisHojaFocused = config.isFocused && config.focusedHoja === index;
+  }: {
+    width: number;
+    height: number;
+    index: number;
+  }) => {
+    // Si es la segunda hoja (index 1), se desplaza el ancho de la primera + el encuentro
+    const xPos = index === 0 ? 0 : width + encuentroCentral;
+    const esHojaDerecha = index === 1;
+
+    const anchoInternoHoja = width - jamba_Zocalo_CabezalDeHoja * 2;
+    const altoInternoHoja = height - jamba_Zocalo_CabezalDeHoja * 2;
 
     return (
-      <Group
-        x={x}
-        y={y}
-        scaleX={invertida ? -1 : 1}
-        offsetX={invertida ? width : 0}
-      >
-        {/* Perfil exterior de la hoja */}
-        <Rect
-          x={0}
-          y={0}
-          width={width}
-          height={height}
-          fill={COLORS.frame}
-          stroke={COLORS.stroke}
+      <Group x={xPos}>
+        {/* Perfiles de la hoja (se mantienen igual) */}
+        <Line /* Perfil superior */
+          points={[
+            0,
+            0,
+            width,
+            0,
+            width - jamba_Zocalo_CabezalDeHoja,
+            jamba_Zocalo_CabezalDeHoja,
+            jamba_Zocalo_CabezalDeHoja,
+            jamba_Zocalo_CabezalDeHoja,
+          ]}
+          closed
+          fill={colorDeAluminio}
+          stroke={contorno}
           strokeWidth={1}
         />
-        {/* Perfil interior de la hoja */}
-        <Rect
-          x={frameThick * 1.5}
-          y={frameThick * 1.5}
-          width={width - frameThick * 3}
-          height={height - frameThick * 3}
-          fill={COLORS.frame}
-          stroke={COLORS.stroke}
+        <Line /* Perfil izquierdo */
+          points={[
+            0,
+            0,
+            jamba_Zocalo_CabezalDeHoja,
+            jamba_Zocalo_CabezalDeHoja,
+            jamba_Zocalo_CabezalDeHoja,
+            height,
+            0,
+            height,
+          ]}
+          closed
+          fill={colorDeAluminio}
+          stroke={contorno}
           strokeWidth={1}
         />
-        {/* <Rect
-          x={frameThick * 2}
-          y={frameThick * 2}
-          width={width - frameThick * 4}
-          height={height - frameThick * 4}
-          fill={COLORS.frame}
-          stroke={COLORS.stroke}
+        <Line /* Perfil derecho */
+          points={[
+            width,
+            0,
+            width,
+            height,
+            width - jamba_Zocalo_CabezalDeHoja,
+            height,
+            width - jamba_Zocalo_CabezalDeHoja,
+            jamba_Zocalo_CabezalDeHoja,
+          ]}
+          closed
+          fill={colorDeAluminio}
+          stroke={contorno}
           strokeWidth={1}
-        /> */}
+        />
+        <Rect /* Zócalo */
+          x={jamba_Zocalo_CabezalDeHoja}
+          y={height - jamba_Zocalo_CabezalDeHoja}
+          width={width - jamba_Zocalo_CabezalDeHoja * 2}
+          height={jamba_Zocalo_CabezalDeHoja}
+          fill={colorDeAluminio}
+          stroke={contorno}
+          strokeWidth={1}
+        />
 
-        {/* Area interior (vidrio, travesaños y parantes) interactiva*/}
-        <Group
-          x={frameThick * 1.5}
-          y={frameThick * 1.5}
-          onContextMenu={(e) => onContextMenu?.(e, index)} // CLIC DERECHO AQUÍ
-        >
+        {/* BISAGRAS: Se espejan si es la hoja derecha */}
+        <Group x={esHojaDerecha ? width : -bisagrasW}>
           <Rect
-            x={frameThick * 0.5}
-            y={frameThick * 0.5}
-            width={width - frameThick * 4}
-            height={height - frameThick * 4}
-            fill={COLORS.glass}
-            stroke={COLORS.stroke}
+            y={jamba_Zocalo_CabezalDeHoja}
+            width={bisagrasW}
+            height={bisagrasH}
+            fill={colorBisagras}
+            stroke={contorno}
             strokeWidth={1}
           />
 
-          {/* Lineas de apertura '^'*/}
-          <Group>
-            {isHojaOscilobatiente && (
-              <>
-                <Line
-                  points={[
-                    0,
-                    height - frameThick * 3,
-                    width / 2 - frameThick * 1.5,
-                    0,
-                  ]}
-                  stroke={COLORS.refAbrir}
-                  strokeWidth={0.5}
-                />
-                <Line
-                  points={[
-                    width / 2 - frameThick * 1.5,
-                    0,
-                    width - frameThick * 3,
-                    height - frameThick * 3,
-                  ]}
-                  stroke={COLORS.refAbrir}
-                  strokeWidth={0.5}
-                />
-              </>
-            )}
-            {/* Lineas de apertura '>'*/}
-            <Line
-              points={[
-                0,
-                0,
-                width - frameThick * 3,
-                height / 2 - frameThick * 1.5,
-              ]}
-              stroke={COLORS.refAbrir}
-              strokeWidth={0.5}
-            />
-
-            <Line
-              points={[
-                0,
-                height - frameThick * 3,
-                width - frameThick * 3,
-                height / 2 - frameThick * 1.5,
-              ]}
-              stroke={COLORS.refAbrir}
-              strokeWidth={0.5}
-            />
-          </Group>
-
-          {/* Renderizado de Cruces (Travesaños y Parantes) */}
-          <RenderParantes
-            width={width - frameThick * 3}
-            height={height - frameThick * 3}
+          <Rect
+            y={height - jamba_Zocalo_CabezalDeHoja - bisagrasH}
+            width={bisagrasW}
+            height={bisagrasH}
+            fill={colorBisagras}
+            stroke={contorno}
+            strokeWidth={1}
           />
-          <RenderTravesaños
-            width={width - frameThick * 3}
-            height={drawH - frameThick * 2}
-          />
-
-          {/* RENDERIZADO DEL FOCO (Líneas Rojas) */}
-          {isThisHojaFocused && (
-            <RenderFoco
-              width={width - frameThick * 3.5}
-              height={height - frameThick * 3.5}
-            />
-          )}
         </Group>
 
-        {/* Lineas a 45 grados */}
-        <Line
-          points={[0, 0, frameThick * 2, frameThick * 2]}
-          stroke={COLORS.stroke}
-          strokeWidth={1}
-        />
-        <Line
-          points={[0, height, frameThick * 2, height - frameThick * 2]}
-          stroke={COLORS.stroke}
-          strokeWidth={1}
-        />
-        <Line
-          points={[width, 0, width - frameThick * 2, frameThick * 2]}
-          stroke={COLORS.stroke}
-          strokeWidth={1}
-        />
-        <Line
-          points={[
-            width,
-            height,
-            width - frameThick * 2,
-            height - frameThick * 2,
-          ]}
-          stroke={COLORS.stroke}
-          strokeWidth={1}
-        />
+        {/* INTERIORES */}
+        <Group x={jamba_Zocalo_CabezalDeHoja} y={jamba_Zocalo_CabezalDeHoja}>
+          {RenderInteriores({
+            width: anchoInternoHoja,
+            height: altoInternoHoja,
+            index,
+          })}
+        </Group>
 
-        {/* Bisagras y manija lateral */}
-        {/* Bisagras */}
-        <Rect
-          x={0}
-          y={frameThick * 3.75}
-          width={frameThick / 2}
-          height={frameThick * 3}
-          fill={COLORS.frame}
-          stroke={COLORS.stroke}
-          strokeWidth={1}
-        />
-        <Rect
-          x={0}
-          y={height - frameThick * 6.75}
-          width={frameThick / 2}
-          height={frameThick * 3}
-          fill={COLORS.frame}
-          stroke={COLORS.stroke}
-          strokeWidth={1}
-        />
-        {/* Manija */}
+        {/* CERRADURA */}
+        {index === 0 && hojas === 1 && (
+          <Rect
+            x={width - jamba_Zocalo_CabezalDeHoja + cerraduraW}
+            y={height / 2 - cerraduraH / 2}
+            width={cerraduraW}
+            height={cerraduraH}
+            fill={colorCerradura}
+            stroke={contorno}
+            strokeWidth={1}
+          />
+        )}
 
-        <Rect
-          x={width - frameThick * 1.5}
-          y={height / 2 - frameThick * 1.5}
-          width={frameThick / 1.5}
-          height={frameThick * 3}
-          fill={COLORS.frame}
-          stroke={COLORS.stroke}
-          strokeWidth={1}
+        {index === 1 && hojas === 2 && (
+          <Rect
+            x={jamba_Zocalo_CabezalDeHoja - cerraduraW * 2}
+            y={height / 2 - cerraduraH / 2}
+            width={cerraduraW}
+            height={cerraduraH}
+            fill={colorCerradura}
+            stroke={contorno}
+            strokeWidth={1}
+          />
+        )}
+
+        {/* LÍNEAS DE APERTURA: Se espejan según la hoja */}
+        {/*Apertura de Giro (Triángulo lateral) */}
+        <Line
+          points={
+            !esHojaDerecha
+              ? [
+                  jamba_Zocalo_CabezalDeHoja,
+                  jamba_Zocalo_CabezalDeHoja,
+                  anchoHojaIndividual - jamba_Zocalo_CabezalDeHoja,
+                  jamba_Zocalo_CabezalDeHoja + altoInternoHoja / 2,
+                  jamba_Zocalo_CabezalDeHoja,
+                  height - jamba_Zocalo_CabezalDeHoja,
+                ]
+              : [
+                  anchoHojaIndividual - jamba_Zocalo_CabezalDeHoja,
+                  jamba_Zocalo_CabezalDeHoja,
+                  jamba_Zocalo_CabezalDeHoja,
+                  jamba_Zocalo_CabezalDeHoja + altoInternoHoja / 2,
+                  anchoHojaIndividual - jamba_Zocalo_CabezalDeHoja,
+                  height - jamba_Zocalo_CabezalDeHoja,
+                ]
+          }
+          stroke={lineasCotas}
+          strokeWidth={0.8}
+          dash={[5, 5]}
         />
+        {/* Apertura de Tilt/Ventilación (Triángulo superior) */}
+        {esHojaDerecha && (
+          <Line
+            points={[
+              jamba_Zocalo_CabezalDeHoja,
+              height - jamba_Zocalo_CabezalDeHoja,
+              anchoHojaIndividual / 2,
+              jamba_Zocalo_CabezalDeHoja,
+              anchoHojaIndividual - jamba_Zocalo_CabezalDeHoja,
+              height - jamba_Zocalo_CabezalDeHoja,
+            ]}
+            stroke={lineasCotas}
+            strokeWidth={0.8}
+            dash={[5, 5]}
+          />
+        )}
       </Group>
     );
   };
 
-  const RenderParantes = ({
+  const RenderInteriores = ({
     width,
     height,
+    index, // Agregamos el índice de la hoja
   }: {
     width: number;
     height: number;
-  }) => (
-    <Group>
-      {config.posV?.map((posMm: number, idx: number) => {
-        // Calculamos la posición X relativa al ancho de la hoja
-        const xRelative = posMm * scale;
+    index: number;
+  }) => {
+    // Determinamos si esta hoja específica es la que tiene el foco
+    const estaEnFoco = isFocused && focusedHoja === index;
 
-        // Validamos que no se pase del ancho de la hoja
-        if (xRelative <= 0 || xRelative >= width) return null;
+    return (
+      <Group onContextMenu={(e) => onContextMenu?.(e, index)}>
+        {/* Vidrio de hoja */}
+        <Rect width={width} height={height} fill={vidrio} />
 
-        return (
-          <Group key={`v-div-${idx}`}>
-            <Line
-              points={[
-                xRelative - divThick / 2,
-                0,
-                xRelative - divThick,
-                frameThick / 2,
-                xRelative - divThick,
-                height - frameThick / 2,
-                xRelative - divThick / 2,
-                height,
-              ]}
-              stroke={COLORS.stroke}
-              fill={COLORS.frame}
-              strokeWidth={1}
-              closed={true}
-            />
+        {/* FOCO DE SELECCIÓN: Ahora solo se activa si coincide el índice */}
+        {estaEnFoco && <RenderFoco width={width} height={height} />}
 
-            <Rect
-              x={xRelative - divThick / 2}
-              y={0}
-              width={divThick}
-              height={height} // Alto total de la hoja
-              fill={COLORS.frame}
-              stroke={COLORS.stroke}
-              strokeWidth={1}
-            />
-            <Line
-              points={[
-                xRelative + divThick / 2,
-                0,
-                xRelative + divThick,
-                frameThick / 2,
-                xRelative + divThick,
-                height - frameThick / 2,
-                xRelative + divThick / 2,
-                height,
-              ]}
-              stroke={COLORS.stroke}
-              fill={COLORS.frame}
-              strokeWidth={1}
-              closed={true}
-            />
-          </Group>
-        );
-      })}
-    </Group>
-  );
+        <RenderContravidrio
+          hojaW={width}
+          hojaH={height}
+          contravidrioThick={contravidrioThick}
+          colors={colors}
+        />
 
-  const RenderTravesaños = ({
-    width,
-    height,
-  }: {
-    width: number;
-    height: number;
-  }) => (
-    <Group>
-      {config.posH?.map((posMm: number, idx: number) => {
-        // 1. Calculamos la posición desde el borde inferior de la HOJA
-        // height es el alto total de la hoja que recibimos por props
-        const yRelative = height - posMm * scale;
-
-        // 2. Validamos que esté dentro del área de la hoja
-        // El rango útil es entre el borde superior e inferior
-        if (yRelative <= 0 || yRelative >= height) return null;
-
-        return (
-          <Group key={`h-div-${idx}`}>
-            {/* Detalle Superior */}
-            <Line
-              points={[
-                0,
-                yRelative - divThick / 2,
-                frameThick / 2,
-                yRelative - divThick,
-                width - frameThick / 2,
-                yRelative - divThick,
-                width,
-                yRelative - divThick / 2,
-              ]}
-              stroke={COLORS.stroke}
-              fill={COLORS.frame}
-              strokeWidth={1}
-              closed={true}
-            />
-
-            {/* Perfil del Travesaño (Rectángulo principal) */}
-            <Rect
-              x={0}
-              y={yRelative - divThick / 2}
-              width={width} // Ahora usa el ancho de la hoja
-              height={divThick}
-              fill={COLORS.frame}
-              stroke={COLORS.stroke}
-              strokeWidth={1}
-            />
-
-            {/* Chaflán / Detalle Inferior */}
-            <Line
-              points={[
-                0,
-                yRelative + divThick / 2,
-                frameThick / 2,
-                yRelative + divThick,
-                width - frameThick / 2,
-                yRelative + divThick,
-                width,
-                yRelative + divThick / 2,
-              ]}
-              stroke={COLORS.stroke}
-              fill={COLORS.frame}
-              strokeWidth={1}
-              closed={true}
-            />
-          </Group>
-        );
-      })}
-    </Group>
-  );
-
+        <RenderCruces
+          width={width}
+          height={height}
+          config={config}
+          espesoPerfilCruce={perfilCruce}
+          contravidrioThick={contravidrioThick}
+          colors={colors}
+        />
+      </Group>
+    );
+  };
   return (
     <Group>
-      {/* 1. Dibujamos el Marco Exterior */}
       <RenderMarco />
 
-      {/* Area interna donde se dibujan las hojas */}
-      <Group
-        x={frameThick / 2}
-        y={frameThick / 2}
-        width={drawW - frameThick}
-        height={drawH - frameThick}
-      >
-        {hojas === 0 && (
-          <Rect
-            x={0}
-            y={0}
-            width={drawW - frameThick}
-            height={drawH - frameThick}
-            fill="transparent"
-            stroke={COLORS.stroke}
-            strokeWidth={1}
-          />
-        )}
-        {hojas === 1 && (
-          <RenderHoja
-            x={0}
-            y={0}
-            width={drawW - frameThick}
-            height={drawH - frameThick}
-            index={0}
-          />
-        )}
-        {hojas > 1 && (
-          <Group>
+      {(hojas === 1 || hojas === 2) && (
+        <Group x={jamba_Umbral_DintelDeMarco} y={jamba_Umbral_DintelDeMarco}>
+          {Array.from({ length: hojas }).map((_, index) => (
             <RenderHoja
-              x={0}
-              y={0}
-              width={(drawW - frameThick) / hojas}
-              height={drawH - frameThick}
-              index={0}
-              isHojaOscilobatiente={false}
+              key={index}
+              width={anchoHojaIndividual}
+              height={hojaH}
+              index={index}
             />
-
-            <RenderHoja
-              x={(drawW - frameThick) / hojas}
-              y={0}
-              width={(drawW - frameThick) / hojas}
-              height={drawH - frameThick}
-              index={1}
-              invertida={true}
-            />
-          </Group>
-        )}
-      </Group>
+          ))}
+        </Group>
+      )}
     </Group>
   );
 };

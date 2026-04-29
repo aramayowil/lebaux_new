@@ -3,7 +3,7 @@ import { ObraTipologia } from "@/types";
 import { TipologiaConfig } from "@/store/obrasStore";
 import { RenderContravidrio } from "../components/RenderContravidrios";
 import RenderCruces from "../components/RenderCruces";
-import { RenderFoco } from "../FocoRender";
+import { RenderFoco } from "../components/FocoRender";
 
 interface LayoutProps {
   drawW: number;

@@ -23,7 +23,7 @@ interface LayoutProps {
   onContextMenu?: (e: any, index: number) => void;
 }
 
-export const BanderolaLayout = ({
+export const ProjectanteLayout = ({
   drawW,
   drawH,
   scale,
@@ -36,26 +36,25 @@ export const BanderolaLayout = ({
 
   // Grosor del perfil de marco
 
-  const perfilDeMarco = 42.5 * scale; //jambas, umbral y dintel de marco
+  const perfilDeMarco = (45 / 2) * scale; //jambas, umbral y dintel de marco
 
   // Dimensiones de las hojas
   const hojaW = drawW - perfilDeMarco * 2;
   const hojaH = drawH - perfilDeMarco * 2;
 
   //Grosor perfil de hoja
-  const perfilDeHoja = (59.2 / 2) * scale; // jambas, zocalo y cabezal de hoja
+  const perfilDeHoja = (79.7 - 45 / 2) * scale; // jambas, zocalo y cabezal de hoja
 
   // Grosor del perfil de cruces
   const contravidrioThick = 17 * scale; //perfil de cruces
   const perfilDeCruces = 57.8 * scale; //perfil de cruces
 
   //ACESORIOS
-  // BISAGRAS SUPERIORES
-  const bisagraW = 90 * scale;
-  const bisagraH = 20 * scale;
-  const colorBisagras = "#595959";
   //BOTON TIRANTE
-  const botonTirante = 45 * scale;
+  const botonTiranteW = 80 * scale;
+  const botonTiranteH = 10 * scale;
+
+  const colorManija = "#595959";
 
   const RenderMarco = () => (
     <Group>
@@ -134,37 +133,69 @@ export const BanderolaLayout = ({
   const RenderHoja = ({ width, height }: { width: number; height: number }) => (
     <>
       {/* CABEZAL DE HOJA */}
-      <Rect
-        x={perfilDeHoja}
-        width={width - perfilDeHoja}
-        height={perfilDeHoja}
+      <Line
+        points={[
+          0,
+          0,
+          width,
+          0,
+          width - perfilDeHoja,
+          perfilDeHoja,
+          perfilDeHoja,
+          perfilDeHoja,
+        ]}
+        closed
         fill={colorDeAluminio}
         stroke={contorno}
         strokeWidth={1}
       />
       {/* ZOCALO DE HOJA */}
-      <Rect
-        x={0}
-        y={height - perfilDeHoja}
-        width={width - perfilDeHoja}
-        height={perfilDeHoja}
+      <Line
+        points={[
+          0,
+          height,
+          perfilDeHoja,
+          height - perfilDeHoja,
+          width - perfilDeHoja,
+          height - perfilDeHoja,
+          width,
+          height,
+        ]}
+        closed
         fill={colorDeAluminio}
         stroke={contorno}
         strokeWidth={1}
       />
       {/* JAMBAS IZQUIERDA DE HOJA */}
-      <Rect
-        width={perfilDeHoja}
-        height={height - perfilDeHoja}
+      <Line
+        points={[
+          0,
+          0,
+          perfilDeHoja,
+          perfilDeHoja,
+          perfilDeHoja,
+          height - perfilDeHoja,
+          0,
+          height,
+        ]}
+        closed
         fill={colorDeAluminio}
         stroke={contorno}
         strokeWidth={1}
       />
       {/* JAMBAS DERECHA DE HOJA */}
-      <Rect
-        x={width - perfilDeHoja}
-        width={perfilDeHoja}
-        height={height}
+      <Line
+        points={[
+          width - perfilDeHoja,
+          perfilDeHoja,
+          width,
+          0,
+          width,
+          height,
+          width - perfilDeHoja,
+          height - perfilDeHoja,
+        ]}
+        closed
         fill={colorDeAluminio}
         stroke={contorno}
         strokeWidth={1}
@@ -180,50 +211,38 @@ export const BanderolaLayout = ({
 
       {/* Lineas de Apertura */}
       <Line
-        points={[perfilDeHoja, height - perfilDeHoja, width / 2, perfilDeHoja]}
-        stroke={colors.lineasCotas}
-        dash={[6, 6]}
-        strokeWidth={0.6}
-      />
-
-      <Line
         points={[
-          width - perfilDeHoja,
-          height - perfilDeHoja,
           width / 2,
           perfilDeHoja,
+          width - perfilDeHoja,
+          height / 4,
+          width / 2,
+          height - perfilDeHoja,
+          perfilDeHoja,
+          height / 4,
         ]}
+        closed
         stroke={colors.lineasCotas}
-        dash={[6, 6]}
         strokeWidth={0.6}
+        dash={[6, 6]}
       />
-      {/*BOTON TIRANTE*/}
+      {/*Manija de apertura*/}
       <Rect
-        x={width / 2 - botonTirante / 2}
-        y={perfilDeHoja - botonTirante}
-        width={botonTirante}
-        height={botonTirante}
-        fill={colorDeAluminio}
-        stroke={contorno}
-        strokeWidth={1}
-      />
-      {/* BISAGRAS INTERIORES */}
-      <Rect
-        x={perfilDeHoja + bisagraW}
-        y={height - bisagraH}
-        width={bisagraW}
-        height={bisagraH}
-        fill={colorBisagras}
-        stroke={contorno}
+        x={width / 2 - botonTiranteW / 2}
+        y={height - perfilDeHoja}
+        width={botonTiranteW}
+        height={botonTiranteH}
+        fill={colorManija}
+        stroke={colorManija}
         strokeWidth={1}
       />
       <Rect
-        x={width - perfilDeHoja - bisagraW * 2}
-        y={height - bisagraH}
-        width={bisagraW}
-        height={bisagraH}
-        fill={colorBisagras}
-        stroke={contorno}
+        x={width / 2 - botonTiranteW / 2 - botonTiranteW}
+        y={height - perfilDeHoja + botonTiranteH}
+        width={2 * botonTiranteW}
+        height={botonTiranteH}
+        fill={colorManija}
+        stroke={colorManija}
         strokeWidth={1}
       />
     </>

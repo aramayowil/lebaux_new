@@ -15,6 +15,8 @@ import { useCatalogosStore } from "@/store/catalogosStore";
 import invertirColor from "@/utils/invertirColor";
 import { PuertaRebatibleLayout } from "./layouts/PuertaRebatible";
 import { VentanaDeAbrirLayout } from "./layouts/ventanaDeAbrir";
+import { VentiluzLayout } from "./layouts/VentiluzLayaout";
+import { ProjectanteLayout } from "./layouts/ProjectanteLayout";
 
 interface Props {
   tipologia: ObraTipologia;
@@ -153,11 +155,13 @@ export default function TipologiaCanvas({
       onContextMenu: handleLeafContextMenu,
     };
 
-    // if (tipo.includes("corrediza")) return <Corrediza90Layout {...commonProps} />;
-    // if (tipo.includes("banderola")) return <BanderolaLayout {...commonProps} />;
+    if (tipo.includes("banderola")) return <BanderolaLayout {...commonProps} />;
+    if (tipo.includes("projectante"))
+      return <ProjectanteLayout {...commonProps} />;
     if (tipo.includes("paño fijo")) return <PañoFijoLayout {...commonProps} />;
-    // if (tipo.includes("oscilobatiente"))
-    //   return <OscilobatienteLayout {...commonProps} />;
+    if (tipo.includes("ventiluz")) return <VentiluzLayout {...commonProps} />;
+    if (tipo.includes("oscilobatiente"))
+      return <OscilobatienteLayout {...commonProps} />;
     if (tipo.includes("corrediza")) return <CorredizaLayout {...commonProps} />;
     if (tipo.includes("puerta"))
       return <PuertaRebatibleLayout {...commonProps} />;

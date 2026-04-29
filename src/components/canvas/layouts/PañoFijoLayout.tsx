@@ -3,7 +3,7 @@ import { ObraTipologia } from "@/types";
 import { TipologiaConfig } from "@/store/obrasStore";
 import { RenderContravidrio } from "../components/RenderContravidrios";
 import RenderCruces from "../components/RenderCruces";
-import { RenderFoco } from "../FocoRender";
+import { RenderFoco } from "../components/FocoRender";
 
 interface LayoutProps {
   drawW: number;
@@ -48,42 +48,72 @@ export const PañoFijoLayout = ({
 
   const RenderMarco = () => (
     <Group>
-      {/* Perfil Exterior */}
-      <Rect
-        width={drawW}
-        height={drawH}
+      {/* DINTEL DE MARCO */}
+      <Line
+        points={[
+          0,
+          0,
+          drawW,
+          0,
+          drawW - perfilDeMarco,
+          perfilDeMarco,
+          perfilDeMarco,
+          perfilDeMarco,
+        ]}
+        closed
         fill={colorDeAluminio}
         stroke={contorno}
         strokeWidth={1}
       />
-      {/* Perfil interior */}
-      <Rect
-        x={perfilDeMarco}
-        y={perfilDeMarco}
-        width={hojaW}
-        height={hojaH}
-        fill="blanck"
+      {/* UMBRAL DE MARCO */}
+      <Line
+        points={[
+          0,
+          drawH,
+          perfilDeMarco,
+          drawH - perfilDeMarco,
+          drawW - perfilDeMarco,
+          drawH - perfilDeMarco,
+          drawW,
+          drawH,
+        ]}
+        closed
+        fill={colorDeAluminio}
         stroke={contorno}
         strokeWidth={1}
       />
-      {/* Lineas a 45 grados */}
+      {/* JAMBA IZQUIERDA DE MARCO */}
       <Line
-        points={[0, 0, perfilDeMarco, perfilDeMarco]}
+        points={[
+          0,
+          0,
+          perfilDeMarco,
+          perfilDeMarco,
+          perfilDeMarco,
+          drawH - perfilDeMarco,
+
+          0,
+          drawH,
+        ]}
+        closed
+        fill={colorDeAluminio}
         stroke={contorno}
         strokeWidth={1}
       />
+      {/* JAMBA DERECHA DE MARCO */}
       <Line
-        points={[0, drawH, perfilDeMarco, drawH - perfilDeMarco]}
-        stroke={contorno}
-        strokeWidth={1}
-      />
-      <Line
-        points={[drawW, 0, drawW - perfilDeMarco, perfilDeMarco]}
-        stroke={contorno}
-        strokeWidth={1}
-      />
-      <Line
-        points={[drawW, drawH, drawW - perfilDeMarco, drawH - perfilDeMarco]}
+        points={[
+          drawW - perfilDeMarco,
+          perfilDeMarco,
+          drawW,
+          0,
+          drawW,
+          drawH,
+          drawW - perfilDeMarco,
+          drawH - perfilDeMarco,
+        ]}
+        closed
+        fill={colorDeAluminio}
         stroke={contorno}
         strokeWidth={1}
       />

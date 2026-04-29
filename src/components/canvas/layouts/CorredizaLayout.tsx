@@ -1,15 +1,14 @@
 import { Group, Rect, Arrow } from "react-konva";
 import { ObraTipologia } from "@/types";
 import { TipologiaConfig } from "@/store/obrasStore";
-import { RenderFoco } from "../FocoRender";
+import { RenderFoco } from "../components/FocoRender";
 import RenderCruces from "../components/RenderCruces";
-
 import { RenderContravidrio } from "../components/RenderContravidrios";
 
 interface LayoutProps {
   drawW: number;
   drawH: number;
-  espesoPerfil: number;
+  scale: number;
   tipologia: ObraTipologia;
   config: TipologiaConfig;
   hojas: number;
@@ -27,7 +26,7 @@ interface LayoutProps {
 export const CorredizaLayout = ({
   drawW,
   drawH,
-  espesoPerfil,
+  scale,
   config,
   hojas,
   isFocused,
@@ -37,22 +36,37 @@ export const CorredizaLayout = ({
 }: LayoutProps) => {
   const { colorDeAluminio, vidrio, contorno, lineasCotas } = colors;
 
-  // --- CONFIGURACIÓN DE PERFILES TÉCNICOS ---
-  const jambaDeHojaThick = espesoPerfil * 1.7;
-  const dintelDeHojaThick = espesoPerfil * 1.7;
-  const umbralDeHojaThick = espesoPerfil * 2.5;
-  const contravidrioThick = espesoPerfil * 0.85;
+  // --- CONFIGURACIÓN DE+ PERFILES TÉCNICOS ---
 
-  // --- CÁLCULOS DE ESPACIO ---
+  // --- PERFILES DE MARCO
+  const jambaMarco = (36 - 6) * scale;
+  const umbralYdintelMarco = 49.1 * scale;
+
+  //--PERFILES DE HOJA
+  const paranteHoja = 53.5 * scale;
+  const zocaloYcabezalHoja = 52.4 * scale;
+
+  //PERFIL DE CRUCE
+  const perfilDeCruce = 55 * scale;
+
+  //GROSOR DE CONTRAVIDRIO
+  const contravidrioThick = 17 * scale;
+
   // El espacio interno es el ancho total menos las jambas del marco
-  const marcoHojaW = drawW - espesoPerfil * 2;
-  const marcoHojaH = drawH - espesoPerfil * 3; // Menos dintel y umbral del marco
+  const marcoHojaW = drawW - jambaMarco * 2;
+  const marcoHojaH = drawH - umbralYdintelMarco * 2; // Menos dintel y umbral del marco
+
+  //Accesorios
+  const cierreLateralW = 20 * scale;
+  const cierreLateralH = 80 * scale;
+
+  const colorCierreLateral = "#595959";
 
   const RenderMarcoPrincipal = () => (
     <Group>
       {/* Jamba izquierda */}
       <Rect
-        width={espesoPerfil}
+        width={jambaMarco}
         height={drawH}
         fill={colorDeAluminio}
         stroke={contorno}
@@ -60,8 +74,8 @@ export const CorredizaLayout = ({
       />
       {/* Jamba Derecha */}
       <Rect
-        x={drawW - espesoPerfil}
-        width={espesoPerfil}
+        x={drawW - jambaMarco}
+        width={jambaMarco}
         height={drawH}
         fill={colorDeAluminio}
         stroke={contorno}
@@ -69,20 +83,20 @@ export const CorredizaLayout = ({
       />
       {/* Dintel (Superior) */}
       <Rect
-        x={espesoPerfil}
+        x={jambaMarco}
         y={0}
-        width={drawW - espesoPerfil * 2}
-        height={espesoPerfil}
+        width={drawW - jambaMarco * 2}
+        height={umbralYdintelMarco}
         fill={colorDeAluminio}
         stroke={contorno}
         strokeWidth={1}
       />
       {/* Umbral (Inferior) */}
       <Rect
-        x={espesoPerfil}
-        y={drawH - espesoPerfil * 2}
-        width={drawW - espesoPerfil * 2}
-        height={espesoPerfil * 2}
+        x={jambaMarco}
+        y={drawH - umbralYdintelMarco}
+        width={drawW - jambaMarco * 2}
+        height={umbralYdintelMarco}
         fill={colorDeAluminio}
         stroke={contorno}
         strokeWidth={1}
@@ -91,187 +105,178 @@ export const CorredizaLayout = ({
   );
 
   const RenderHojaIndividual = ({
+    id,
     index,
     hojaW,
     hojaH,
     direction,
   }: {
+    id: number;
     index: number;
     hojaW: number;
     hojaH: number;
     direction: "left" | "right" | "center";
   }) => {
-    const isThisHojaFocused = isFocused && focusedHoja === index;
-
     // Posición X: Cada hoja se desplaza su ancho menos el solape (jamba de hoja)
-    const xPos = index * (hojaW - jambaDeHojaThick);
+    const xPos = index * (hojaW - paranteHoja);
 
-    const glassW = hojaW - jambaDeHojaThick * 2;
-    const glassH = hojaH - dintelDeHojaThick - umbralDeHojaThick;
-    const midY = glassH / 2;
     return (
-      <Group x={xPos} y={0}>
-        {/* ESTRUCTURA DE LA HOJA (Perfiles) */}
+      <Group x={xPos}>
+        {/* CABEZAL DE HOJA */}
         <Rect
-          width={hojaW}
-          height={hojaH}
+          x={paranteHoja}
+          width={hojaW - paranteHoja * 2}
+          height={zocaloYcabezalHoja}
           fill={colorDeAluminio}
           stroke={contorno}
           strokeWidth={1}
         />
 
-        {/* JAMBAS INTERNAS (Visualización de los dos parantes de la hoja) */}
+        {/* PARANTE LATERAL  */}
         <Rect
-          width={jambaDeHojaThick}
+          width={paranteHoja}
           height={hojaH}
           fill={colorDeAluminio}
           stroke={contorno}
           strokeWidth={1}
         />
+        {/* PARANTE CENTRAL DE HOJA */}
         <Rect
-          x={hojaW - jambaDeHojaThick}
-          width={jambaDeHojaThick}
+          x={hojaW - paranteHoja}
+          width={paranteHoja}
           height={hojaH}
           fill={colorDeAluminio}
           stroke={contorno}
           strokeWidth={1}
         />
-
-        {/*CIERRRE LATERAL*/}
-        {direction === "left" && (
-          <Rect
-            x={espesoPerfil * 0.7}
-            width={espesoPerfil}
-            y={hojaH / 2 - espesoPerfil * 2}
-            height={espesoPerfil * 4}
-            fill={colorDeAluminio}
-            stroke={contorno}
-            strokeWidth={1}
-          />
-        )}
-
-        {direction === "right" && (
-          <Rect
-            x={hojaW - espesoPerfil * 1.7}
-            width={espesoPerfil}
-            y={hojaH / 2 - espesoPerfil * 2}
-            height={espesoPerfil * 4}
-            fill={colorDeAluminio}
-            stroke={contorno}
-            strokeWidth={1}
-          />
-        )}
-        {/* DINTEL Y UMBRAL DE HOJA */}
+        {/* ZÓCALO DE HOJA */}
         <Rect
-          x={jambaDeHojaThick}
-          y={0}
-          width={hojaW - jambaDeHojaThick * 2}
-          height={dintelDeHojaThick}
-          fill={colorDeAluminio}
-          stroke={contorno}
-          strokeWidth={1}
-        />
-        <Rect
-          x={jambaDeHojaThick}
-          y={hojaH - umbralDeHojaThick}
-          width={hojaW - jambaDeHojaThick * 2}
-          height={umbralDeHojaThick}
+          x={paranteHoja}
+          y={hojaH - zocaloYcabezalHoja}
+          width={hojaW - paranteHoja * 2}
+          height={zocaloYcabezalHoja}
           fill={colorDeAluminio}
           stroke={contorno}
           strokeWidth={1}
         />
 
         {/* ÁREA DE VIDRIO E INTERACCIÓN */}
-        <Group
-          x={jambaDeHojaThick}
-          y={dintelDeHojaThick}
-          onContextMenu={(e) => onContextMenu?.(e, index)}
-        >
-          <Rect
-            width={hojaW - jambaDeHojaThick * 2}
-            height={hojaH - dintelDeHojaThick - umbralDeHojaThick}
-            fill={vidrio}
-            stroke={contorno}
-            strokeWidth={1}
-          />
-
-          {/* CONTRAVIDRIO */}
-          <RenderContravidrio
-            hojaW={hojaW - jambaDeHojaThick * 2}
-            hojaH={hojaH - dintelDeHojaThick - umbralDeHojaThick}
-            contravidrioThick={contravidrioThick}
-            colors={colors}
-          />
-
-          {/* DIVISIONES DINÁMICAS (Travesaños/Parantes) */}
-          <RenderCruces
-            width={hojaW - jambaDeHojaThick * 2}
-            height={hojaH - dintelDeHojaThick - umbralDeHojaThick}
-            config={config}
-            espesoPerfil={espesoPerfil}
-            contravidrioThick={contravidrioThick}
-            colors={colors}
-          />
-
-          {/* INDICADOR DE APERTURA (Flecha) */}
-          <Group opacity={0.4}>
-            {direction === "center" ? (
-              <>
-                <Arrow
-                  points={[glassW * 0.2, midY, glassW * 0.8, midY]}
-                  fill={lineasCotas}
-                  stroke={lineasCotas}
-                  pointerLength={8}
-                  pointerWidth={6}
-                />
-                <Arrow
-                  points={[glassW * 0.8, midY, glassW * 0.2, midY]}
-                  fill={lineasCotas}
-                  stroke={lineasCotas}
-                  pointerLength={8}
-                  pointerWidth={6}
-                />
-              </>
-            ) : (
-              <Arrow
-                points={
-                  direction === "left"
-                    ? [glassW * 0.2, midY, glassW * 0.8, midY]
-                    : [glassW * 0.8, midY, glassW * 0.2, midY]
-                }
-                fill={lineasCotas}
-                stroke={lineasCotas}
-                pointerLength={8}
-                pointerWidth={6}
-              />
-            )}
-          </Group>
-
-          {/* FOCO DE SELECCIÓN */}
-          {isThisHojaFocused && (
-            <RenderFoco
-              width={hojaW - jambaDeHojaThick * 2}
-              height={hojaH - dintelDeHojaThick - umbralDeHojaThick}
-            />
+        <Group x={paranteHoja} y={zocaloYcabezalHoja}>
+          {RenderInteriorHoja(
+            hojaW - paranteHoja * 2,
+            hojaH - zocaloYcabezalHoja * 2,
+            id,
+            direction,
           )}
         </Group>
+
+        {/*CIERRRE LATERAL*/}
+        {direction === "left" && (
+          <Rect
+            x={paranteHoja - cierreLateralW}
+            width={cierreLateralW}
+            y={hojaH / 2 - cierreLateralH / 2}
+            height={cierreLateralH}
+            fill={colorCierreLateral}
+            stroke={colorCierreLateral}
+            strokeWidth={1}
+          />
+        )}
+
+        {direction === "right" && (
+          <Rect
+            x={hojaW - paranteHoja}
+            width={cierreLateralW}
+            y={hojaH / 2 - cierreLateralH / 2}
+            height={cierreLateralH}
+            fill={colorCierreLateral}
+            stroke={colorCierreLateral}
+            strokeWidth={1}
+          />
+        )}
+      </Group>
+    );
+  };
+
+  const RenderInteriorHoja = (
+    interiorW: number,
+    interiorH: number,
+    index: number,
+    direction: "left" | "right" | "center",
+  ) => {
+    const estaEnFoco = isFocused && focusedHoja === index;
+    const centerY = interiorH / 2;
+
+    // Definimos los puntos de inicio y fin para que la flecha esté centrada
+    // Usamos un 40% del ancho del vidrio (del 30% al 70%)
+    const xStart = interiorW * 0.3;
+    const xEnd = interiorW * 0.7;
+
+    return (
+      <Group onContextMenu={(e) => onContextMenu?.(e, index)}>
+        <Rect
+          width={interiorW}
+          height={interiorH}
+          fill={vidrio}
+          stroke={contorno}
+          strokeWidth={1}
+        />
+
+        {/* FOCO DE SELECCIÓN */}
+        {estaEnFoco && <RenderFoco width={interiorW} height={interiorH} />}
+
+        {/* CONTRAVIDRIO */}
+        <RenderContravidrio
+          hojaW={interiorW}
+          hojaH={interiorH}
+          contravidrioThick={contravidrioThick}
+          colors={colors}
+        />
+
+        {/* DIVISIONES DINÁMICAS */}
+        <RenderCruces
+          width={interiorW}
+          height={interiorH}
+          config={config}
+          espesoPerfilCruce={perfilDeCruce}
+          contravidrioThick={contravidrioThick}
+          colors={colors}
+        />
+
+        {/* Flechas de Apertura */}
+        <Arrow
+          points={
+            direction === "right"
+              ? [xEnd, centerY, xStart, centerY] // De derecha a izquierda
+              : [xStart, centerY, xEnd, centerY] // De izquierda a derecha (usado para right y center)
+          }
+          // El truco: si es center, dibuja punta al inicio Y al final
+          pointerAtBeginning={direction === "center"}
+          fill={lineasCotas}
+          stroke={lineasCotas}
+          strokeWidth={1.5}
+          pointerLength={8}
+          pointerWidth={6}
+          opacity={0.6}
+        />
       </Group>
     );
   };
 
   const renderPorCasos = (hojas: number, width: number, height: number) => {
-    const hojaW = (width + (hojas - 1) * jambaDeHojaThick) / hojas;
+    const hojaW = (width + (hojas - 1) * paranteHoja) / hojas;
     const hojaWpara4 = width / 2;
-    const widthHoja4 = (hojaWpara4 + jambaDeHojaThick) / 2;
+    const widthHoja4 = (hojaWpara4 + paranteHoja) / 2;
 
     const hojasWpara3 = width / 2;
-    const widthHoja3 = (hojasWpara3 + 2 * jambaDeHojaThick) / 3;
+    const widthHoja3 = (hojasWpara3 + 2 * paranteHoja) / 3;
     switch (hojas) {
       case 2:
         return (
           <>
             <RenderHojaIndividual
               key={0}
+              id={0}
               index={0}
               hojaW={hojaW}
               hojaH={height}
@@ -279,6 +284,7 @@ export const CorredizaLayout = ({
             />
             <RenderHojaIndividual
               key={1}
+              id={1}
               index={1}
               hojaW={hojaW}
               hojaH={height}
@@ -291,6 +297,7 @@ export const CorredizaLayout = ({
           <>
             <RenderHojaIndividual
               key={0}
+              id={0}
               index={0}
               hojaW={hojaW}
               hojaH={height}
@@ -298,6 +305,7 @@ export const CorredizaLayout = ({
             />
             <RenderHojaIndividual
               key={1}
+              id={1}
               index={1}
               hojaW={hojaW}
               hojaH={height}
@@ -305,6 +313,7 @@ export const CorredizaLayout = ({
             />
             <RenderHojaIndividual
               key={2}
+              id={2}
               index={2}
               hojaW={hojaW}
               hojaH={height}
@@ -319,6 +328,7 @@ export const CorredizaLayout = ({
               <Group>
                 <RenderHojaIndividual
                   key={0}
+                  id={0}
                   index={0}
                   hojaW={widthHoja4}
                   hojaH={height}
@@ -326,6 +336,7 @@ export const CorredizaLayout = ({
                 />
                 <RenderHojaIndividual
                   key={1}
+                  id={1}
                   index={1}
                   hojaW={widthHoja4}
                   hojaH={height}
@@ -334,14 +345,16 @@ export const CorredizaLayout = ({
               </Group>
               <Group x={width / 2}>
                 <RenderHojaIndividual
-                  key={0}
+                  key={2}
+                  id={2}
                   index={0}
                   hojaW={widthHoja4}
                   hojaH={height}
                   direction="left"
                 />
                 <RenderHojaIndividual
-                  key={1}
+                  key={3}
+                  id={3}
                   index={1}
                   hojaW={widthHoja4}
                   hojaH={height}
@@ -358,6 +371,7 @@ export const CorredizaLayout = ({
               <Group>
                 <RenderHojaIndividual
                   key={0}
+                  id={0}
                   index={0}
                   hojaW={widthHoja3}
                   hojaH={height}
@@ -365,6 +379,7 @@ export const CorredizaLayout = ({
                 />
                 <RenderHojaIndividual
                   key={1}
+                  id={1}
                   index={1}
                   hojaW={widthHoja3}
                   hojaH={height}
@@ -372,6 +387,7 @@ export const CorredizaLayout = ({
                 />
                 <RenderHojaIndividual
                   key={2}
+                  id={2}
                   index={2}
                   hojaW={widthHoja3}
                   hojaH={height}
@@ -380,21 +396,24 @@ export const CorredizaLayout = ({
               </Group>
               <Group x={width / 2}>
                 <RenderHojaIndividual
-                  key={0}
+                  key={3}
+                  id={3}
                   index={0}
                   hojaW={widthHoja3}
                   hojaH={height}
                   direction="left"
                 />
                 <RenderHojaIndividual
-                  key={1}
+                  key={4}
+                  id={4}
                   index={1}
                   hojaW={widthHoja3}
                   hojaH={height}
                   direction="center"
                 />
                 <RenderHojaIndividual
-                  key={2}
+                  key={5}
+                  id={5}
                   index={2}
                   hojaW={widthHoja3}
                   hojaH={height}
@@ -413,12 +432,7 @@ export const CorredizaLayout = ({
     <Group>
       <RenderMarcoPrincipal />
       {/* Mapeo de hojas */}
-      <Group
-        x={espesoPerfil}
-        y={espesoPerfil}
-        width={marcoHojaW}
-        height={marcoHojaH}
-      >
+      <Group x={jambaMarco} y={umbralYdintelMarco}>
         {renderPorCasos(hojas, marcoHojaW, marcoHojaH)}
       </Group>
     </Group>
