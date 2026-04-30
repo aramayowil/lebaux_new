@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Button, Select, SelectItem } from '@heroui/react'
 import { Plus, Trash2, Layers } from 'lucide-react'
 import { useProductosStore } from '@/store/productosStore'
@@ -19,25 +18,14 @@ interface Props {
 
 export default function DespiecePerfilesPanel({ nivel, idParent, label = 'Perfiles' }: Props) {
   const { getDespiecePerfiles, addDespiecePerfil, updateDespiecePerfil, deleteDespiecePerfil } = useProductosStore()
-  const { perfiles, lineas, extrusoras } = useCatalogosStore()
+  const { perfiles } = useCatalogosStore()
 
   const items = getDespiecePerfiles(nivel, idParent)
 
-  const getPerfilLabel = (nro: string) => {
-    const p = perfiles.find(x => x.nroPerfil === nro)
-    if (!p) return nro
-    const l = lineas.find(x => x.id === p.idLinea)
-    const e = extrusoras.find(x => x.id === l?.idExtrusora)
-    return `${nro} - ${p.descri} (${e?.extrusora ?? '?'}/${l?.linea ?? '?'})`
-  }
-
   function handleAdd() {
     addDespiecePerfil(nivel, {
-      idParent,
-      perfil: perfiles[0]?.nroPerfil ?? '',
-      formulaCantidad: '1',
-      formulaMedida: 'ancho',
-      angulo: '45',
+      idParent, perfil: perfiles[0]?.nroPerfil ?? '',
+      formulaCantidad: '1', formulaMedida: 'ancho', angulo: '45',
     })
   }
 
@@ -46,85 +34,76 @@ export default function DespiecePerfilesPanel({ nivel, idParent, label = 'Perfil
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-steel-500 uppercase tracking-wide">{label}</p>
-        <Button size="sm" variant="flat" startContent={<Plus className="w-3 h-3" />} onPress={handleAdd}>
-          Agregar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Layers className="w-3.5 h-3.5 text-zinc-400" />
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{label}</p>
+          {items.length > 0 && (
+            <span className="text-[9px] font-mono text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">{items.length}</span>
+          )}
+        </div>
+        <button
+          onClick={handleAdd}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-400 hover:bg-amber-500 text-white transition-colors shadow-sm"
+        >
+          <Plus className="w-3 h-3" /> Agregar
+        </button>
       </div>
 
       {items.length === 0 ? (
-        <div className="border-2 border-dashed border-steel-200 dark:border-steel-700 rounded-lg py-6">
+        <div className="border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl py-6">
           <EmptyState icon={Layers} title="Sin perfiles de corte" description="Agregá las barras que componen este elemento" />
         </div>
       ) : (
-        <div className="space-y-2">
-          {/* Header */}
+        <div className="space-y-1.5">
+          {/* Cabecera de columnas */}
           <div className="grid grid-cols-[1fr_80px_1fr_60px_32px] gap-2 px-2">
-            <span className="text-[10px] font-semibold text-steel-400 uppercase tracking-wide">Perfil</span>
-            <span className="text-[10px] font-semibold text-steel-400 uppercase tracking-wide">Cantidad</span>
-            <span className="text-[10px] font-semibold text-steel-400 uppercase tracking-wide">Medida</span>
-            <span className="text-[10px] font-semibold text-steel-400 uppercase tracking-wide">Ángulo</span>
-            <span />
+            {['Perfil', 'Cantidad', 'Medida', 'Ángulo', ''].map((h, i) => (
+              <span key={i} className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">{h}</span>
+            ))}
           </div>
 
           {items.map(item => (
-            <div key={item.id} className="grid grid-cols-[1fr_80px_1fr_60px_32px] gap-2 items-end bg-steel-50 dark:bg-steel-800/40 rounded-lg p-2">
-              {/* Perfil selector */}
-              <Select
-                size="sm"
+            <div key={item.id}
+              className="grid grid-cols-[1fr_80px_1fr_60px_32px] gap-2 items-end bg-zinc-50 dark:bg-zinc-900/40 rounded-xl p-2 border border-zinc-100 dark:border-zinc-800 hover:border-zinc-200 dark:hover:border-zinc-700 transition-colors"
+            >
+              <Select size="sm"
                 selectedKeys={item.perfil ? [item.perfil] : []}
                 onSelectionChange={k => update(item.id, { perfil: [...k][0] as string })}
                 aria-label="Perfil"
-                classNames={{
-                  trigger: 'bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-700 h-8 min-h-unit-8 font-mono text-xs',
-                }}
+                classNames={{ trigger: 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 h-8 min-h-unit-8 font-mono text-xs hover:border-zinc-400 transition-colors' }}
               >
                 {perfiles.map(p => (
                   <SelectItem key={p.nroPerfil} textValue={`${p.nroPerfil} - ${p.descri}`}>
-                    <span className="font-mono text-xs">{p.nroPerfil}</span>
-                    <span className="text-steel-500 ml-2 text-xs">{p.descri}</span>
+                    <span className="font-mono text-xs font-bold text-amber-500">{p.nroPerfil}</span>
+                    <span className="text-zinc-500 ml-2 text-xs">{p.descri}</span>
                   </SelectItem>
                 ))}
               </Select>
 
-              {/* Cantidad */}
-              <FormulaInput
-                label=""
-                value={item.formulaCantidad}
-                onChange={v => update(item.id, { formulaCantidad: v })}
-                size="sm"
-              />
+              <FormulaInput label="" value={item.formulaCantidad}
+                onChange={v => update(item.id, { formulaCantidad: v })} size="sm" />
 
-              {/* Medida */}
-              <FormulaInput
-                label=""
-                value={item.formulaMedida}
-                onChange={v => update(item.id, { formulaMedida: v })}
-                size="sm"
-              />
+              <FormulaInput label="" value={item.formulaMedida}
+                onChange={v => update(item.id, { formulaMedida: v })} size="sm" />
 
-              {/* Ángulo */}
-              <Select
-                size="sm"
+              <Select size="sm"
                 selectedKeys={item.angulo !== undefined ? [item.angulo] : ['45']}
                 onSelectionChange={k => update(item.id, { angulo: [...k][0] as string })}
                 aria-label="Ángulo"
-                classNames={{
-                  trigger: 'bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-700 h-8 min-h-unit-8 font-mono text-xs',
-                }}
+                classNames={{ trigger: 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 h-8 min-h-unit-8 font-mono text-xs' }}
               >
                 {ANGULOS.map(a => <SelectItem key={a}>{a || '—'}</SelectItem>)}
               </Select>
 
-              {/* Eliminar */}
-              <Button
-                isIconOnly size="sm" variant="light" color="danger"
-                onPress={() => deleteDespiecePerfil(nivel, item.id)}
+              <button
+                onClick={() => deleteDespiecePerfil(nivel, item.id)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-              </Button>
+              </button>
             </div>
           ))}
         </div>

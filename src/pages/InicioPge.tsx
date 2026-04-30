@@ -55,7 +55,7 @@ export default function InicioPage() {
       label: "Perfiles",
       value: perfiles.length,
       icon: Package,
-      color: "text-zinc-500",
+      color: "text-steel-500",
     },
     {
       label: "Accesorios",
@@ -86,10 +86,10 @@ export default function InicioPage() {
               Panel de Control v2.0
             </Chip>
           </div>
-          <h2 className="font-display text-4xl font-bold text-zinc-800 dark:text-zinc-100 tracking-tight">
+          <h2 className="font-display text-4xl font-bold text-steel-800 dark:text-steel-100 tracking-tight">
             Buen día, {opciones.nombre || "David"}
           </h2>
-          <p className="text-zinc-500 dark:text-zinc-400 mt-1 flex items-center gap-2">
+          <p className="text-steel-500 dark:text-steel-400 mt-1 flex items-center gap-2">
             <Calendar className="w-4 h-4" />
             {new Date().toLocaleDateString("es-AR", {
               weekday: "long",
@@ -111,19 +111,19 @@ export default function InicioPage() {
         {stats.map(({ label, value, icon: Icon, color }) => (
           <Card
             key={label}
-            className="border-none bg-white dark:bg-zinc-950 shadow-sm border border-zinc-100 dark:border-zinc-800/50"
+            className="border-none bg-white dark:bg-steel-950 shadow-sm border border-steel-100 dark:border-steel-800/50"
           >
             <CardBody className="p-4 flex flex-row items-center justify-between">
               <div>
-                <p className="text-[10px] uppercase tracking-widest font-bold text-zinc-400">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-steel-400">
                   {label}
                 </p>
-                <p className="text-3xl font-mono font-bold text-zinc-900 dark:text-zinc-50 mt-1">
+                <p className="text-3xl font-mono font-bold text-steel-900 dark:text-steel-50 mt-1">
                   {value}
                 </p>
               </div>
               <div
-                className={`p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 ${color}`}
+                className={`p-3 rounded-2xl bg-steel-50 dark:bg-steel-900 ${color}`}
               >
                 <Icon size={24} strokeWidth={2.5} />
               </div>
@@ -135,15 +135,15 @@ export default function InicioPage() {
       {/* Sección de Gráficos (El "Futuro" del Sistema) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Gráfico de Ventas Principal */}
-        <Card className="lg:col-span-2 bg-white dark:bg-zinc-950 border-none shadow-sm overflow-hidden">
+        <Card className="lg:col-span-2 bg-white dark:bg-steel-950 border-none shadow-sm overflow-hidden">
           <CardBody className="p-6">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h4 className="text-zinc-800 dark:text-zinc-100 font-bold flex items-center gap-2">
+                <h4 className="text-steel-800 dark:text-steel-100 font-bold flex items-center gap-2">
                   <TrendingUp className="text-emerald-500 w-5 h-5" />{" "}
                   Rendimiento de Proyectos
                 </h4>
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-steel-500">
                   Volumen de cotizaciones mensuales
                 </p>
               </div>
@@ -198,12 +198,12 @@ export default function InicioPage() {
         </Card>
 
         {/* Distribución de Líneas de Aluminio */}
-        <Card className="bg-white dark:bg-zinc-950 border-none shadow-sm">
+        <Card className="bg-white dark:bg-steel-950 border-none shadow-sm">
           <CardBody className="p-6">
-            <h4 className="text-zinc-800 dark:text-zinc-100 font-bold mb-1">
+            <h4 className="text-steel-800 dark:text-steel-100 font-bold mb-1">
               Mix de Producción
             </h4>
-            <p className="text-xs text-zinc-500 mb-4">Líneas más utilizadas</p>
+            <p className="text-xs text-steel-500 mb-4">Líneas más utilizadas</p>
             <div className="h-[200px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -233,7 +233,7 @@ export default function InicioPage() {
                       className="w-2 h-2 rounded-full"
                       style={{ backgroundColor: item.color }}
                     />
-                    <span className="text-xs font-medium dark:text-zinc-300">
+                    <span className="text-xs font-medium dark:text-steel-300">
                       {item.name}
                     </span>
                   </div>
@@ -247,11 +247,11 @@ export default function InicioPage() {
 
       {/* Últimos Presupuestos / Proyectos en curso */}
       <section className="space-y-4">
-        <h3 className="font-display text-[11px] font-bold text-zinc-400 uppercase tracking-widest">
+        <h3 className="font-display text-[11px] font-bold text-steel-400 uppercase tracking-widest">
           Estado de Proyectos Recientes
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="bg-white dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800/50 shadow-none">
+          <Card className="bg-white dark:bg-steel-950 border border-steel-100 dark:border-steel-800/50 shadow-none">
             <CardBody className="p-4 flex flex-col gap-3">
               <div className="flex justify-between items-center">
                 <span className="font-bold text-sm">
@@ -266,7 +266,7 @@ export default function InicioPage() {
                 value={75}
                 color="success"
                 label={
-                  <span className="text-[10px] text-zinc-500 font-bold">
+                  <span className="text-[10px] text-steel-500 font-bold">
                     PROGRESO DE ARMADO
                   </span>
                 }
@@ -276,7 +276,7 @@ export default function InicioPage() {
             </CardBody>
           </Card>
 
-          <Card className="bg-white dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800/50 shadow-none">
+          <Card className="bg-white dark:bg-steel-950 border border-steel-100 dark:border-steel-800/50 shadow-none">
             <CardBody className="p-4 flex flex-col gap-3">
               <div className="flex justify-between items-center">
                 <span className="font-bold text-sm">Edificio San Martín</span>
@@ -289,7 +289,7 @@ export default function InicioPage() {
                 value={30}
                 color="warning"
                 label={
-                  <span className="text-[10px] text-zinc-500 font-bold">
+                  <span className="text-[10px] text-steel-500 font-bold">
                     CÁLCULO DE OPTIMIZACIÓN
                   </span>
                 }

@@ -17,9 +17,22 @@ export default {
       colors: {
         lebaux: {
           amber: "#db924b",
-          "amber-hover": "#c47d3a", // Un tono más profundo para el hover de botones principales
+          "amber-hover": "#c47d3a",
           gray: "#8E9191",
-          "surface-hover": "rgba(142, 145, 145, 0.1)", // Hover sutil para filas de tablas o listas
+          "surface-hover": "rgba(142, 145, 145, 0.1)",
+        },
+        steel: {
+          50: "#f6f7f7",
+          100: "#eef0f0",
+          200: "#dadddd",
+          300: "#bfc2c2",
+          400: "#a4a8a8",
+          500: "#8E9191",
+          600: "#5a5f5f",
+          700: "#424646",
+          800: "#2d3030",
+          900: "#1a1c1c",
+          950: "#121414",
         },
       },
     },
@@ -30,9 +43,8 @@ export default {
       themes: {
         light: {
           colors: {
-            // Texto principal menos oscuro (un gris carbón suave)
             foreground: "#424646",
-            background: "#ffffff",
+            background: "#f6f7f7",
             primary: {
               DEFAULT: "#db924b",
               foreground: "#ffffff",
@@ -50,15 +62,13 @@ export default {
               800: "#2d3030",
               900: "#1a1c1c",
               DEFAULT: "#eef0f0",
-              // Texto dentro de componentes 'default' (como tooltips/chips)
               foreground: "#424646",
             },
           },
         },
         dark: {
           colors: {
-            // Texto principal más gris/tenue (menos blanco brillante)
-            foreground: "#a4a8a8",
+            foreground: "#c8cbcb",
             background: "#121414",
             primary: {
               DEFAULT: "#db924b",
@@ -77,7 +87,6 @@ export default {
               800: "#eef0f0",
               900: "#f6f7f7",
               DEFAULT: "#2d3030",
-              // Texto dentro de componentes oscuros un poco más visible que el general
               foreground: "#dadddd",
             },
           },

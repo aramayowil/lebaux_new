@@ -20,7 +20,7 @@ export default function ProductosPage() {
           <div className="relative">
             {/* Subimos la opacidad a 30 en light mode y 20 en dark para balancear */}
             <Layers
-              className="w-20 h-20 text-zinc-300 dark:text-zinc-700 opacity-40 dark:opacity-20"
+              className="w-20 h-20 text-zinc-300 dark:text-zinc-700 opacity-90 dark:opacity-90"
               strokeWidth={1}
             />
 
