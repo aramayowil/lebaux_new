@@ -142,7 +142,7 @@ export default function ProductTree({ selection, onSelect }: Props) {
         <Tooltip content="Nuevo producto" size="sm">
           <button
             onClick={newProd.onOpen}
-            className="w-6 h-6 flex items-center justify-center rounded-lg bg-amber-600 hover:bg-amber-500 text-white transition-colors shadow-sm"
+            className="w-6 h-6 flex items-center justify-center rounded-lg bg-lebaux-amber hover:bg-lebaux-amber-hover text-white transition-colors shadow-sm"
           >
             <Plus className="w-3.5 h-3.5" />
           </button>

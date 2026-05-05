@@ -1,21 +1,21 @@
-import { Input, Button } from '@heroui/react'
-import { Search, Plus } from 'lucide-react'
+import { Input, Button } from "@heroui/react";
+import { Search, Plus } from "lucide-react";
 
 interface Props {
-  search: string
-  onSearch: (v: string) => void
-  onNew: () => void
-  newLabel?: string
-  placeholder?: string
-  extra?: React.ReactNode
+  search: string;
+  onSearch: (v: string) => void;
+  onNew: () => void;
+  newLabel?: string;
+  placeholder?: string;
+  extra?: React.ReactNode;
 }
 
 export default function CatalogToolbar({
   search,
   onSearch,
   onNew,
-  newLabel = 'Nuevo',
-  placeholder = 'Buscar...',
+  newLabel = "Nuevo",
+  placeholder = "Buscar...",
   extra,
 }: Props) {
   return (
@@ -24,15 +24,15 @@ export default function CatalogToolbar({
         placeholder={placeholder}
         value={search}
         onValueChange={onSearch}
-        startContent={<Search className="w-4 h-4 text-steel-400 flex-shrink-0" />}
+        startContent={<Search className="w-4 h-4 text-steel-400 shrink-0" />}
         size="sm"
         className="max-w-xs"
         classNames={{
           inputWrapper:
-            'bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-700 shadow-none hover:border-steel-400 transition-colors',
+            "bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-700 shadow-none hover:border-steel-400 transition-colors",
         }}
         isClearable
-        onClear={() => onSearch('')}
+        onClear={() => onSearch("")}
       />
       {extra}
       <div className="flex-1" />
@@ -45,5 +45,5 @@ export default function CatalogToolbar({
         {newLabel}
       </Button>
     </div>
-  )
+  );
 }

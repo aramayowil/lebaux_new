@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@heroui/react": "^2.8.9",
+    "@supabase/supabase-js": "^2.105.1",
+    "@tanstack/react-query": "^5.100.8",
+    "@tanstack/react-query-devtools": "^5.100.8",
     "clsx": "^2.1.1",
     "framer-motion": "^12.34.3",
     "konva": "^10.2.0",
@@ -20,6 +23,7 @@
     "react-dom": "^19.2.4",
     "react-konva": "^19.2.2",
     "react-router-dom": "^7.13.0",
+    "react-toastify": "^11.1.0",
     "recharts": "^3.8.1",
     "zustand": "^5.0.11"
   },
@@ -36,6 +40,7 @@
     "eslint-plugin-react-refresh": "^0.4.18",
     "globals": "^15.0.0",
     "postcss": "^8.5.6",
+    "supabase": "^2.96.0",
     "tailwindcss": "^4.2.0",
     "typescript": "~5.7.0",
     "typescript-eslint": "^8.0.0",

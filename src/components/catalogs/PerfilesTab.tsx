@@ -1,289 +1,698 @@
-import { useState, useCallback } from 'react'
+import { useCallback, useMemo, useState } from "react";
 import {
-  Button, Select, SelectItem, useDisclosure,
-  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  Input, Tooltip,
-} from '@heroui/react'
-import { Trash2, Package } from 'lucide-react'
-import { useCatalogosStore } from '@/store/catalogosStore'
-import { useInlineEdit } from '@/hooks/useInlineEdit'
-import EditableCell from '@/components/ui/EditableCell'
-import CatalogToolbar from '@/components/ui/CatalogToolbar'
-import EmptyState from '@/components/ui/EmptyState'
-import { formatPesos } from '@/lib/calculoDespiece'
-import type { Perfil } from '@/types'
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  DropdownTrigger,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  Chip,
+  Pagination,
+} from "@heroui/react";
+import { EllipsisVertical, Search } from "lucide-react";
+import { Select } from "@heroui/react";
+import { SelectItem } from "@heroui/react";
+import { formatPesos } from "@/lib/calculoDespiece";
+import { Modal } from "@heroui/react";
+import { ModalContent } from "@heroui/react";
+import { ModalHeader } from "@heroui/react";
+import { ModalBody } from "@heroui/react";
+import { ModalFooter } from "@heroui/react";
+import { useDisclosure } from "@heroui/react";
+import { NumberInput } from "@heroui/react";
+import { Perfil } from "@/types";
+import { useMonedas } from "@/hooks/catalogo/useMonedas";
+import { useExtrusoras } from "@/hooks/catalogo/useExtrusoras";
+import { useLineas } from "@/hooks/catalogo/useLineas";
+import {
+  useCreatePerfil,
+  useDeletePerfil,
+  usePerfiles,
+  useUpdatePerfil,
+} from "@/hooks/catalogo/usePerfiles";
 
-const BLANK: Perfil = {
-  nroPerfil: '', descri: '', pesoMetro: 0, longTira: 6000,
-  precioKg: 0, moneda: 1, cubre: 0, idLinea: 1,
+type ColumnKey = keyof Perfil | "precioTira" | "actions";
+
+interface Column {
+  uid: ColumnKey;
+  name: string;
+}
+
+export const columns: Column[] = [
+  { name: "N° PERFIL", uid: "nro_perfil" },
+  { name: "DESCRIPCIÓN", uid: "descri" },
+  { name: "EXTRUSORA / LÍNEA", uid: "id_linea" },
+  { name: "KG/M", uid: "peso_metro" },
+  { name: "TIRA MM", uid: "long_tira" },
+  { name: "$/KG", uid: "precio_kg" },
+  { name: "MIN. UTIL", uid: "minimo_reutilizable" },
+  { name: "CUBRE", uid: "cubre" },
+  { name: "", uid: "actions" },
+];
+
+export function capitalize(s: string) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "";
 }
 
 export default function PerfilesTab() {
-  const { perfiles, lineas, extrusoras, monedas, setPerfil, deletePerfil, toPesos } = useCatalogosStore()
-  const { isOpen, onOpen, onOpenChange } = useDisclosure()
-  const { isEditing, startEdit, cancelEdit, draft, setDraft } = useInlineEdit()
+  const { data: monedas = [], isLoading: isLoadingMonedas } = useMonedas();
+  const { data: extrusoras = [], isLoading: isLoadingExtrusoras } =
+    useExtrusoras();
+  const { data: lineas = [], isLoading: isLoadingLineas } = useLineas();
 
-  const [search, setSearch]           = useState('')
-  const [filterExt, setFilterExt]     = useState<string>('all')
-  const [filterLinea, setFilterLinea] = useState<string>('all')
-  const [newForm, setNewForm]         = useState<Perfil>(BLANK)
-  const [newExtId, setNewExtId]       = useState<number>(extrusoras[0]?.id ?? 1)
+  const selectDefaultExt = extrusoras.length > 0 ? extrusoras[0].id : 0;
 
-  const lineasDeExt = (extId: number) => lineas.filter(l => l.idExtrusora === extId)
+  const FORM_INITIAL_STATE: Omit<Perfil, "id"> = useMemo(
+    () => ({
+      nro_perfil: "",
+      descri: "",
+      peso_metro: 0,
+      long_tira: 6000,
+      precio_kg: 0,
+      id_moneda: monedas?.length > 0 ? monedas[0].id : 0,
+      id_linea:
+        lineas?.length > 0
+          ? lineas.find((l) => l.id_extrusora === selectDefaultExt)?.id || 0
+          : 0,
+      cubre: 0,
+      minimo_reutilizable: 500,
+    }),
+    [monedas, lineas, selectDefaultExt],
+  );
+  const { data: perfiles = [], isLoading: isLoadingPerfiles } = usePerfiles();
+  const { mutateAsync: createPerfil } = useCreatePerfil();
+  const { mutateAsync: updatePerfil } = useUpdatePerfil();
+  const { mutateAsync: deletePerfil } = useDeletePerfil();
 
-  const filtered = perfiles.filter(p => {
-    const linea = lineas.find(l => l.id === p.idLinea)
-    const matchSearch = `${p.nroPerfil} ${p.descri}`.toLowerCase().includes(search.toLowerCase())
-    const matchExt    = filterExt   === 'all' || linea?.idExtrusora === Number(filterExt)
-    const matchLinea  = filterLinea === 'all' || p.idLinea === Number(filterLinea)
-    return matchSearch && matchExt && matchLinea
-  })
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
-  const getLinea  = (id: number) => lineas.find(l => l.id === id)
-  const getExt    = (id: number) => extrusoras.find(e => e.id === id)
-  const pesoTira  = (p: Perfil)  => (p.pesoMetro * p.longTira / 1000)
-  const precioTira = (p: Perfil) => toPesos(p.precioKg * pesoTira(p), p.moneda)
+  const [newForm, setNewForm] =
+    useState<Omit<Perfil, "id">>(FORM_INITIAL_STATE);
 
-  const commit = useCallback((p: Perfil, field: keyof Perfil, raw: string) => {
-    const numFields: (keyof Perfil)[] = ['pesoMetro', 'longTira', 'precioKg', 'cubre']
-    const value = numFields.includes(field) ? (parseFloat(raw) || 0) : raw
-    setPerfil({ ...p, [field]: value })
-    cancelEdit()
-  }, [setPerfil, cancelEdit])
+  const [selectedKeysExt, setSelectedKeysExt] = useState<string>("");
+  const [selectedKeysLinea, setSelectedKeysLinea] = useState<string>("");
 
-  const cell = (p: Perfil, field: keyof Perfil, opts?: { type?: 'text' | 'number'; align?: 'left' | 'right'; mono?: boolean }) => (
-    <EditableCell
-      value={p[field] as string | number}
-      isEditing={isEditing(p.nroPerfil, field)}
-      draft={draft}
-      onDraftChange={setDraft}
-      onStartEdit={() => startEdit(p.nroPerfil, field, p[field] as string | number)}
-      onCommit={v => commit(p, field, v)}
-      onCancel={cancelEdit}
-      type={opts?.type}
-      align={opts?.align}
-      mono={opts?.mono}
-    />
-  )
+  const [filterValue, setFilterValue] = useState("");
+  const [isEditMode, setIsEditMode] = useState(false);
 
-  function handleNew(close: () => void) {
-    if (!newForm.nroPerfil.trim() || !newForm.descri.trim()) return
-    setPerfil(newForm)
-    setNewForm(BLANK)
-    close()
-  }
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  const [page, setPage] = useState(1);
+
+  const hasSearchFilter = Boolean(filterValue);
+
+  const toPesos = (precio: number, monedaId: number) => {
+    const m = monedas.find((x) => x.id === monedaId);
+    return precio * (m?.cotizacion ?? 1);
+  };
+
+  const isLoading =
+    isLoadingPerfiles ||
+    isLoadingLineas ||
+    isLoadingExtrusoras ||
+    isLoadingMonedas;
+
+  const handleSave = async (onClose: () => void) => {
+    try {
+      if (isEditMode && editingId !== null) {
+        await updatePerfil({ ...newForm, id: editingId });
+      } else {
+        await createPerfil(newForm);
+      }
+      setEditingId(null);
+      setNewForm(FORM_INITIAL_STATE);
+      onClose();
+    } catch (error) {
+      console.error("Error al guardar perfil:", error);
+    }
+  };
+
+  // --- Función para limpiar y abrir como Nuevo ---
+  const handleOpenNew = () => {
+    const defaultExtId = extrusoras.length > 0 ? String(extrusoras[0].id) : "";
+    // Buscamos la primera línea de esa extrusora
+    const firstLinea = lineas.find(
+      (l) => l.id_extrusora === Number(defaultExtId),
+    );
+
+    setNewForm({
+      ...FORM_INITIAL_STATE,
+      id_linea: firstLinea?.id || 0,
+      id_moneda: monedas[0]?.id || 0,
+    });
+    setSelectedKeysExt(defaultExtId);
+    setSelectedKeysLinea(String(firstLinea?.id || ""));
+    setIsEditMode(false); // Asegúrate de tener este estado para el handleSave
+    onOpen();
+  };
+
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  // --- Función para Editar ---
+  const handleEditPerfil = (perfil: Perfil) => {
+    const lineaDoc = lineas.find((l) => l.id === perfil.id_linea);
+
+    const extrusoraId = String(lineaDoc?.id_extrusora || "");
+    setSelectedKeysExt(extrusoraId);
+    setSelectedKeysLinea(String(perfil.id_linea));
+
+    const { id, ...perfilSinId } = perfil; // ← separamos id
+    setEditingId(id); // ← guardamos id aparte
+    setNewForm(perfilSinId);
+    setIsEditMode(true);
+    onOpen();
+  };
+
+  // --- Función para Borrar ---
+  const handleDeletePerfil = async (id: number) => {
+    const confirmar = window.confirm(
+      `¿Estás seguro de que deseas eliminar este perfil?`,
+    );
+
+    if (!confirmar) return;
+
+    try {
+      await deletePerfil(id);
+
+      if (editingId === id) {
+        // ← comparamos por id
+        setNewForm(FORM_INITIAL_STATE);
+        setEditingId(null);
+        setSelectedKeysExt("");
+        setSelectedKeysLinea("");
+      }
+    } catch (error) {
+      console.error("Error al eliminar perfil:", error);
+      alert(
+        "No se pudo eliminar el perfil. Es posible que esté siendo usado en un presupuesto.",
+      );
+    }
+  };
+
+  //aca metemos el buscar por columnas y filtrado
+  const filteredItems = useMemo(() => {
+    if (isLoading) return [];
+    let filteredPerfiles = [...perfiles];
+
+    // FILTRO POR BUSCADOR (Nro Perfil o Descripción)
+    if (hasSearchFilter) {
+      filteredPerfiles = filteredPerfiles.filter(
+        (perfil) =>
+          perfil.nro_perfil.toLowerCase().includes(filterValue.toLowerCase()) ||
+          perfil.descri.toLowerCase().includes(filterValue.toLowerCase()),
+      );
+    }
+
+    return filteredPerfiles;
+  }, [perfiles, filterValue, isLoading]);
+
+  const pages = Math.ceil(filteredItems.length / rowsPerPage) || 1;
+
+  const items = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+
+    return filteredItems.slice(start, end);
+  }, [page, filteredItems, rowsPerPage]);
+
+  const renderCell = useCallback(
+    (item: Perfil, columnKey: React.Key) => {
+      const key = columnKey as ColumnKey;
+
+      switch (key) {
+        case "nro_perfil":
+          return (
+            <div className="capitalize">
+              <Chip variant="flat" color="default" size="sm" radius="sm">
+                {item.nro_perfil}
+              </Chip>
+            </div>
+          );
+        case "descri":
+          return <div className="capitalize text-sm">{item.descri}</div>;
+        case "id_linea":
+          const lineaDoc = lineas.find((l) => l.id === item.id_linea);
+          const extrusoraDoc = extrusoras.find(
+            (e) => e.id === lineaDoc?.id_extrusora,
+          );
+          return (
+            <div className="flex flex-col">
+              <span className="text-xs font-medium">
+                {lineaDoc?.linea || "S/L"}
+              </span>
+              <span className="text-[10px] text-steel-400 uppercase tracking-wider">
+                {extrusoraDoc?.extrusora || "Sin extrusora"}
+              </span>
+            </div>
+          );
+        case "peso_metro":
+          return (
+            <div className="capitalize font-mono text-sm">
+              {item.peso_metro}
+            </div>
+          );
+        case "long_tira":
+          return (
+            <div className="capitalize font-mono text-sm">{item.long_tira}</div>
+          );
+        case "precio_kg":
+          return (
+            <div className="capitalize font-mono text-sm">
+              {formatPesos(item.precio_kg)}
+            </div>
+          );
+        case "precioTira":
+          return (
+            <Chip
+              variant="flat"
+              color="default"
+              size="sm"
+              radius="sm"
+              className="font-mono text-xs"
+            >
+              {formatPesos(
+                toPesos(
+                  (item.precio_kg * item.peso_metro * item.long_tira) / 1000,
+                  item.id_moneda,
+                ),
+              )}
+            </Chip>
+          );
+        case "cubre":
+          return (
+            <div className=" font-mono text-sm">
+              {item.cubre}{" "}
+              <span className="text-[11px] text-steel-400 shrink-0">mm</span>
+            </div>
+          );
+        case "actions":
+          return (
+            <Dropdown>
+              <DropdownTrigger>
+                <Button isIconOnly size="sm" variant="light">
+                  <EllipsisVertical className="text-default-300" />
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu>
+                <DropdownItem key="edit" onPress={() => handleEditPerfil(item)}>
+                  Editar
+                </DropdownItem>
+                <DropdownItem
+                  key="delete"
+                  onPress={() => handleDeletePerfil(item.id)}
+                >
+                  Eliminar
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          );
+        default:
+          return item[key as keyof Perfil];
+      }
+    },
+    [lineas, extrusoras, handleEditPerfil, handleDeletePerfil, toPesos],
+  );
+
+  const onNextPage = useCallback(() => {
+    if (page < pages) {
+      setPage(page + 1);
+    }
+  }, [page, pages]);
+
+  const onPreviousPage = useCallback(() => {
+    if (page > 1) {
+      setPage(page - 1);
+    }
+  }, [page]);
+
+  const onRowsPerPageChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      setRowsPerPage(Number(e.target.value));
+      setPage(1);
+    },
+    [],
+  );
+
+  const onSearchChange = useCallback((value: string) => {
+    if (value) {
+      setFilterValue(value);
+      setPage(1);
+    } else {
+      setFilterValue("");
+    }
+  }, []);
+
+  const onClear = useCallback(() => {
+    setFilterValue("");
+    setPage(1);
+  }, []);
+
+  const topContent = useMemo(() => {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap sm:flex-nowrap justify-between gap-3 items-end">
+          {/* Buscador: Ocupa el espacio disponible a la izquierda */}
+          <Input
+            isClearable
+            className="w-full sm:max-w-[340px]"
+            placeholder="Buscar n° perfil o descripción..."
+            startContent={<Search className="text-default-300" size={18} />}
+            value={filterValue}
+            onClear={() => onClear()}
+            onValueChange={onSearchChange}
+            variant="bordered"
+          />
+
+          {/* Grupo de Filtros y Acción */}
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end">
+            <Button
+              onPress={handleOpenNew}
+              className="font-medium bg-lebaux-amber-hover text-zinc-900"
+            >
+              Nuevo Perfil
+            </Button>
+          </div>
+        </div>
+        <div className="flex justify-end items-center">
+          <label className="flex items-center text-default-400 text-small">
+            Perfiles por página:
+            <select
+              className="bg-transparent outline-solid outline-transparent text-default-400 text-small"
+              onChange={onRowsPerPageChange}
+            >
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="15">15</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    );
+  }, [
+    filterValue,
+    onRowsPerPageChange,
+    perfiles.length,
+    onSearchChange,
+    hasSearchFilter,
+  ]);
+
+  const bottomContent = useMemo(() => {
+    return (
+      <div className="py-2 px-2 flex justify-between items-center">
+        <span className="w-[30%] text-small text-default-500">
+          {filteredItems.length > 0
+            ? "Total: " + filteredItems.length + " perfiles"
+            : "No hay perfiles cargados"}
+        </span>
+        <Pagination
+          isCompact
+          showControls
+          page={page}
+          total={pages}
+          onChange={setPage}
+          classNames={{
+            cursor: "bg-lebaux-amber-hover text-zinc-900 dark:text-zinc-200",
+          }}
+        />
+        <div className="hidden sm:flex w-[30%] justify-end gap-2">
+          <Button
+            isDisabled={pages === 1}
+            size="sm"
+            variant="flat"
+            onPress={onPreviousPage}
+          >
+            Anterior
+          </Button>
+          <Button
+            isDisabled={pages === 1}
+            size="sm"
+            variant="flat"
+            onPress={onNextPage}
+          >
+            Siguiente
+          </Button>
+        </div>
+      </div>
+    );
+  }, [items.length, page, pages, hasSearchFilter]);
 
   return (
     <>
-      <CatalogToolbar
-        search={search}
-        onSearch={setSearch}
-        onNew={onOpen}
-        newLabel="Nuevo perfil"
-        placeholder="Buscar por N° o descripción..."
-        extra={
-          <div className="flex gap-2">
-            <Select
-              size="sm" className="w-44"
-              selectedKeys={[filterExt]}
-              onSelectionChange={k => { setFilterExt([...k][0] as string); setFilterLinea('all') }}
-              aria-label="Extrusora"
-              classNames={{ trigger: 'bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-700 h-8 min-h-unit-8' }}
-            >
-              <SelectItem key="all">Todas las extrusoras</SelectItem>
-              {extrusoras.map(e => <SelectItem key={String(e.id)}>{e.extrusora}</SelectItem>)}
-            </Select>
-            <Select
-              size="sm" className="w-36"
-              selectedKeys={[filterLinea]}
-              onSelectionChange={k => setFilterLinea([...k][0] as string)}
-              aria-label="Línea"
-              isDisabled={filterExt === 'all'}
-              classNames={{ trigger: 'bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-700 h-8 min-h-unit-8' }}
-            >
-              <SelectItem key="all">Todas las líneas</SelectItem>
-              {lineasDeExt(Number(filterExt)).map(l => <SelectItem key={String(l.id)}>{l.linea}</SelectItem>)}
-            </Select>
-          </div>
-        }
-      />
-
-      <p className="text-xs text-steel-400 mb-2">
-        {filtered.length} perfil{filtered.length !== 1 ? 'es' : ''}
-        {(filterExt !== 'all' || filterLinea !== 'all' || search) ? ' · filtrado' : ''}
-        <span className="ml-2 text-steel-300 dark:text-steel-600">· Hacé click en cualquier celda para editar</span>
-      </p>
-
-      <div className="card-surface overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-steel-200 dark:border-steel-700 bg-steel-50 dark:bg-steel-800/60">
-              {['N° Perfil', 'Descripción', 'Extrusora / Línea', 'kg/m', 'Tira mm', 'Peso tira', '$/kg', '$/tira', 'Cubre', ''].map((h, i) => (
-                <th key={i} className={`px-3 py-2.5 text-xs font-semibold text-steel-500 uppercase tracking-wide whitespace-nowrap ${
-                  i >= 3 && i <= 8 ? 'text-right' : 'text-left'
-                } ${i === 0 ? 'w-24' : ''} ${i === 2 ? 'w-40' : ''} ${[3,4,5,6,7,8].includes(i) ? 'w-24' : ''} ${i === 9 ? 'w-10' : ''}`}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-steel-100 dark:divide-steel-800">
-            {filtered.length === 0 && (
-              <tr><td colSpan={10}>
-                <EmptyState icon={Package} title="Sin perfiles" description="Usá el botón 'Nuevo perfil' para agregar" />
-              </td></tr>
-            )}
-            {filtered.map(p => {
-              const linea = getLinea(p.idLinea)
-              const ext   = getExt(linea?.idExtrusora ?? 0)
-              const pt    = pesoTira(p)
-              const preciT = precioTira(p)
-              return (
-                <tr key={p.nroPerfil} className="hover:bg-steel-50/70 dark:hover:bg-steel-800/30 transition-colors group">
-
-                  <td className="px-3 py-1.5">
-                    <span className="font-mono text-xs bg-steel-100 dark:bg-steel-800 text-steel-600 dark:text-steel-300 px-2 py-0.5 rounded">
-                      {p.nroPerfil}
-                    </span>
-                  </td>
-
-                  <td className="px-3 py-1 min-w-[180px]">{cell(p, 'descri')}</td>
-
-                  <td className="px-3 py-1.5">
-                    <span className="text-xs text-steel-500">
-                      <span className="text-steel-700 dark:text-steel-300 font-medium">{ext?.extrusora ?? '?'}</span>
-                      <span className="text-steel-300 dark:text-steel-600"> / </span>
-                      {linea?.linea ?? '?'}
-                    </span>
-                  </td>
-
-                  <td className="px-3 py-1">{cell(p, 'pesoMetro', { type: 'number', align: 'right', mono: true })}</td>
-                  <td className="px-3 py-1">{cell(p, 'longTira',  { type: 'number', align: 'right', mono: true })}</td>
-
-                  <td className="px-3 py-1.5 text-right">
-                    <span className="font-mono text-xs text-steel-500">{pt.toFixed(3)} kg</span>
-                  </td>
-
-                  <td className="px-3 py-1">{cell(p, 'precioKg', { type: 'number', align: 'right', mono: true })}</td>
-
-                  <td className="px-3 py-1.5 text-right">
-                    <span className="currency-badge">{formatPesos(preciT)}</span>
-                  </td>
-
-                  <td className="px-3 py-1">
-                    <div className="flex items-center justify-end gap-0.5">
-                      {cell(p, 'cubre', { type: 'number', align: 'right', mono: true })}
-                      <span className="text-[10px] text-steel-400 flex-shrink-0">mm</span>
-                    </div>
-                  </td>
-
-                  <td className="px-2 py-1 text-right">
-                    <Button isIconOnly size="sm" variant="light" color="danger"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      onPress={() => deletePerfil(p.nroPerfil)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-          {filtered.length > 0 && (
-            <tfoot>
-              <tr className="border-t-2 border-steel-200 dark:border-steel-700 bg-steel-50 dark:bg-steel-800/40">
-                <td colSpan={5} className="px-3 py-2 text-xs text-steel-400 font-medium">
-                  Total ({filtered.length} perfiles)
-                </td>
-                <td className="px-3 py-2 text-right font-mono text-xs font-semibold text-steel-600 dark:text-steel-300">
-                  — kg
-                </td>
-                <td colSpan={2} className="px-3 py-2 text-right font-mono text-xs font-semibold text-steel-600 dark:text-steel-300">
-                  {formatPesos(filtered.reduce((s, p) => s + precioTira(p), 0))} (stock completo)
-                </td>
-                <td colSpan={2} />
-              </tr>
-            </tfoot>
+      <Table
+        isHeaderSticky
+        aria-label="Example table with custom cells, pagination and sorting"
+        bottomContent={bottomContent}
+        bottomContentPlacement="outside"
+        classNames={{
+          wrapper: "max-h-[382px]",
+        }}
+        selectionMode="single"
+        topContent={topContent}
+        topContentPlacement="outside"
+      >
+        <TableHeader columns={columns}>
+          {(column: Column) => (
+            <TableColumn key={column.uid} align="start">
+              {column.name}
+            </TableColumn>
           )}
-        </table>
-      </div>
+        </TableHeader>
+        <TableBody
+          emptyContent={!isLoading ? "No hay perfiles cargados" : null}
+          items={items}
+          isLoading={isLoading}
+          loadingContent={
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="text-small text-default-400">
+                Cargando catálogo...
+              </p>
+            </div>
+          }
+        >
+          {(item: Perfil) => (
+            <TableRow key={item.nro_perfil}>
+              {(columnKey: string) => (
+                <TableCell>{renderCell(item, columnKey)}</TableCell>
+              )}
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
 
       {/* Modal nuevo */}
       <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg">
         <ModalContent>
-          {(onClose) => (
+          {(onClose: () => void) => (
             <>
-              <ModalHeader className="font-display">Nuevo perfil</ModalHeader>
+              <ModalHeader className="font-display">
+                {isEditMode ? "Editar perfil" : "Nuevo perfil"}
+              </ModalHeader>
               <ModalBody className="gap-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <Input label="N° Perfil *" placeholder="ej: 001"
-                    value={newForm.nroPerfil}
-                    onValueChange={v => setNewForm(f => ({ ...f, nroPerfil: v }))}
-                    size="sm" description="Identificador único" />
-                  <Input label="Descripción *" placeholder="ej: Marco inferior"
+                  <Input
+                    label="N° Perfil *"
+                    placeholder="ej: 001"
+                    value={newForm.nro_perfil}
+                    onValueChange={(v: string) =>
+                      setNewForm((f) => ({ ...f, nro_perfil: v }))
+                    }
+                    size="sm"
+                    description="Identificador único"
+                  />
+                  <Input
+                    label="Descripción *"
+                    placeholder="ej: Marco inferior"
                     value={newForm.descri}
-                    onValueChange={v => setNewForm(f => ({ ...f, descri: v }))}
-                    size="sm" />
+                    onValueChange={(v: string) =>
+                      setNewForm((f) => ({ ...f, descri: v }))
+                    }
+                    size="sm"
+                  />
                 </div>
                 <div className="grid grid-cols-3 gap-3">
-                  <Input label="Peso (kg/m)" type="number" value={String(newForm.pesoMetro)}
-                    onValueChange={v => setNewForm(f => ({ ...f, pesoMetro: parseFloat(v) || 0 }))}
-                    size="sm" endContent={<span className="text-xs text-steel-400">kg/m</span>} />
-                  <Input label="Long. tira" type="number" value={String(newForm.longTira)}
-                    onValueChange={v => setNewForm(f => ({ ...f, longTira: parseInt(v) || 6000 }))}
-                    size="sm" endContent={<span className="text-xs text-steel-400">mm</span>} />
-                  <Input label="Cubre" type="number" value={String(newForm.cubre)}
-                    onValueChange={v => setNewForm(f => ({ ...f, cubre: parseInt(v) || 0 }))}
-                    size="sm" endContent={<span className="text-xs text-steel-400">mm</span>} />
+                  <NumberInput
+                    label="Peso (kg/m)"
+                    value={newForm.peso_metro}
+                    onValueChange={(v: number) =>
+                      setNewForm((f) => ({
+                        ...f,
+                        peso_metro: parseFloat(String(v)) || 0,
+                      }))
+                    }
+                    size="sm"
+                    endContent={
+                      <span className="text-xs text-steel-400">kg/m</span>
+                    }
+                  />
+                  <NumberInput
+                    label="Long. tira"
+                    value={newForm.long_tira}
+                    onValueChange={(v: number) =>
+                      setNewForm((f) => ({
+                        ...f,
+                        long_tira: parseInt(String(v)) || 6000,
+                      }))
+                    }
+                    size="sm"
+                    endContent={
+                      <span className="text-xs text-steel-400">mm</span>
+                    }
+                  />
+                  <NumberInput
+                    label="Cubre"
+                    value={newForm.cubre}
+                    onValueChange={(v: number) =>
+                      setNewForm((f) => ({
+                        ...f,
+                        cubre: parseInt(String(v)) || 0,
+                      }))
+                    }
+                    size="sm"
+                    endContent={
+                      <span className="text-xs text-steel-400">mm</span>
+                    }
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <Input label="Precio / kg" type="number" value={String(newForm.precioKg)}
-                    onValueChange={v => setNewForm(f => ({ ...f, precioKg: parseFloat(v) || 0 }))}
-                    size="sm" />
-                  <Select label="Moneda" selectedKeys={[String(newForm.moneda)]}
-                    onSelectionChange={k => setNewForm(f => ({ ...f, moneda: parseInt([...k][0] as string) }))}
-                    size="sm">
-                    {monedas.map(m => <SelectItem key={String(m.id)}>{m.descripcion}</SelectItem>)}
+                  <NumberInput
+                    label="Precio / kg"
+                    value={newForm.precio_kg}
+                    onValueChange={(v: number) =>
+                      setNewForm((f) => ({
+                        ...f,
+                        precio_kg: parseFloat(String(v)) || 0,
+                      }))
+                    }
+                    size="sm"
+                  />
+
+                  <NumberInput
+                    label="Min. Reutilizable"
+                    value={newForm.minimo_reutilizable}
+                    onValueChange={(v: number) =>
+                      setNewForm((f) => ({
+                        ...f,
+                        minimo_reutilizable: parseInt(String(v)) || 0,
+                      }))
+                    }
+                    size="sm"
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <Select
+                    label="Extrusora"
+                    selectedKeys={selectedKeysExt ? [selectedKeysExt] : []}
+                    onSelectionChange={(keys: Set<string>) => {
+                      const val = Array.from(keys)[0] as string;
+                      setSelectedKeysExt(val);
+
+                      // Al cambiar extrusora, reseteamos la línea a la primera disponible de esa extrusora
+                      const primeraLinea = lineas.find(
+                        (l) => l.id_extrusora === Number(val),
+                      );
+                      const newLineaId = primeraLinea?.id || 0;
+
+                      setSelectedKeysLinea(String(newLineaId));
+                      setNewForm((f) => ({ ...f, id_linea: newLineaId }));
+                    }}
+                    size="sm"
+                  >
+                    {extrusoras.map((e) => (
+                      <SelectItem key={String(e.id)}>{e.extrusora}</SelectItem>
+                    ))}
+                  </Select>
+                  <Select
+                    label="Línea"
+                    selectedKeys={selectedKeysLinea ? [selectedKeysLinea] : []}
+                    onSelectionChange={(keys: Set<string>) => {
+                      const val = Array.from(keys)[0] as string;
+                      setSelectedKeysLinea(val);
+                      setNewForm((f) => ({ ...f, id_linea: Number(val) }));
+                    }}
+                    size="sm"
+                    isDisabled={!selectedKeysExt} // Deshabilitar si no hay extrusora
+                  >
+                    {lineas
+                      .filter((l) => l.id_extrusora === Number(selectedKeysExt))
+                      .map((l) => (
+                        <SelectItem key={String(l.id)} textValue={l.linea}>
+                          {l.linea}
+                        </SelectItem>
+                      ))}
+                  </Select>
+                  <Select
+                    label="Moneda"
+                    selectedKeys={
+                      newForm.id_moneda !== 0 ? [String(newForm.id_moneda)] : []
+                    }
+                    onSelectionChange={(keys: Set<string>) => {
+                      const selected = Array.from(keys)[0] as string;
+                      setNewForm((f) => ({
+                        ...f,
+                        id_moneda: parseInt(selected),
+                      }));
+                    }}
+                    size="sm"
+                  >
+                    {monedas.map((m) => (
+                      <SelectItem key={String(m.id)} textValue={m.descripcion}>
+                        {m.descripcion}
+                      </SelectItem>
+                    ))}
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Select label="Extrusora" selectedKeys={[String(newExtId)]}
-                    onSelectionChange={k => {
-                      const extId = parseInt([...k][0] as string)
-                      setNewExtId(extId)
-                      const primera = lineas.find(l => l.idExtrusora === extId)
-                      if (primera) setNewForm(f => ({ ...f, idLinea: primera.id }))
-                    }} size="sm">
-                    {extrusoras.map(e => <SelectItem key={String(e.id)}>{e.extrusora}</SelectItem>)}
-                  </Select>
-                  <Select label="Línea" selectedKeys={[String(newForm.idLinea)]}
-                    onSelectionChange={k => setNewForm(f => ({ ...f, idLinea: parseInt([...k][0] as string) }))}
-                    size="sm">
-                    {lineasDeExt(newExtId).map(l => <SelectItem key={String(l.id)}>{l.linea}</SelectItem>)}
-                  </Select>
-                </div>
-                {newForm.pesoMetro > 0 && newForm.longTira > 0 && (
+                {newForm.peso_metro > 0 && newForm.long_tira > 0 && (
                   <div className="bg-steel-50 dark:bg-steel-800/60 rounded-lg px-4 py-3 grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-xs text-steel-400 mb-0.5">Peso de tira completa</p>
+                      <p className="text-xs text-steel-400 mb-0.5">
+                        Peso de tira completa
+                      </p>
                       <p className="font-mono font-semibold text-steel-700 dark:text-steel-200">
-                        {(newForm.pesoMetro * newForm.longTira / 1000).toFixed(3)} kg
+                        {(
+                          (newForm.peso_metro * newForm.long_tira) /
+                          1000
+                        ).toFixed(3)}{" "}
+                        kg
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-steel-400 mb-0.5">Precio de tira completa</p>
+                      <p className="text-xs text-steel-400 mb-0.5">
+                        Precio de tira completa
+                      </p>
                       <p className="font-mono font-semibold text-steel-700 dark:text-steel-200">
-                        {formatPesos(toPesos(newForm.precioKg * newForm.pesoMetro * newForm.longTira / 1000, newForm.moneda))}
+                        {formatPesos(
+                          toPesos(
+                            (newForm.precio_kg *
+                              newForm.peso_metro *
+                              newForm.long_tira) /
+                              1000,
+                            newForm.id_moneda,
+                          ),
+                        )}
                       </p>
                     </div>
                   </div>
                 )}
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>Cancelar</Button>
-                <Button color="primary" onPress={() => handleNew(onClose)}
-                  isDisabled={!newForm.nroPerfil.trim() || !newForm.descri.trim()}>
-                  Crear perfil
+                <Button variant="light" onPress={onClose}>
+                  Cancelar
+                </Button>
+                <Button
+                  color="primary"
+                  onPress={() => handleSave(onClose)}
+                  isDisabled={
+                    !newForm.nro_perfil.trim() || !newForm.descri.trim()
+                  }
+                >
+                  {isEditMode ? "Guardar cambios" : "Crear perfil"}
                 </Button>
               </ModalFooter>
             </>
@@ -291,5 +700,5 @@ export default function PerfilesTab() {
         </ModalContent>
       </Modal>
     </>
-  )
+  );
 }

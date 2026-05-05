@@ -8,7 +8,7 @@ export interface Extrusora {
 
 export interface Linea {
   id: number;
-  idExtrusora: number;
+  id_extrusora: number;
   linea: string;
   bloqueado: boolean;
 }
@@ -20,45 +20,48 @@ export interface Tipo {
 }
 
 export interface Perfil {
-  nroPerfil: string;
-  idLinea: number;
-  codColor?: number; // COD_COLOR (id de tratamiento/color)
+  id: number;
+  nro_perfil: string;
+  id_linea: number;
+  cod_color?: number; // COD_COLOR (id de tratamiento/color)
   descri: string;
-  pesoMetro: number;
-  longTira: number;
-  precioKg: number;
-  longAlt?: number; // LONG_ALT (longitud alternativa)
+  peso_metro: number;
+  long_tira: number;
+  precio_kg: number;
+  long_alt?: number; // LONG_ALT (longitud alternativa)
   corte45?: boolean; // CORTE45
   interior?: number; // INTERIOR (tipo de interior que cubre)
   tipo?: number; // TIPO
   material?: number; // MATERIAL
-  moneda: number;
+  id_moneda: number;
   cubre: number; // cubre (espesor en mm)
   bloqueado?: boolean;
-  minimoReutilizable?: number; // minimo_reutilizable
+  minimo_reutilizable?: number; // minimo_reutilizable
 }
 
 export interface Accesorio {
-  codParte: string;
+  id: number;
+  cod_parte: string;
   idColor?: number; // Id color
   descri: string;
   precio: number;
   contenido?: number; // CONTENIDO (cantidad por bolsa/caja)
   unidad: 0 | 1; // 0 = bolsa/caja, 1 = metros
-  moneda: number;
+  id_moneda: number;
   bloqueado?: boolean;
   tipo?: number; // Tipo de accesorio
 }
 
 export interface Vidrio {
+  id: number;
   codigo: string;
   descri: string;
   precio: number;
   base: number; // ancho plancha mm
   altura: number; // alto plancha mm
   espesor: number;
-  moneda: number;
-  tipoRev: number; // TIPO_REV → id de TipoInterior
+  id_moneda: number;
+  tipo_rev: number; // TIPO_REV → id de TipoInterior
   color: number; // color como número RGB (igual que DB, ej: 16777150)
   bloqueado: boolean;
   maximo?: number; // Maximo
@@ -68,9 +71,9 @@ export interface Vidrio {
 export interface Tratamiento {
   id: number;
   descripcion: string;
-  precioPorKilo: number;
+  precio_por_kilo: number;
   color: string; // color hex para UI
-  moneda: number;
+  id_moneda: number;
   bloqueado: boolean;
 }
 
