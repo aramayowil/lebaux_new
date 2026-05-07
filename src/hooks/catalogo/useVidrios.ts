@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { Vidrio } from "@/types";
+import { Vidrio } from "@/types/index";
 import { SQUEMA } from "./squemaCatalogo";
 
 const TABLE = "vidrios";

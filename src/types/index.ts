@@ -93,48 +93,54 @@ export interface TipoInterior {
 
 // ─── Definición de Producto ───────────────────────────────────────────────────
 
+export interface Tipos {
+  id: number;
+  forma_tipo: string;
+  orden: number;
+}
+
 export interface Producto {
   id: number;
   descripcion: string;
-  idExtrusora: number;
-  idLinea: number;
-  idTipo: number;
+  id_extrusora: number;
+  id_linea: number;
+  id_tipo: number;
 }
 
 export interface Marco {
   id: number;
-  idProducto: number;
+  id_producto: number;
   descripcion: string;
   predeterminado: boolean;
-  noVerificado?: boolean;
-  formaDibujo?: string;
+  no_verificado?: boolean;
+  forma_dibujo?: string;
 }
 
 export interface Hoja {
   id: number;
-  idMarco: number;
+  id_marco: number;
   descripcion: string;
   cantidad: number;
   predeterminado: boolean;
-  noVerificado?: boolean;
+  no_verificado?: boolean;
 }
 
 // Interior: solo datos base. Las fórmulas/descuentos están en DespieceInterior (tabla separada en DB)
 export interface Interior {
   id: number;
-  idHoja: number;
+  id_hoja: number;
   descripcion: string;
   predeterminado: boolean;
-  noVerificado?: boolean;
+  no_verificado?: boolean;
 }
 
 // Contravidrio: solo datos base. Las fórmulas/perfil están en DespiecePerfilContravidrio
 export interface Contravidrio {
   id: number;
-  idInterior: number;
+  id_interior: number;
   descripcion: string;
   predeterminado: boolean;
-  noVerificado?: boolean;
+  no_verificado?: boolean;
 }
 
 export interface ContravidrioExterior extends Contravidrio {
@@ -144,10 +150,10 @@ export interface ContravidrioExterior extends Contravidrio {
 // Cruces: solo datos base. Las fórmulas/perfil están en DespieceCruces
 export interface Cruces {
   id: number;
-  idInterior: number;
+  id_interior: number;
   descripcion: string;
   predeterminado: boolean;
-  noVerificado?: boolean;
+  no_verificado?: boolean;
 }
 
 export interface Mosquitero {
@@ -161,10 +167,10 @@ export interface Mosquitero {
 // VidRepartido: solo datos base. Las fórmulas están en DespiecePerfilVR
 export interface VidRepartido {
   id: number;
-  idInterior: number;
+  id_interior: number;
   descripcion: string;
   predeterminado: boolean;
-  noVerificado?: boolean;
+  no_verificado?: boolean;
 }
 
 // ─── Despiece (fórmulas) ──────────────────────────────────────────────────────
@@ -173,10 +179,10 @@ export interface VidRepartido {
 // Id, Id marco/hoja, Formula de cantidad, Perfil, Formula de perfil, Angulo
 export interface DespiecePerfil {
   id: number;
-  idParent: number; // id del marco / hoja / mosquitero
-  perfil: string; // NRO_PERFIL
-  formulaCantidad: string;
-  formulaMedida: string; // "Formula de perfil" en DB
+  id_parent: number; // id del marco / hoja / mosquitero
+  id_perfil: number; // NRO_PERFIL
+  formula_cantidad: string;
+  formula_perfil: string; // "Formula de perfil" en DB
   angulo: string; // "45" | "90" | ""
 }
 
@@ -184,75 +190,75 @@ export interface DespiecePerfil {
 // contiene las fórmulas del propio contravidrio + el perfil
 export interface DespiecePerfilContravidrio {
   id: number;
-  idContravidrio: number;
-  perfil: string;
-  formulaCantidadAncho: string; // "Formula cantidad contravidrios ancho"
-  formulaCantidadAlto: string; // "Formula cantidad contravidrios alto"
-  formulaContravidrioAncho: string;
-  formulaContravidrioAlto: string;
+  id_contravidrio: number;
+  id_perfil: string;
+  formula_cantidad_ancho: string; // "Formula cantidad contravidrios ancho"
+  formula_cantidad_alto: string; // "Formula cantidad contravidrios alto"
+  formula_contravidrio_ancho: string;
+  formula_contravidrio_alto: string;
   angulo: string;
-  alturaContravidrio?: number;
+  altura_contravidrio?: number;
 }
 
 export interface DespieceAccesorio {
-  id: number;
-  idParent: number;
-  accesorio: string; // COD_PARTE
-  formulaCantidad: string;
+  id: number; // agregado por el interprete
+  id_parent: number;
+  id_accesorio: string;
+  formula_cantidad: string;
 }
 
 // Despiece interior (tabla "Despiece interior"): fórmulas y descuentos del interior
 export interface DespieceInterior {
   id: number;
-  idInterior: number;
-  formulaCantidadInteriores: string;
-  formulaAnchoInterior: string;
-  formulaAltoInterior: string;
-  descuentoIzquierda: number;
-  descuentoDerecha: number;
-  descuentoAbajo: number;
-  descuentoArriba: number;
+  id_interior: number;
+  formula_cantidad_interiores: string;
+  formula_ancho_interior: string;
+  formula_alto_interior: string;
+  descuento_izquierda: number;
+  descuento_derecha: number;
+  descuento_abajo: number;
+  descuento_arriba: number;
 }
 
 // Despiece cruces (tabla "Despiece cruces"): perfil + fórmulas del cruce
 export interface DespieceCruces {
   id: number;
-  idCruces: number;
-  perfil: string;
-  formulaCantidad: string;
-  formulaAnchoEntero: string; // "Formula de ancho entero"
-  formulaAltoEntero: string; // "Formula de alto entero"
-  descuentoDeVidrio: number;
-  descuentoDeSiMismo: number;
+  id_cruces: number;
+  id_perfil: string;
+  formula_cantidad: string;
+  formula_ancho_entero: string; // "Formula de ancho entero"
+  formula_alto_entero: string; // "Formula de alto entero"
+  descuento_de_vidrio: number;
+  descuento_de_si_mismo: number;
   angulo: string;
 }
 
 // Despiece VR (tabla "Despiece perfiles vidrio repartido"): contorno + cruce + interiores
 export interface DespieceVR {
   id: number;
-  idVR: number;
+  id_vr: number;
   // contorno
-  perfilDeContorno: string;
-  formulaCantidadContornoAncho: string;
-  formulaCantidadContornoAlto: string;
-  formulaContornoAncho: string;
-  formulaContornoAlto: string;
+  perfil_de_contorno: string;
+  formula_cantidad_contorno_ancho: string;
+  formula_cantidad_contorno_alto: string;
+  formula_contorno_ancho: string;
+  formula_contorno_alto: string;
   angulo: string;
   // cruceta
-  perfilDeCruce: string;
-  formulaCruceAncho: string;
-  formulaCruceAlto: string;
-  descuentoDeVidrio: number;
-  descuentoDeSi: number;
-  anguloCruce: string;
+  perfil_de_cruce: string;
+  formula_cruce_ancho: string;
+  formula_cruce_alto: string;
+  descuento_de_vidrio: number;
+  descuento_de_si_mismo: number;
+  angulo_cruce: string;
   // interiores del VR
-  formulaCantidadInteriores: string;
-  formulaAnchoInterior: string;
-  formulaAltoInterior: string;
-  descuentoIzquierda: number;
-  descuentoDerecha: number;
-  descuentoAbajo: number;
-  descuentoArriba: number;
+  formula_cantidad_interiores: string;
+  formula_ancho_interior: string;
+  formula_alto_interior: string;
+  descuento_izquierda: number;
+  descuento_derecha: number;
+  descuento_abajo: number;
+  descuento_arriba: number;
 }
 
 // Despiece interior mosquitero (tabla "Despiece interior mosquitero")
@@ -397,33 +403,33 @@ export interface ObraDespiece {
 export interface Opciones {
   id: number;
   iva: number;
-  porcentajeSobrePerfiles: number;
-  porcentajeSobreVidrios: number;
-  porcentajeSobreAccesorios: number;
-  porcentajeSobrePinturas: number;
-  porcentajeSobreTelas: number;
-  porcentajeSobreMano: number;
-  porcentajeSobreManoColocacion: number;
-  porcentajeSobreItemsManuales: number;
-  costoHoraTaller: number;
-  tiempoMarcoHoras: number;
-  tiempoMarcoMinutos: number;
-  tiempoHojaHoras: number;
-  tiempoHojaMinutos: number;
-  tiempoInteriorHoras: number;
-  tiempoInteriorMinutos: number;
-  tiempoCruceHoras: number;
-  tiempoCruceMinutos: number;
-  tiempoContravidrioHoras: number;
-  tiempoContravidrioMinutos: number;
-  tiempoMosquiteroHoras: number;
-  tiempoMosquiteroMinutos: number;
+  porcentaje_sobre_perfiles: number;
+  porcentaje_sobre_vidrios: number;
+  porcentaje_sobre_accesorios: number;
+  porcentaje_sobre_pinturas: number;
+  porcentaje_sobre_telas: number;
+  porcentaje_sobre_mano: number;
+  porcentaje_sobre_mano_colocacion: number;
+  porcentaje_sobre_items_manuales: number;
+  costo_hora_taller: number;
+  tiempo_marco_horas: number;
+  tiempo_marco_minutos: number;
+  tiempo_hoja_horas: number;
+  tiempo_hoja_minutos: number;
+  tiempo_interior_horas: number;
+  tiempo_interior_minutos: number;
+  tiempo_cruce_horas: number;
+  tiempo_cruce_minutos: number;
+  tiempo_contravidrio_horas: number;
+  tiempo_contravidrio_minutos: number;
+  tiempo_mosquitero_horas: number;
+  tiempo_mosquitero_minutos: number;
   nombre: string;
   direccion: string;
   telefono: string;
   email: string;
-  encabezadoDePto: string;
-  pieDePto: string;
+  encabezado_pto: string;
+  pie_pto: string;
   logo?: string;
 }
 

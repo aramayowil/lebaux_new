@@ -52,37 +52,42 @@ const MOCK_PRODUCTOS: Producto[] = [
   {
     id: 1,
     descripcion: "Ventana corrediza 2 hojas",
-    idExtrusora: 1,
-    idLinea: 1,
-    idTipo: 1,
+    id_extrusora: 1,
+    id_linea: 1,
+    id_tipo: 1,
   },
   {
     id: 2,
     descripcion: "Ventana corrediza 4 hojas",
-    idExtrusora: 1,
-    idLinea: 1,
-    idTipo: 1,
+    id_extrusora: 1,
+    id_linea: 1,
+    id_tipo: 1,
   },
   {
     id: 3,
     descripcion: "Puerta balcón 1 hoja",
-    idExtrusora: 1,
-    idLinea: 2,
-    idTipo: 2,
+    id_extrusora: 1,
+    id_linea: 2,
+    id_tipo: 2,
   },
 ];
 
 const MOCK_MARCOS: Marco[] = [
-  { id: 1, idProducto: 1, descripcion: "Marco estándar", predeterminado: true },
+  {
+    id: 1,
+    id_producto: 1,
+    descripcion: "Marco estándar",
+    predeterminado: true,
+  },
   {
     id: 2,
-    idProducto: 2,
+    id_producto: 2,
     descripcion: "Marco estándar 4h",
     predeterminado: true,
   },
   {
     id: 3,
-    idProducto: 3,
+    id_producto: 3,
     descripcion: "Marco puerta balcón",
     predeterminado: true,
   },
@@ -91,21 +96,21 @@ const MOCK_MARCOS: Marco[] = [
 const MOCK_HOJAS: Hoja[] = [
   {
     id: 1,
-    idMarco: 1,
+    id_marco: 1,
     descripcion: "Hoja móvil",
     cantidad: 2,
     predeterminado: true,
   },
   {
     id: 2,
-    idMarco: 2,
+    id_marco: 2,
     descripcion: "Hoja móvil 4h",
     cantidad: 4,
     predeterminado: true,
   },
   {
     id: 3,
-    idMarco: 3,
+    id_marco: 3,
     descripcion: "Hoja puerta",
     cantidad: 1,
     predeterminado: true,
@@ -114,51 +119,51 @@ const MOCK_HOJAS: Hoja[] = [
 
 // Interior: solo datos base. Las fórmulas/descuentos están en DespieceInterior (tabla separada en DB)
 const MOCK_INTERIORES: Interior[] = [
-  { id: 1, idHoja: 1, descripcion: "Interior estándar", predeterminado: true },
-  { id: 2, idHoja: 3, descripcion: "Interior puerta", predeterminado: true },
+  { id: 1, id_hoja: 1, descripcion: "Interior estándar", predeterminado: true },
+  { id: 2, id_hoja: 3, descripcion: "Interior puerta", predeterminado: true },
 ];
 
 // DespieceInterior: fórmulas y descuentos del interior (tabla "Despiece interior" en DB)
 const MOCK_DESPIECE_INTERIORES: DespieceInterior[] = [
   {
     id: 1,
-    idInterior: 1,
-    formulaCantidadInteriores: "1",
-    formulaAnchoInterior: "ancho/hojas - 10",
-    formulaAltoInterior: "alto - 60",
-    descuentoIzquierda: 5,
-    descuentoDerecha: 5,
-    descuentoAbajo: 5,
-    descuentoArriba: 5,
+    id_interior: 1,
+    formula_cantidad_interiores: "1",
+    formula_ancho_interior: "ancho/hojas - 10",
+    formula_alto_interior: "alto - 60",
+    descuento_izquierda: 5,
+    descuento_derecha: 5,
+    descuento_abajo: 5,
+    descuento_arriba: 5,
   },
   {
     id: 2,
-    idInterior: 2,
-    formulaCantidadInteriores: "1",
-    formulaAnchoInterior: "ancho - 60",
-    formulaAltoInterior: "alto - 80",
-    descuentoIzquierda: 5,
-    descuentoDerecha: 5,
-    descuentoAbajo: 10,
-    descuentoArriba: 5,
+    id_interior: 2,
+    formula_cantidad_interiores: "1",
+    formula_ancho_interior: "ancho - 60",
+    formula_alto_interior: "alto - 80",
+    descuento_izquierda: 5,
+    descuento_derecha: 5,
+    descuento_abajo: 10,
+    descuento_arriba: 5,
   },
 ];
 
 const MOCK_DESPIECE_PERFILES_MARCO: DespiecePerfil[] = [
   {
     id: 1,
-    idParent: 1,
-    perfil: "001",
-    formulaCantidad: "2",
-    formulaMedida: "ancho",
+    id_parent: 1,
+    id_perfil: 1,
+    formula_cantidad: "2",
+    formula_perfil: "ancho",
     angulo: "45",
   },
   {
     id: 2,
-    idParent: 1,
-    perfil: "002",
-    formulaCantidad: "2",
-    formulaMedida: "alto",
+    id_parent: 1,
+    id_perfil: 2,
+    formula_cantidad: "2",
+    formula_perfil: "alto",
     angulo: "45",
   },
 ];
@@ -166,25 +171,30 @@ const MOCK_DESPIECE_PERFILES_MARCO: DespiecePerfil[] = [
 const MOCK_DESPIECE_PERFILES_HOJA: DespiecePerfil[] = [
   {
     id: 3,
-    idParent: 1,
-    perfil: "004",
-    formulaCantidad: "2*hojas",
-    formulaMedida: "ancho/hojas - 10",
+    id_parent: 1,
+    id_perfil: 4,
+    formula_cantidad: "2*hojas",
+    formula_perfil: "ancho/hojas - 10",
     angulo: "45",
   },
   {
     id: 4,
-    idParent: 1,
-    perfil: "005",
-    formulaCantidad: "2*hojas",
-    formulaMedida: "alto - 60",
+    id_parent: 1,
+    id_perfil: 5,
+    formula_cantidad: "2*hojas",
+    formula_perfil: "alto - 60",
     angulo: "45",
   },
 ];
 
 const MOCK_DESPIECE_ACCESORIOS_MARCO: DespieceAccesorio[] = [
-  { id: 1, idParent: 1, accesorio: "RUL-001", formulaCantidad: "hojas * 2" },
-  { id: 2, idParent: 1, accesorio: "ESP-001", formulaCantidad: "4" },
+  {
+    id: 1,
+    id_parent: 1,
+    id_accesorio: "RUL-001",
+    formula_cantidad: "hojas * 2",
+  },
+  { id: 2, id_parent: 1, id_accesorio: "ESP-001", formula_cantidad: "4" },
 ];
 
 // ─── State types ─────────────────────────────────────────────────────────────
@@ -448,7 +458,7 @@ export const useProductosStore = create<ProductosState>()(
       deleteProducto: (id) =>
         set((s) => ({
           productos: s.productos.filter((x) => x.id !== id),
-          marcos: s.marcos.filter((x) => x.idProducto !== id),
+          marcos: s.marcos.filter((x) => x.id_producto !== id),
         })),
 
       // ── Marcos ──
@@ -464,10 +474,10 @@ export const useProductosStore = create<ProductosState>()(
       deleteMarco: (id) =>
         set((s) => ({
           marcos: s.marcos.filter((x) => x.id !== id),
-          hojas: s.hojas.filter((x) => x.idMarco !== id),
+          hojas: s.hojas.filter((x) => x.id_marco !== id),
         })),
       getMarcosByProducto: (id) =>
-        get().marcos.filter((x) => x.idProducto === id),
+        get().marcos.filter((x) => x.id_producto === id),
 
       // ── Hojas ──
       addHoja: (h) => {
@@ -482,9 +492,9 @@ export const useProductosStore = create<ProductosState>()(
       deleteHoja: (id) =>
         set((s) => ({
           hojas: s.hojas.filter((x) => x.id !== id),
-          interiores: s.interiores.filter((x) => x.idHoja !== id),
+          interiores: s.interiores.filter((x) => x.id_hoja !== id),
         })),
-      getHojasByMarco: (id) => get().hojas.filter((x) => x.idMarco === id),
+      getHojasByMarco: (id) => get().hojas.filter((x) => x.id_marco === id),
 
       // ── Interiores ──
       addInterior: (i) => {
@@ -501,7 +511,7 @@ export const useProductosStore = create<ProductosState>()(
       deleteInterior: (id) =>
         set((s) => ({ interiores: s.interiores.filter((x) => x.id !== id) })),
       getInterioresByHoja: (id) =>
-        get().interiores.filter((x) => x.idHoja === id),
+        get().interiores.filter((x) => x.id_hoja === id),
 
       // ── DespieceInterior ──
       addDespieceInterior: (d) => {
@@ -520,7 +530,7 @@ export const useProductosStore = create<ProductosState>()(
           despieceInteriores: s.despieceInteriores.filter((x) => x.id !== id),
         })),
       getDespieceInteriorByInterior: (idInterior) =>
-        get().despieceInteriores.find((x) => x.idInterior === idInterior),
+        get().despieceInteriores.find((x) => x.id_interior === idInterior),
 
       // ── Contravidrios Int. ──
       addContravidrio: (c) => {
@@ -539,7 +549,7 @@ export const useProductosStore = create<ProductosState>()(
           contravidrios: s.contravidrios.filter((x) => x.id !== id),
         })),
       getContravidriosByInterior: (id) =>
-        get().contravidrios.filter((x) => x.idInterior === id),
+        get().contravidrios.filter((x) => x.id_interior === id),
 
       // ── Contravidrios Ext. ──
       addContravidrioExt: (c) => {
@@ -558,7 +568,7 @@ export const useProductosStore = create<ProductosState>()(
           contravidriosExt: s.contravidriosExt.filter((x) => x.id !== id),
         })),
       getContravidriosExtByInterior: (id) =>
-        get().contravidriosExt.filter((x) => x.idInterior === id),
+        get().contravidriosExt.filter((x) => x.id_interior === id),
 
       // ── Despiece perfiles contravidrio ──
       addDespiecePerfilContravidrio: (nivel, d) => {
@@ -599,7 +609,7 @@ export const useProductosStore = create<ProductosState>()(
             ? "despiecePerfilesContravidrio"
             : "despiecePerfilesContravidrioExt";
         return (get()[key] as DespiecePerfilContravidrio[]).filter(
-          (x) => x.idContravidrio === idContravidrio,
+          (x) => x.id_contravidrio === idContravidrio,
         );
       },
 
@@ -616,7 +626,7 @@ export const useProductosStore = create<ProductosState>()(
       deleteCruces: (id) =>
         set((s) => ({ cruces: s.cruces.filter((x) => x.id !== id) })),
       getCrucesByInterior: (id) =>
-        get().cruces.filter((x) => x.idInterior === id),
+        get().cruces.filter((x) => x.id_interior === id),
 
       // ── DespieceCruces ──
       addDespieceCruces: (d) => {
@@ -635,7 +645,7 @@ export const useProductosStore = create<ProductosState>()(
           despieceCruces: s.despieceCruces.filter((x) => x.id !== id),
         })),
       getDespieceCrucesByCruces: (idCruces) =>
-        get().despieceCruces.find((x) => x.idCruces === idCruces),
+        get().despieceCruces.find((x) => x.id_cruces === idCruces),
 
       // ── Mosquiteros ──
       addMosquitero: (m) => {
@@ -699,7 +709,7 @@ export const useProductosStore = create<ProductosState>()(
           vidRepartidos: s.vidRepartidos.filter((x) => x.id !== id),
         })),
       getVidRepartidosByInterior: (id) =>
-        get().vidRepartidos.filter((x) => x.idInterior === id),
+        get().vidRepartidos.filter((x) => x.id_interior === id),
 
       // ── DespieceVR ──
       addDespieceVR: (d) => {
@@ -716,7 +726,7 @@ export const useProductosStore = create<ProductosState>()(
       deleteDespieceVR: (id) =>
         set((s) => ({ despieceVR: s.despieceVR.filter((x) => x.id !== id) })),
       getDespieceVRByVR: (idVR) =>
-        get().despieceVR.find((x) => x.idVR === idVR),
+        get().despieceVR.find((x) => x.id_vr === idVR),
 
       // ── Despiece perfiles (marco / hoja / mosquitero) ──
       addDespiecePerfil: (nivel, d) => {
@@ -745,7 +755,7 @@ export const useProductosStore = create<ProductosState>()(
         const key =
           `despiecePerfiles${nivel.charAt(0).toUpperCase() + nivel.slice(1)}` as keyof ProductosState;
         return (get()[key] as DespiecePerfil[]).filter(
-          (x) => x.idParent === idParent,
+          (x) => x.id_parent === idParent,
         );
       },
 
@@ -776,7 +786,7 @@ export const useProductosStore = create<ProductosState>()(
         const key =
           `despieceAccesorios${nivel.charAt(0).toUpperCase() + nivel.slice(1)}` as keyof ProductosState;
         return (get()[key] as DespieceAccesorio[]).filter(
-          (x) => x.idParent === idParent,
+          (x) => x.id_parent === idParent,
         );
       },
     }),

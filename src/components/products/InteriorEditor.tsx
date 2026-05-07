@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { Button, Input, Switch } from "@heroui/react";
-import { Plus, Trash2, Check, ChevronDown, ChevronUp } from "lucide-react";
-import { useProductosStore } from "@/store/productosStore";
-import { useCatalogosStore } from "@/store/catalogosStore";
+import { Input, Switch } from "@heroui/react";
+import { Plus, Trash2, Check, ChevronDown, ChevronUp, X } from "lucide-react";
 import FormulaInput from "@/components/ui/FormulaInput";
 import DespiecePerfilesPanel from "./DespiecePerfilesPanel";
 import DespieceAccesoriosPanel from "./DespieceAccesoriosPanel";
@@ -13,11 +11,64 @@ import type {
   ContravidrioExterior,
   Cruces,
   VidRepartido,
-  DespiecePerfilContravidrio,
   DespieceCruces,
   DespieceVR,
 } from "@/types";
 import clsx from "clsx";
+import {
+  useAddDespiecePerfilContravidrio,
+  useDeleteDespiecePerfilContravidrio,
+  useDespiecePerfilesContravidrio,
+  useUpdateDespiecePerfilContravidrio,
+} from "@/hooks/productos/despieces/useDespiecePerfilesContravios";
+import { usePerfiles } from "@/hooks/catalogo/usePerfiles";
+import { useUpdateInterior } from "@/hooks/productos/useInteriores";
+import {
+  useAddDespieceInterior,
+  useDespieceInteriorByInterior,
+  useUpdateDespieceInterior,
+} from "@/hooks/productos/despieces/useDespieceInteriores";
+import {
+  useAddContravidrio,
+  useContravidriosByInterior,
+  useDeleteContravidrio,
+  useUpdateContravidrio,
+} from "@/hooks/productos/useContravidrios";
+import {
+  useAddContravidrioExt,
+  useContravidriosExtByInterior,
+  useDeleteContravidrioExt,
+  useUpdateContravidrioExt,
+} from "@/hooks/productos/useContravidriosExt";
+import {
+  useAddDespieceCruces,
+  useDespieceCrucesByCruces,
+  useUpdateDespieceCruces,
+} from "@/hooks/productos/despieces/useDespieceCruces";
+import {
+  useAddVidRepartido,
+  useDeleteVidRepartido,
+  useUpdateVidRepartido,
+  useVidRepartidosByInterior,
+} from "@/hooks/productos/useVidRepartidos";
+import {
+  useAddCruces,
+  useCrucesByInterior,
+  useDeleteCruces,
+  useUpdateCruces,
+} from "@/hooks/productos/useCruces";
+import {
+  useAddDespieceVR,
+  useDespieceVRByVR,
+  useUpdateDespieceVR,
+} from "@/hooks/productos/despieces/useDespieceVR";
+import {
+  ContravidrioFormSkeleton,
+  CrucesFormSkeleton,
+  InteriorSkeleton,
+  VidrioRepartidoFormSkeleton,
+} from "./skeletons/InteriorEditorSkeleton";
+import { Alert } from "@heroui/react";
 
 interface Props {
   interior: Interior;
@@ -36,68 +87,92 @@ const IW_F = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function InteriorEditor({ interior }: Props) {
-  const {
-    updateInterior,
-    getDespieceInteriorByInterior,
-    addDespieceInterior,
-    updateDespieceInterior,
-    getContravidriosByInterior,
-    addContravidrio,
-    updateContravidrio,
-    deleteContravidrio,
-    getContravidriosExtByInterior,
-    addContravidrioExt,
-    updateContravidrioExt,
-    deleteContravidrioExt,
-    getCrucesByInterior,
-    addCruces,
-    updateCruces,
-    deleteCruces,
-    getVidRepartidosByInterior,
-    addVidRepartido,
-    updateVidRepartido,
-    deleteVidRepartido,
-    getDespiecePerfilesContravidrio,
-    addDespiecePerfilContravidrio,
-    updateDespiecePerfilContravidrio,
-    deleteDespiecePerfilContravidrio,
-    getDespieceCrucesByCruces,
-    addDespieceCruces,
-    updateDespieceCruces,
-    deleteDespieceCruces,
-    getDespieceVRByVR,
-    addDespieceVR,
-    updateDespieceVR,
-    deleteDespieceVR,
-  } = useProductosStore();
+  // --- HOOKS DE BASE DE DATOS ---
+  const { mutateAsync: updateInterior } = useUpdateInterior();
 
-  const despInt = getDespieceInteriorByInterior(interior.id);
-  const cvs = getContravidriosByInterior(interior.id);
-  const cves = getContravidriosExtByInterior(interior.id);
-  const crcs = getCrucesByInterior(interior.id);
-  const vrs = getVidRepartidosByInterior(interior.id);
+  //--- HOOKS DESPIECE INTERIOR ---
+  const {
+    data: despInt,
+    isLoading: isLoadingDespInt,
+    error: errorDespInt,
+  } = useDespieceInteriorByInterior(interior.id);
+  const { mutateAsync: addDespieceInterior } = useAddDespieceInterior();
+  const { mutateAsync: updateDespieceInterior } = useUpdateDespieceInterior();
+
+  //--- HOOKS CONTRAVIDRIO INT ---
+
+  const { mutateAsync: addContravidrio } = useAddContravidrio();
+  const { mutateAsync: updateContravidrio } = useUpdateContravidrio();
+  const { mutateAsync: deleteContravidrio } = useDeleteContravidrio();
+  const {
+    data: cvs = [],
+    isLoading: isLoadingCvs,
+    error: errorCvs,
+  } = useContravidriosByInterior(interior.id);
+
+  //--- HOOKS CONTRAVIDRIO EXT ---
+  const { mutateAsync: addContravidrioExt } = useAddContravidrioExt();
+  const { mutateAsync: updateContravidrioExt } = useUpdateContravidrioExt();
+  const { mutateAsync: deleteContravidrioExt } = useDeleteContravidrioExt();
+  const {
+    data: cves = [],
+    isLoading: isLoadingCves,
+    error: errorCves,
+  } = useContravidriosExtByInterior(interior.id);
+
+  //--- HOOKS CRUCES ---
+  const { mutateAsync: addCruces } = useAddCruces();
+  const { mutateAsync: updateCruces } = useUpdateCruces();
+  const { mutateAsync: deleteCruces } = useDeleteCruces();
+  const {
+    data: crcs = [],
+    isLoading: isLoadingCrcs,
+    error: errorCrcs,
+  } = useCrucesByInterior(interior.id);
+
+  //--- HOOKS VIDREPARTIDOS ---
+  const { mutateAsync: addVidRepartido } = useAddVidRepartido();
+  const { mutateAsync: updateVidRepartido } = useUpdateVidRepartido();
+  const { mutateAsync: deleteVidRepartido } = useDeleteVidRepartido();
+  const {
+    data: vrs = [],
+    isLoading: isLoadingVrs,
+    error: errorVrs,
+  } = useVidRepartidosByInterior(interior.id);
+
+  const isLoading =
+    isLoadingDespInt ||
+    isLoadingCvs ||
+    isLoadingCves ||
+    isLoadingCrcs ||
+    isLoadingVrs;
+  const isError =
+    errorDespInt || errorCvs || errorCves || errorCrcs || errorVrs;
 
   const [subTab, setSubTab] = useState<"cv-int" | "cv-ext" | "cruces" | "vr">(
     "cv-int",
   );
   const [dimOpen, setDimOpen] = useState(true);
 
-  const upd = (d: Partial<Interior>) => updateInterior(interior.id, d);
+  const upd = (d: Partial<Interior>) =>
+    updateInterior({ id: interior.id, data: d });
 
-  function updDespInt(data: Partial<DespieceInterior>) {
-    const di =
-      despInt ||
-      addDespieceInterior({
-        idInterior: interior.id,
-        formulaCantidadInteriores: "1",
-        formulaAnchoInterior: "ancho - 20",
-        formulaAltoInterior: "alto - 60",
-        descuentoIzquierda: 5,
-        descuentoDerecha: 5,
-        descuentoAbajo: 5,
-        descuentoArriba: 5,
+  async function updDespInt(data: Partial<DespieceInterior>) {
+    let di = despInt;
+
+    if (!di)
+      di = await addDespieceInterior({
+        id_interior: interior.id,
+        formula_cantidad_interiores: "1",
+        formula_ancho_interior: "ancho - 20",
+        formula_alto_interior: "alto - 60",
+        descuento_izquierda: 5,
+        descuento_derecha: 5,
+        descuento_abajo: 5,
+        descuento_arriba: 5,
       });
-    updateDespieceInterior(di.id, data);
+
+    updateDespieceInterior({ id: di.id, data: data });
   }
 
   const TABS = [
@@ -109,261 +184,269 @@ export default function InteriorEditor({ interior }: Props) {
 
   return (
     <div className="flex flex-col bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
-      {/* ── Cabecera ── */}
-      <div className="flex items-center gap-3 px-4 py-3 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
-        <div className="w-1.5 h-5 rounded-full bg-amber-400 shrink-0" />
-        <Input
-          value={interior.descripcion}
-          onValueChange={(v: string) => upd({ descripcion: v })}
-          size="sm"
-          aria-label="Nombre del interior"
-          placeholder="Nombre del interior"
+      {isError && (
+        <Alert
+          status="error"
+          icon={<X className="w-4 h-4" />}
           classNames={{
-            inputWrapper:
-              "bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 h-8 min-h-unit-8 shadow-none",
-            input: "font-medium text-sm",
+            base: "mb-3 rounded-lg border border-transparent shadow-sm",
+            title: "text-sm font-medium",
           }}
-          className="max-w-xs"
-        />
-        <div className="flex items-center gap-2 ml-auto">
-          {interior.predeterminado && (
-            <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
-              Predeterminado
-            </span>
-          )}
-          <Switch
-            isSelected={interior.predeterminado}
-            onValueChange={(v: boolean) => upd({ predeterminado: v })}
-            size="sm"
-          />
-        </div>
-      </div>
-
-      {/* ── ① DIMENSIONES (acordeón) ── */}
-      <div className="border-b border-zinc-200 dark:border-zinc-800">
-        <button
-          onClick={() => setDimOpen((o) => !o)}
-          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors text-left"
         >
-          <div className="w-1 h-4 rounded-full bg-blue-400 shrink-0" />
-          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 uppercase tracking-wide flex-1">
-            Dimensiones y rebajes
-          </span>
-          {!despInt && (
-            <span className="text-[10px] text-amber-500 font-medium mr-1">
-              sin configurar
-            </span>
-          )}
-          {dimOpen ? (
-            <ChevronUp className="w-4 h-4 text-zinc-400" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-zinc-400" />
-          )}
-        </button>
-
-        {dimOpen && (
-          <div className="px-4 pb-5 space-y-5">
-            {/* Fórmulas */}
-            <div className="grid grid-cols-3 gap-3">
-              <FormulaInput
-                label="Cantidad"
-                value={despInt?.formulaCantidadInteriores ?? "1"}
-                onChange={(v: string) =>
-                  updDespInt({ formulaCantidadInteriores: v })
-                }
-                description="ej: 1, hojas"
-                className={IW_F}
-              />
-              <FormulaInput
-                label="Ancho"
-                value={despInt?.formulaAnchoInterior ?? ""}
-                onChange={(v: string) =>
-                  updDespInt({ formulaAnchoInterior: v })
-                }
-                description="ej: ancho/hojas - 40"
-                className={IW_F}
-              />
-              <FormulaInput
-                label="Alto"
-                value={despInt?.formulaAltoInterior ?? ""}
-                onChange={(v: string) => updDespInt({ formulaAltoInterior: v })}
-                description="ej: alto - 80"
-                className={IW_F}
-              />
-            </div>
-
-            {/* Diagrama de descuentos */}
-            <div>
-              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-4">
-                Descuentos de rebaje
-              </p>
-              <div className="flex justify-center">
-                <DescuentoDiagram despInt={despInt} onUpdate={updDespInt} />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── ② COMPONENTES ── */}
-      <div className="flex flex-col border-b border-zinc-200 dark:border-zinc-800">
-        {/* Header con tabs pill */}
-        <div className="flex items-center gap-2 px-4 py-3 bg-zinc-50/60 dark:bg-zinc-900/40 border-b border-zinc-100 dark:border-zinc-800/60 overflow-x-auto no-scrollbar">
-          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider shrink-0 mr-1">
-            Componentes
-          </p>
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setSubTab(t.key)}
-              className={clsx(
-                "flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap shrink-0",
-                subTab === t.key
-                  ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm"
-                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700",
-              )}
-            >
-              {t.label}
-              {t.count > 0 && (
-                <span
-                  className={clsx(
-                    "text-[9px] font-bold px-1.5 py-px rounded-full",
-                    subTab === t.key
-                      ? "bg-white/20 text-white dark:text-zinc-900 dark:bg-black/20"
-                      : "bg-zinc-300 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300",
-                  )}
-                >
-                  {t.count}
+          Error al cargar el interior.
+        </Alert>
+      )}
+      {isLoading ? (
+        <InteriorSkeleton />
+      ) : (
+        <>
+          {" "}
+          {/* ── Cabecera ── */}
+          <div className="flex items-center gap-3 px-4 py-3 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
+            <div className="w-1.5 h-5 rounded-full bg-amber-400 shrink-0" />
+            <Input
+              value={interior.descripcion}
+              onValueChange={(v: string) => upd({ descripcion: v })}
+              size="sm"
+              aria-label="Nombre del interior"
+              placeholder="Nombre del interior"
+              classNames={{
+                inputWrapper:
+                  "bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 h-8 min-h-unit-8 shadow-none",
+                input: "font-medium text-sm",
+              }}
+              className="max-w-xs"
+            />
+            <div className="flex items-center gap-2 ml-auto">
+              {interior.predeterminado && (
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
+                  Predeterminado
                 </span>
               )}
+              <Switch
+                isSelected={interior.predeterminado}
+                onValueChange={(v: boolean) => upd({ predeterminado: v })}
+                size="sm"
+              />
+            </div>
+          </div>
+          {/* ── ① DIMENSIONES (acordeón) ── */}
+          <div className="border-b border-zinc-200 dark:border-zinc-800">
+            <button
+              onClick={() => setDimOpen((o) => !o)}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors text-left"
+            >
+              <div className="w-1 h-4 rounded-full bg-blue-400 shrink-0" />
+              <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 uppercase tracking-wide flex-1">
+                Dimensiones y rebajes
+              </span>
+              {!despInt && (
+                <span className="text-[10px] text-amber-500 font-medium mr-1">
+                  sin configurar
+                </span>
+              )}
+              {dimOpen ? (
+                <ChevronUp className="w-4 h-4 text-zinc-400" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-zinc-400" />
+              )}
             </button>
-          ))}
-        </div>
 
-        {/* Panel del tab activo */}
-        <div className="min-h-[260px]">
-          {subTab === "cv-int" && (
-            <SubElementPanel
-              items={cvs}
-              emptyLabel="Sin contravidrios interiores"
-              onAdd={() =>
-                addContravidrio({
-                  idInterior: interior.id,
-                  descripcion: `CV Int. ${cvs.length + 1}`,
-                  predeterminado: cvs.length === 0,
-                })
-              }
-              renderEditor={(cv: Contravidrio) => (
-                <ContravidrioForm
-                  cv={cv}
-                  nivel="contravidrio"
-                  onUpdate={(d) => updateContravidrio(cv.id, d)}
-                  onDelete={() => deleteContravidrio(cv.id)}
-                  getDespiecePerfiles={getDespiecePerfilesContravidrio}
-                  addDespiecePerfil={addDespiecePerfilContravidrio}
-                  updateDespiecePerfil={updateDespiecePerfilContravidrio}
-                  deleteDespiecePerfil={deleteDespiecePerfilContravidrio}
-                />
-              )}
-              getItemId={(cv) => cv.id}
-            />
-          )}
-          {subTab === "cv-ext" && (
-            <SubElementPanel
-              items={cves}
-              emptyLabel="Sin contravidrios exteriores"
-              onAdd={() =>
-                addContravidrioExt({
-                  idInterior: interior.id,
-                  descripcion: `CV Ext. ${cves.length + 1}`,
-                  predeterminado: cves.length === 0,
-                })
-              }
-              renderEditor={(cv: ContravidrioExterior) => (
-                <ContravidrioForm
-                  cv={cv}
-                  nivel="contravidrioExt"
-                  onUpdate={(d) => updateContravidrioExt(cv.id, d)}
-                  onDelete={() => deleteContravidrioExt(cv.id)}
-                  getDespiecePerfiles={getDespiecePerfilesContravidrio}
-                  addDespiecePerfil={addDespiecePerfilContravidrio}
-                  updateDespiecePerfil={updateDespiecePerfilContravidrio}
-                  deleteDespiecePerfil={deleteDespiecePerfilContravidrio}
-                />
-              )}
-              getItemId={(cv) => cv.id}
-            />
-          )}
-          {subTab === "cruces" && (
-            <SubElementPanel
-              items={crcs}
-              emptyLabel="Sin cruces definidos"
-              onAdd={() =>
-                addCruces({
-                  idInterior: interior.id,
-                  descripcion: `Cruces ${crcs.length + 1}`,
-                  predeterminado: crcs.length === 0,
-                })
-              }
-              renderEditor={(c: Cruces) => (
-                <CrucesForm
-                  cruces={c}
-                  onUpdate={(d) => updateCruces(c.id, d)}
-                  onDelete={() => deleteCruces(c.id)}
-                  getDespieceCruces={getDespieceCrucesByCruces}
-                  addDespieceCruces={addDespieceCruces}
-                  updateDespieceCruces={updateDespieceCruces}
-                  deleteDespieceCruces={deleteDespieceCruces}
-                />
-              )}
-              getItemId={(c) => c.id}
-            />
-          )}
-          {subTab === "vr" && (
-            <SubElementPanel
-              items={vrs}
-              emptyLabel="Sin vidrios repartidos"
-              onAdd={() =>
-                addVidRepartido({
-                  idInterior: interior.id,
-                  descripcion: `VR ${vrs.length + 1}`,
-                  predeterminado: vrs.length === 0,
-                })
-              }
-              renderEditor={(vr: VidRepartido) => (
-                <VidRepartidoForm
-                  vr={vr}
-                  onUpdate={(d) => updateVidRepartido(vr.id, d)}
-                  onDelete={() => deleteVidRepartido(vr.id)}
-                  getDespieceVR={getDespieceVRByVR}
-                  addDespieceVR={addDespieceVR}
-                  updateDespieceVR={updateDespieceVR}
-                  deleteDespieceVR={deleteDespieceVR}
-                />
-              )}
-              getItemId={(vr) => vr.id}
-            />
-          )}
-        </div>
-      </div>
+            {dimOpen && (
+              <div className="px-4 pb-5 space-y-5">
+                {/* Fórmulas */}
+                <div className="grid grid-cols-3 gap-3">
+                  <FormulaInput
+                    label="Cantidad"
+                    value={despInt?.formula_cantidad_interiores ?? "1"}
+                    onChange={(v: string) =>
+                      updDespInt({ formula_cantidad_interiores: v })
+                    }
+                    description="ej: 1, hojas"
+                    className={IW_F}
+                  />
+                  <FormulaInput
+                    label="Ancho"
+                    value={despInt?.formula_ancho_interior ?? ""}
+                    onChange={(v: string) =>
+                      updDespInt({ formula_ancho_interior: v })
+                    }
+                    description="ej: ancho/hojas - 40"
+                    className={IW_F}
+                  />
+                  <FormulaInput
+                    label="Alto"
+                    value={despInt?.formula_alto_interior ?? ""}
+                    onChange={(v: string) =>
+                      updDespInt({ formula_alto_interior: v })
+                    }
+                    description="ej: alto - 80"
+                    className={IW_F}
+                  />
+                </div>
 
-      {/* ── ③ PERFILES  ④ ACCESORIOS ── */}
-      <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-        <div className="p-4">
-          <DespiecePerfilesPanel
-            nivel="hoja"
-            idParent={interior.id}
-            label="Perfiles del interior"
-          />
-        </div>
-        <div className="p-4">
-          <DespieceAccesoriosPanel
-            nivel="interior"
-            idParent={interior.id}
-            label="Accesorios del interior"
-          />
-        </div>
-      </div>
+                {/* Diagrama de descuentos */}
+                <div>
+                  <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-4">
+                    Descuentos de rebaje
+                  </p>
+                  <div className="flex justify-center">
+                    <DescuentoDiagram despInt={despInt} onUpdate={updDespInt} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          {/* ── ② COMPONENTES ── */}
+          <div className="flex flex-col border-b border-zinc-200 dark:border-zinc-800">
+            {/* Header con tabs pill */}
+            <div className="flex items-center gap-2 px-4 py-3 bg-zinc-50/60 dark:bg-zinc-900/40 border-b border-zinc-100 dark:border-zinc-800/60 overflow-x-auto no-scrollbar">
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider shrink-0 mr-1">
+                Componentes
+              </p>
+              {TABS.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setSubTab(t.key)}
+                  className={clsx(
+                    "flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap shrink-0",
+                    subTab === t.key
+                      ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700",
+                  )}
+                >
+                  {t.label}
+                  {t.count > 0 && (
+                    <span
+                      className={clsx(
+                        "text-[9px] font-bold px-1.5 py-px rounded-full",
+                        subTab === t.key
+                          ? "bg-white/20 text-white dark:text-zinc-900 dark:bg-black/20"
+                          : "bg-zinc-300 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300",
+                      )}
+                    >
+                      {t.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Panel del tab activo */}
+            <div className="min-h-[260px]">
+              {subTab === "cv-int" && (
+                <SubElementPanel
+                  items={cvs}
+                  emptyLabel="Sin contravidrios interiores"
+                  onAdd={() =>
+                    addContravidrio({
+                      id_interior: interior.id,
+                      descripcion: `CV Int. ${cvs.length + 1}`,
+                      predeterminado: cvs.length === 0,
+                    })
+                  }
+                  renderEditor={(cv: Contravidrio) => (
+                    <ContravidrioForm
+                      cv={cv}
+                      nivel="contravidrio"
+                      onUpdate={(d) =>
+                        updateContravidrio({ id: cv.id, data: d })
+                      }
+                      onDelete={() => deleteContravidrio(cv.id)}
+                    />
+                  )}
+                  getItemId={(cv) => cv.id}
+                />
+              )}
+              {subTab === "cv-ext" && (
+                <SubElementPanel
+                  items={cves}
+                  emptyLabel="Sin contravidrios exteriores"
+                  onAdd={() =>
+                    addContravidrioExt({
+                      id_interior: interior.id,
+                      descripcion: `CV Ext. ${cves.length + 1}`,
+                      predeterminado: cves.length === 0,
+                    })
+                  }
+                  renderEditor={(cv: ContravidrioExterior) => (
+                    <ContravidrioForm
+                      cv={cv}
+                      nivel="contravidrioExt"
+                      onUpdate={(d) =>
+                        updateContravidrioExt({ id: cv.id, data: d })
+                      }
+                      onDelete={() => deleteContravidrioExt(cv.id)}
+                    />
+                  )}
+                  getItemId={(cv) => cv.id}
+                />
+              )}
+              {subTab === "cruces" && (
+                <SubElementPanel
+                  items={crcs}
+                  emptyLabel="Sin cruces definidos"
+                  onAdd={() =>
+                    addCruces({
+                      id_interior: interior.id,
+                      descripcion: `Cruces ${crcs.length + 1}`,
+                      predeterminado: crcs.length === 0,
+                    })
+                  }
+                  renderEditor={(c: Cruces) => (
+                    <CrucesForm
+                      cruces={c}
+                      onUpdate={(d) => updateCruces({ id: c.id, data: d })}
+                      onDelete={() => deleteCruces(c.id)}
+                    />
+                  )}
+                  getItemId={(c) => c.id}
+                />
+              )}
+              {subTab === "vr" && (
+                <SubElementPanel
+                  items={vrs}
+                  emptyLabel="Sin vidrios repartidos"
+                  onAdd={() =>
+                    addVidRepartido({
+                      id_interior: interior.id,
+                      descripcion: `VR ${vrs.length + 1}`,
+                      predeterminado: vrs.length === 0,
+                    })
+                  }
+                  renderEditor={(vr: VidRepartido) => (
+                    <VidRepartidoForm
+                      vr={vr}
+                      onUpdate={(d) =>
+                        updateVidRepartido({ id: vr.id, data: d })
+                      }
+                      onDelete={() => deleteVidRepartido(vr.id)}
+                    />
+                  )}
+                  getItemId={(vr) => vr.id}
+                />
+              )}
+            </div>
+          </div>
+          {/* ── ③ PERFILES  ④ ACCESORIOS ── */}
+          <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+            <div className="p-4">
+              <DespiecePerfilesPanel
+                nivel="hojas"
+                idParent={interior.id}
+                label="Perfiles del interior"
+              />
+            </div>
+            <div className="p-4">
+              <DespieceAccesoriosPanel
+                nivel="interior"
+                idParent={interior.id}
+                label="Accesorios del interior"
+              />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -386,33 +469,33 @@ function DescuentoDiagram({
       {/* Arriba */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
         <DescInput
-          value={despInt?.descuentoArriba ?? 0}
+          value={despInt?.descuento_arriba ?? 0}
           label="Arriba"
-          onChange={(v) => onUpdate({ descuentoArriba: v })}
+          onChange={(v) => onUpdate({ descuento_arriba: v })}
         />
       </div>
       {/* Abajo */}
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
         <DescInput
-          value={despInt?.descuentoAbajo ?? 0}
+          value={despInt?.descuento_abajo ?? 0}
           label="Abajo"
-          onChange={(v) => onUpdate({ descuentoAbajo: v })}
+          onChange={(v) => onUpdate({ descuento_abajo: v })}
         />
       </div>
       {/* Izquierda */}
       <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2">
         <DescInput
-          value={despInt?.descuentoIzquierda ?? 0}
+          value={despInt?.descuento_izquierda ?? 0}
           label="Izq."
-          onChange={(v) => onUpdate({ descuentoIzquierda: v })}
+          onChange={(v) => onUpdate({ descuento_izquierda: v })}
         />
       </div>
       {/* Derecha */}
       <div className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2">
         <DescInput
-          value={despInt?.descuentoDerecha ?? 0}
+          value={despInt?.descuento_derecha ?? 0}
           label="Der."
-          onChange={(v) => onUpdate({ descuentoDerecha: v })}
+          onChange={(v) => onUpdate({ descuento_derecha: v })}
         />
       </div>
     </div>
@@ -600,158 +683,201 @@ function ContravidrioForm({
   nivel,
   onUpdate,
   onDelete,
-  getDespiecePerfiles,
-  addDespiecePerfil,
-  updateDespiecePerfil,
-  deleteDespiecePerfil,
 }: {
   cv: Contravidrio | ContravidrioExterior;
   nivel: "contravidrio" | "contravidrioExt";
   onUpdate: (d: Partial<Contravidrio>) => void;
   onDelete: () => void;
-  getDespiecePerfiles: (
-    nivel: "contravidrio" | "contravidrioExt",
-    idCV: number,
-  ) => DespiecePerfilContravidrio[];
-  addDespiecePerfil: (
-    nivel: "contravidrio" | "contravidrioExt",
-    d: Omit<DespiecePerfilContravidrio, "id">,
-  ) => void;
-  updateDespiecePerfil: (
-    nivel: "contravidrio" | "contravidrioExt",
-    id: number,
-    d: Partial<DespiecePerfilContravidrio>,
-  ) => void;
-  deleteDespiecePerfil: (
-    nivel: "contravidrio" | "contravidrioExt",
-    id: number,
-  ) => void;
 }) {
-  const { perfiles } = useCatalogosStore();
-  const items = getDespiecePerfiles(nivel, cv.id);
+  const {
+    data: perfiles = [],
+    isLoading: isLoadingPerfiles,
+    isError: isErrorPerfiles,
+  } = usePerfiles();
+
+  const {
+    data: items = [],
+    isLoading: isLoadingItems,
+    isError: isErrorItems,
+  } = useDespiecePerfilesContravidrio(nivel, cv.id);
+  const { mutateAsync: addDespiecePerfil } = useAddDespiecePerfilContravidrio();
+  const { mutateAsync: updateDespiecePerfil } =
+    useUpdateDespiecePerfilContravidrio();
+  const { mutateAsync: deleteDespiecePerfil } =
+    useDeleteDespiecePerfilContravidrio();
+
   const ANGULOS = ["45", "90", "0", ""];
 
+  const isLoadingData = isLoadingPerfiles || isLoadingItems;
+  const isErrorData = isErrorPerfiles || isErrorItems;
   return (
     <div className="space-y-4">
-      <FormHeader
-        name={cv.descripcion}
-        pred={cv.predeterminado}
-        onName={(v) => onUpdate({ descripcion: v })}
-        onPred={(v) => onUpdate({ predeterminado: v })}
-        onDelete={onDelete}
-      />
+      {isErrorData && (
+        <Alert
+          status="error"
+          icon={<X className="w-4 h-4" />}
+          classNames={{
+            base: "mb-3 rounded-lg border border-transparent shadow-sm",
+            title: "text-sm font-medium",
+          }}
+        >
+          Error al obtener datos del contravidrio.
+        </Alert>
+      )}
+      {isLoadingData ? (
+        <ContravidrioFormSkeleton />
+      ) : (
+        <>
+          <FormHeader
+            name={cv.descripcion}
+            pred={cv.predeterminado}
+            onName={(v) => onUpdate({ descripcion: v })}
+            onPred={(v) => onUpdate({ predeterminado: v })}
+            onDelete={onDelete}
+          />
 
-      <FieldGroup title="Perfiles del contravidrio">
-        <div className="space-y-2">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/40 p-3 space-y-3"
-            >
-              <div className="flex items-center gap-2">
-                <select
-                  value={item.perfil}
-                  onChange={(e) =>
-                    updateDespiecePerfil(nivel, item.id, {
-                      perfil: e.target.value,
-                    })
-                  }
-                  className="flex-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400"
+          <FieldGroup title="Perfiles del contravidrio">
+            <div className="space-y-2">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/40 p-3 space-y-3"
                 >
-                  {perfiles.map((p) => (
-                    <option key={p.nroPerfil} value={p.nroPerfil}>
-                      {p.nroPerfil} — {p.descri}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={item.angulo}
-                  onChange={(e) =>
-                    updateDespiecePerfil(nivel, item.id, {
-                      angulo: e.target.value,
-                    })
-                  }
-                  className="w-16 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-400"
-                >
-                  {ANGULOS.map((a) => (
-                    <option key={a} value={a}>
-                      {a || "—"}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => deleteDespiecePerfil(nivel, item.id)}
-                  className="p-1.5 text-zinc-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <FormulaInput
-                  label="Cant. horizontal"
-                  value={item.formulaCantidadAncho}
-                  onChange={(v) =>
-                    updateDespiecePerfil(nivel, item.id, {
-                      formulaCantidadAncho: v,
-                    })
-                  }
-                  description="ej: hojas*2"
-                  className={IW_F}
-                />
-                <FormulaInput
-                  label="Cant. vertical"
-                  value={item.formulaCantidadAlto}
-                  onChange={(v) =>
-                    updateDespiecePerfil(nivel, item.id, {
-                      formulaCantidadAlto: v,
-                    })
-                  }
-                  description="ej: hojas*2"
-                  className={IW_F}
-                />
-                <FormulaInput
-                  label="Largo horizontal"
-                  value={item.formulaContravidrioAncho}
-                  onChange={(v) =>
-                    updateDespiecePerfil(nivel, item.id, {
-                      formulaContravidrioAncho: v,
-                    })
-                  }
-                  description="ej: ancho - 20"
-                  className={IW_F}
-                />
-                <FormulaInput
-                  label="Largo vertical"
-                  value={item.formulaContravidrioAlto}
-                  onChange={(v) =>
-                    updateDespiecePerfil(nivel, item.id, {
-                      formulaContravidrioAlto: v,
-                    })
-                  }
-                  description="ej: alto - 10"
-                  className={IW_F}
-                />
-              </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={item.id_perfil}
+                      onChange={(e) =>
+                        updateDespiecePerfil({
+                          nivel: nivel,
+                          id: item.id,
+                          data: {
+                            id_perfil: e.target.value,
+                          },
+                        })
+                      }
+                      className="flex-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400"
+                    >
+                      {perfiles.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nro_perfil} — {p.descri}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={item.angulo}
+                      onChange={(e) =>
+                        updateDespiecePerfil({
+                          nivel: nivel,
+                          id: item.id,
+                          data: {
+                            angulo: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-16 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-400"
+                    >
+                      {ANGULOS.map((a) => (
+                        <option key={a} value={a}>
+                          {a || "—"}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() =>
+                        deleteDespiecePerfil({ nivel: nivel, id: item.id })
+                      }
+                      className="p-1.5 text-zinc-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <FormulaInput
+                      label="Cant. horizontal"
+                      value={item.formula_cantidad_ancho}
+                      onChange={(v) =>
+                        updateDespiecePerfil({
+                          nivel: nivel,
+                          id: item.id,
+                          data: {
+                            formula_cantidad_ancho: v,
+                          },
+                        })
+                      }
+                      description="ej: hojas*2"
+                      className={IW_F}
+                    />
+                    <FormulaInput
+                      label="Cant. vertical"
+                      value={item.formula_cantidad_alto}
+                      onChange={(v) =>
+                        updateDespiecePerfil({
+                          nivel: nivel,
+                          id: item.id,
+                          data: {
+                            formula_cantidad_alto: v,
+                          },
+                        })
+                      }
+                      description="ej: hojas*2"
+                      className={IW_F}
+                    />
+                    <FormulaInput
+                      label="Largo horizontal"
+                      value={item.formula_contravidrio_ancho}
+                      onChange={(v) =>
+                        updateDespiecePerfil({
+                          nivel: nivel,
+                          id: item.id,
+                          data: {
+                            formula_contravidrio_ancho: v,
+                          },
+                        })
+                      }
+                      description="ej: ancho - 20"
+                      className={IW_F}
+                    />
+                    <FormulaInput
+                      label="Largo vertical"
+                      value={item.formula_contravidrio_alto}
+                      onChange={(v) =>
+                        updateDespiecePerfil({
+                          nivel: nivel,
+                          id: item.id,
+                          data: {
+                            formula_contravidrio_alto: v,
+                          },
+                        })
+                      }
+                      description="ej: alto - 10"
+                      className={IW_F}
+                    />
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={() =>
+                  addDespiecePerfil({
+                    nivel: nivel,
+                    d: {
+                      id_contravidrio: cv.id,
+                      id_perfil: perfiles[0]?.nro_perfil ?? "",
+                      formula_cantidad_ancho: "hojas*2",
+                      formula_cantidad_alto: "hojas*2",
+                      formula_contravidrio_ancho: "ancho - 20",
+                      formula_contravidrio_alto: "alto - 10",
+                      angulo: "90",
+                    },
+                  })
+                }
+                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 text-[11px] font-medium text-zinc-400 hover:border-amber-400 hover:text-amber-500 transition-colors"
+              >
+                <Plus className="w-3 h-3" /> Agregar perfil
+              </button>
             </div>
-          ))}
-          <button
-            onClick={() =>
-              addDespiecePerfil(nivel, {
-                idContravidrio: cv.id,
-                perfil: perfiles[0]?.nroPerfil ?? "",
-                formulaCantidadAncho: "hojas*2",
-                formulaCantidadAlto: "hojas*2",
-                formulaContravidrioAncho: "ancho - 20",
-                formulaContravidrioAlto: "alto - 10",
-                angulo: "90",
-              })
-            }
-            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 text-[11px] font-medium text-zinc-400 hover:border-amber-400 hover:text-amber-500 transition-colors"
-          >
-            <Plus className="w-3 h-3" /> Agregar perfil
-          </button>
-        </div>
-      </FieldGroup>
+          </FieldGroup>
+        </>
+      )}
     </div>
   );
 }
@@ -762,134 +888,165 @@ function CrucesForm({
   cruces,
   onUpdate,
   onDelete,
-  getDespieceCruces,
-  addDespieceCruces,
-  updateDespieceCruces,
-  deleteDespieceCruces,
 }: {
   cruces: Cruces;
   onUpdate: (d: Partial<Cruces>) => void;
   onDelete: () => void;
-  getDespieceCruces: (id: number) => DespieceCruces | undefined;
-  addDespieceCruces: (d: Omit<DespieceCruces, "id">) => DespieceCruces;
-  updateDespieceCruces: (id: number, d: Partial<DespieceCruces>) => void;
-  deleteDespieceCruces: (id: number) => void;
 }) {
-  const { perfiles } = useCatalogosStore();
-  const dc = getDespieceCruces(cruces.id);
+  // --- HOOKS DE DESPIECE CRUCES ---
+  const { mutateAsync: addDespieceCruces } = useAddDespieceCruces();
+  const { mutateAsync: updateDespieceCruces } = useUpdateDespieceCruces();
+  // const { mutateAsync: deleteDespieceCruces } = useDeleteDespieceCruces();
+  const {
+    data: dc,
+    isLoading: isLoadingDespieceCruces,
+    isError: isErrorDespieceCruces,
+  } = useDespieceCrucesByCruces(cruces.id);
+
+  // --- HOOKS DE PERFILES ---
+  const {
+    data: perfiles = [],
+    isLoading: isLoadingPerfiles,
+    isError: isErrorPerfiles,
+  } = usePerfiles();
+
+  const isLoading = isLoadingDespieceCruces || isLoadingPerfiles;
+  const isError = isErrorDespieceCruces || isErrorPerfiles;
+
   const ANGULOS = ["45", "90", "0", ""];
 
-  function updDC(data: Partial<DespieceCruces>) {
-    const d =
-      dc ||
-      addDespieceCruces({
-        idCruces: cruces.id,
-        perfil: perfiles[0]?.nroPerfil ?? "",
-        formulaCantidad: "1",
-        formulaAnchoEntero: "ancho - 20",
-        formulaAltoEntero: "alto - 20",
-        descuentoDeVidrio: 0,
-        descuentoDeSiMismo: 0,
+  async function updDC(data: Partial<DespieceCruces>) {
+    let d = dc;
+
+    if (!d)
+      d = await addDespieceCruces({
+        id_cruces: cruces.id,
+        id_perfil: perfiles[0]?.nro_perfil ?? "",
+        formula_cantidad: "1",
+        formula_ancho_entero: "ancho - 20",
+        formula_alto_entero: "alto - 20",
+        descuento_de_vidrio: 0,
+        descuento_de_si_mismo: 0,
         angulo: "90",
       });
-    updateDespieceCruces(d.id, data);
+
+    updateDespieceCruces({ id: d.id, data: data });
   }
 
   return (
     <div className="space-y-4">
-      <FormHeader
-        name={cruces.descripcion}
-        pred={cruces.predeterminado}
-        onName={(v) => onUpdate({ descripcion: v })}
-        onPred={(v) => onUpdate({ predeterminado: v })}
-        onDelete={onDelete}
-      />
+      {isError && (
+        <Alert
+          status="error"
+          icon={<X className="w-4 h-4" />}
+          classNames={{
+            base: "mb-3 rounded-lg border border-transparent shadow-sm",
+            title: "text-sm font-medium",
+          }}
+        >
+          Error al obtener datos del cruce.
+        </Alert>
+      )}
 
-      <FieldGroup title="Perfil del cruce">
-        <div className="flex gap-2">
-          <select
-            value={dc?.perfil ?? ""}
-            onChange={(e) => updDC({ perfil: e.target.value })}
-            className="flex-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400"
-          >
-            {perfiles.map((p) => (
-              <option key={p.nroPerfil} value={p.nroPerfil}>
-                {p.nroPerfil} — {p.descri}
-              </option>
-            ))}
-          </select>
-          <select
-            value={dc?.angulo ?? "90"}
-            onChange={(e) => updDC({ angulo: e.target.value })}
-            className="w-16 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-400"
-          >
-            {ANGULOS.map((a) => (
-              <option key={a} value={a}>
-                {a || "—"}
-              </option>
-            ))}
-          </select>
-        </div>
-      </FieldGroup>
-
-      <FieldGroup title="Medidas de corte">
-        <div className="grid grid-cols-3 gap-3">
-          <FormulaInput
-            label="Cantidad"
-            value={dc?.formulaCantidad ?? "1"}
-            onChange={(v) => updDC({ formulaCantidad: v })}
-            description="ej: 1"
-            className={IW_F}
+      {isLoading ? (
+        <CrucesFormSkeleton />
+      ) : (
+        <>
+          <FormHeader
+            name={cruces.descripcion}
+            pred={cruces.predeterminado}
+            onName={(v) => onUpdate({ descripcion: v })}
+            onPred={(v) => onUpdate({ predeterminado: v })}
+            onDelete={onDelete}
           />
-          <FormulaInput
-            label="Largo horizontal"
-            value={dc?.formulaAnchoEntero ?? ""}
-            onChange={(v) => updDC({ formulaAnchoEntero: v })}
-            description="ej: ancho - 20"
-            className={IW_F}
-          />
-          <FormulaInput
-            label="Largo vertical"
-            value={dc?.formulaAltoEntero ?? ""}
-            onChange={(v) => updDC({ formulaAltoEntero: v })}
-            description="ej: alto - 20"
-            className={IW_F}
-          />
-        </div>
-      </FieldGroup>
-
-      <FieldGroup title="Descuentos en intersecciones">
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="Desc. de sí mismo"
-            type="number"
-            value={String(dc?.descuentoDeSiMismo ?? 0)}
-            onValueChange={(v: string) =>
-              updDC({ descuentoDeSiMismo: parseFloat(v) || 0 })
-            }
-            size="sm"
-            endContent={<span className="text-[10px] text-zinc-400">mm</span>}
-            description="El cruce se corta a sí mismo"
-            classNames={IW}
-          />
-          <Input
-            label="Desc. de vidrio"
-            type="number"
-            value={String(dc?.descuentoDeVidrio ?? 0)}
-            onValueChange={(v: string) =>
-              updDC({ descuentoDeVidrio: parseFloat(v) || 0 })
-            }
-            size="sm"
-            endContent={<span className="text-[10px] text-zinc-400">mm</span>}
-            description="Rebaje sobre el vidrio"
-            classNames={IW}
-          />
-        </div>
-      </FieldGroup>
-
-      <FieldGroup title="Accesorios del cruce">
-        <DespieceAccesoriosPanel nivel="cruces" idParent={cruces.id} />
-      </FieldGroup>
+          <FieldGroup title="Perfil del cruce">
+            <div className="flex gap-2">
+              <select
+                value={dc?.id_perfil ?? ""}
+                onChange={(e) => updDC({ id_perfil: e.target.value })}
+                className="flex-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400"
+              >
+                {perfiles.map((p) => (
+                  <option key={p.nro_perfil} value={p.nro_perfil}>
+                    {p.nro_perfil} — {p.descri}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={dc?.angulo ?? "90"}
+                onChange={(e) => updDC({ angulo: e.target.value })}
+                className="w-16 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-400"
+              >
+                {ANGULOS.map((a) => (
+                  <option key={a} value={a}>
+                    {a || "—"}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </FieldGroup>
+          <FieldGroup title="Medidas de corte">
+            <div className="grid grid-cols-3 gap-3">
+              <FormulaInput
+                label="Cantidad"
+                value={dc?.formula_cantidad ?? "1"}
+                onChange={(v) => updDC({ formula_cantidad: v })}
+                description="ej: 1"
+                className={IW_F}
+              />
+              <FormulaInput
+                label="Largo horizontal"
+                value={dc?.formula_ancho_entero ?? ""}
+                onChange={(v) => updDC({ formula_ancho_entero: v })}
+                description="ej: ancho - 20"
+                className={IW_F}
+              />
+              <FormulaInput
+                label="Largo vertical"
+                value={dc?.formula_alto_entero ?? ""}
+                onChange={(v) => updDC({ formula_alto_entero: v })}
+                description="ej: alto - 20"
+                className={IW_F}
+              />
+            </div>
+          </FieldGroup>
+          <FieldGroup title="Descuentos en intersecciones">
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Desc. de sí mismo"
+                type="number"
+                value={String(dc?.descuento_de_si_mismo ?? 0)}
+                onValueChange={(v: string) =>
+                  updDC({ descuento_de_si_mismo: parseFloat(v) || 0 })
+                }
+                size="sm"
+                endContent={
+                  <span className="text-[10px] text-zinc-400">mm</span>
+                }
+                description="El cruce se corta a sí mismo"
+                classNames={IW}
+              />
+              <Input
+                label="Desc. de vidrio"
+                type="number"
+                value={String(dc?.descuento_de_vidrio ?? 0)}
+                onValueChange={(v: string) =>
+                  updDC({ descuento_de_vidrio: parseFloat(v) || 0 })
+                }
+                size="sm"
+                endContent={
+                  <span className="text-[10px] text-zinc-400">mm</span>
+                }
+                description="Rebaje sobre el vidrio"
+                classNames={IW}
+              />
+            </div>
+          </FieldGroup>
+          <FieldGroup title="Accesorios del cruce">
+            <DespieceAccesoriosPanel nivel="cruces" idParent={cruces.id} />
+          </FieldGroup>
+        </>
+      )}
     </div>
   );
 }
@@ -900,250 +1057,286 @@ function VidRepartidoForm({
   vr,
   onUpdate,
   onDelete,
-  getDespieceVR,
-  addDespieceVR,
-  updateDespieceVR,
-  deleteDespieceVR,
 }: {
   vr: VidRepartido;
   onUpdate: (d: Partial<VidRepartido>) => void;
   onDelete: () => void;
-  getDespieceVR: (id: number) => DespieceVR | undefined;
-  addDespieceVR: (d: Omit<DespieceVR, "id">) => DespieceVR;
-  updateDespieceVR: (id: number, d: Partial<DespieceVR>) => void;
-  deleteDespieceVR: (id: number) => void;
+  // getDespieceVR: (id: number) => DespieceVR | undefined;
+  // addDespieceVR: (d: Omit<DespieceVR, "id">) => DespieceVR;
+  // updateDespieceVR: (id: number, d: Partial<DespieceVR>) => void;
+  // deleteDespieceVR: (id: number) => void;
 }) {
-  const { perfiles } = useCatalogosStore();
-  const dv = getDespieceVR(vr.id);
+  // --- HOOKS PERFILES--
+  const {
+    data: perfiles = [],
+    isLoading: isLoadingPerfiles,
+    isError: isErrorPerfiles,
+  } = usePerfiles();
+
+  // --- HOOKS DESPIECEVR --
+  const {
+    data: dv,
+    isLoading: isLoadingDespVR,
+    isError: isErrorDespVR,
+  } = useDespieceVRByVR(vr.id);
+  const { mutateAsync: addDespieceVR } = useAddDespieceVR();
+  const { mutateAsync: updateDespieceVR } = useUpdateDespieceVR();
   const ANGULOS = ["45", "90", "0", ""];
 
-  function updDV(data: Partial<DespieceVR>) {
-    const d =
-      dv ||
-      addDespieceVR({
-        idVR: vr.id,
-        perfilDeContorno: perfiles[0]?.nroPerfil ?? "",
-        formulaCantidadContornoAncho: "hojas*2",
-        formulaCantidadContornoAlto: "hojas*2",
-        formulaContornoAncho: "ancho - 20",
-        formulaContornoAlto: "alto - 20",
+  const isLoading = isLoadingPerfiles || isLoadingDespVR;
+  const isError = isErrorPerfiles || isErrorDespVR;
+
+  async function updDV(data: Partial<DespieceVR>) {
+    let d = dv;
+
+    if (!d)
+      d = await addDespieceVR({
+        id_vr: vr.id,
+        perfil_de_contorno: perfiles[0]?.nro_perfil ?? "",
+        formula_cantidad_contorno_ancho: "hojas*2",
+        formula_cantidad_contorno_alto: "hojas*2",
+        formula_contorno_ancho: "ancho - 20",
+        formula_contorno_alto: "alto - 20",
         angulo: "45",
-        perfilDeCruce: perfiles[0]?.nroPerfil ?? "",
-        formulaCruceAncho: "ancho - 20",
-        formulaCruceAlto: "alto - 20",
-        descuentoDeVidrio: 0,
-        descuentoDeSi: 0,
-        anguloCruce: "45",
-        formulaCantidadInteriores: "(crucesH+1)*(crucesV+1)",
-        formulaAnchoInterior: "(ancho-10)/(crucesV+1)",
-        formulaAltoInterior: "(alto-10)/(crucesH+1)",
-        descuentoIzquierda: 5,
-        descuentoDerecha: 5,
-        descuentoAbajo: 5,
-        descuentoArriba: 5,
+        perfil_de_cruce: perfiles[0]?.nro_perfil ?? "",
+        formula_cruce_ancho: "ancho - 20",
+        formula_cruce_alto: "alto - 20",
+        descuento_de_vidrio: 0,
+        descuento_de_si_mismo: 0,
+        angulo_cruce: "45",
+        formula_cantidad_interiores: "(crucesH+1)*(crucesV+1)",
+        formula_ancho_interior: "(ancho-10)/(crucesV+1)",
+        formula_alto_interior: "(alto-10)/(crucesH+1)",
+        descuento_izquierda: 5,
+        descuento_derecha: 5,
+        descuento_abajo: 5,
+        descuento_arriba: 5,
       });
-    updateDespieceVR(d.id, data);
+
+    updateDespieceVR({ id: d.id, data: data });
   }
 
   return (
     <div className="space-y-4">
-      <FormHeader
-        name={vr.descripcion}
-        pred={vr.predeterminado}
-        onName={(v) => onUpdate({ descripcion: v })}
-        onPred={(v) => onUpdate({ predeterminado: v })}
-        onDelete={onDelete}
-      />
-
-      <FieldGroup title="Perfil de contorno">
-        <div className="flex gap-2 mb-2">
-          <select
-            value={dv?.perfilDeContorno ?? ""}
-            onChange={(e) => updDV({ perfilDeContorno: e.target.value })}
-            className="flex-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400"
-          >
-            {perfiles.map((p) => (
-              <option key={p.nroPerfil} value={p.nroPerfil}>
-                {p.nroPerfil} — {p.descri}
-              </option>
-            ))}
-          </select>
-          <select
-            value={dv?.angulo ?? "45"}
-            onChange={(e) => updDV({ angulo: e.target.value })}
-            className="w-16 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-400"
-          >
-            {ANGULOS.map((a) => (
-              <option key={a} value={a}>
-                {a || "—"}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <FormulaInput
-            label="Cant. horiz."
-            value={dv?.formulaCantidadContornoAncho ?? ""}
-            onChange={(v) => updDV({ formulaCantidadContornoAncho: v })}
-            description="ej: hojas*2"
-            className={IW_F}
+      {isError && (
+        <Alert
+          status="error"
+          icon={<X className="w-4 h-4" />}
+          classNames={{
+            base: "mb-3 rounded-lg border border-transparent shadow-sm",
+            title: "text-sm font-medium",
+          }}
+        >
+          Error al obtener datos del vidrio repartido.
+        </Alert>
+      )}
+      {isLoading ? (
+        <VidrioRepartidoFormSkeleton />
+      ) : (
+        <>
+          {" "}
+          <FormHeader
+            name={vr.descripcion}
+            pred={vr.predeterminado}
+            onName={(v) => onUpdate({ descripcion: v })}
+            onPred={(v) => onUpdate({ predeterminado: v })}
+            onDelete={onDelete}
           />
-          <FormulaInput
-            label="Cant. vert."
-            value={dv?.formulaCantidadContornoAlto ?? ""}
-            onChange={(v) => updDV({ formulaCantidadContornoAlto: v })}
-            description="ej: hojas*2"
-            className={IW_F}
-          />
-          <FormulaInput
-            label="Largo horiz."
-            value={dv?.formulaContornoAncho ?? ""}
-            onChange={(v) => updDV({ formulaContornoAncho: v })}
-            description="ej: ancho - 20"
-            className={IW_F}
-          />
-          <FormulaInput
-            label="Largo vert."
-            value={dv?.formulaContornoAlto ?? ""}
-            onChange={(v) => updDV({ formulaContornoAlto: v })}
-            description="ej: alto - 20"
-            className={IW_F}
-          />
-        </div>
-      </FieldGroup>
-
-      <FieldGroup title="Perfil de cruceta">
-        <div className="flex gap-2 mb-2">
-          <select
-            value={dv?.perfilDeCruce ?? ""}
-            onChange={(e) => updDV({ perfilDeCruce: e.target.value })}
-            className="flex-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400"
-          >
-            {perfiles.map((p) => (
-              <option key={p.nroPerfil} value={p.nroPerfil}>
-                {p.nroPerfil} — {p.descri}
-              </option>
-            ))}
-          </select>
-          <select
-            value={dv?.anguloCruce ?? "45"}
-            onChange={(e) => updDV({ anguloCruce: e.target.value })}
-            className="w-16 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-400"
-          >
-            {ANGULOS.map((a) => (
-              <option key={a} value={a}>
-                {a || "—"}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <FormulaInput
-            label="Largo horiz."
-            value={dv?.formulaCruceAncho ?? ""}
-            onChange={(v) => updDV({ formulaCruceAncho: v })}
-            description="ej: ancho - 20"
-            className={IW_F}
-          />
-          <FormulaInput
-            label="Largo vert."
-            value={dv?.formulaCruceAlto ?? ""}
-            onChange={(v) => updDV({ formulaCruceAlto: v })}
-            description="ej: alto - 20"
-            className={IW_F}
-          />
-          <Input
-            label="Desc. de vidrio"
-            type="number"
-            value={String(dv?.descuentoDeVidrio ?? 0)}
-            onValueChange={(v: string) =>
-              updDV({ descuentoDeVidrio: parseFloat(v) || 0 })
-            }
-            size="sm"
-            endContent={<span className="text-[10px] text-zinc-400">mm</span>}
-            classNames={IW}
-          />
-          <Input
-            label="Desc. de sí mismo"
-            type="number"
-            value={String(dv?.descuentoDeSi ?? 0)}
-            onValueChange={(v: string) =>
-              updDV({ descuentoDeSi: parseFloat(v) || 0 })
-            }
-            size="sm"
-            endContent={<span className="text-[10px] text-zinc-400">mm</span>}
-            classNames={IW}
-          />
-        </div>
-      </FieldGroup>
-
-      <FieldGroup title="Interiores del vidrio repartido">
-        <div className="grid grid-cols-3 gap-3 mb-3">
-          <FormulaInput
-            label="Cantidad"
-            value={dv?.formulaCantidadInteriores ?? ""}
-            onChange={(v) => updDV({ formulaCantidadInteriores: v })}
-            description="ej: (crucesH+1)*(crucesV+1)"
-            className={IW_F}
-          />
-          <FormulaInput
-            label="Ancho"
-            value={dv?.formulaAnchoInterior ?? ""}
-            onChange={(v) => updDV({ formulaAnchoInterior: v })}
-            description="ej: (ancho-10)/(crucesV+1)"
-            className={IW_F}
-          />
-          <FormulaInput
-            label="Alto"
-            value={dv?.formulaAltoInterior ?? ""}
-            onChange={(v) => updDV({ formulaAltoInterior: v })}
-            description="ej: (alto-10)/(crucesH+1)"
-            className={IW_F}
-          />
-        </div>
-        {/* Diagrama de descuentos del VR */}
-        <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-4">
-          Descuentos de borde
-        </p>
-        <div className="flex justify-center">
-          <div className="relative w-56 h-36 mb-5">
-            <div className="absolute inset-0 rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-600" />
-            <div className="absolute inset-7 rounded-lg border-2 border-teal-300 dark:border-teal-600 bg-teal-50 dark:bg-teal-900/10 flex items-center justify-center">
-              <span className="text-[10px] text-teal-400 font-medium">
-                vidrio
-              </span>
-            </div>
-            {(
-              [
-                ["descuentoArriba", "top", "Arr."],
-                ["descuentoAbajo", "bottom", "Abj."],
-                ["descuentoIzquierda", "left", "Izq."],
-                ["descuentoDerecha", "right", "Der."],
-              ] as [keyof DespieceVR, string, string][]
-            ).map(([field, side, label]) => (
-              <div
-                key={field}
-                className={clsx("absolute", {
-                  "top-0 left-1/2 -translate-x-1/2 -translate-y-1/2":
-                    side === "top",
-                  "bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2":
-                    side === "bottom",
-                  "left-0 top-1/2 -translate-x-1/2 -translate-y-1/2":
-                    side === "left",
-                  "right-0 top-1/2 translate-x-1/2 -translate-y-1/2":
-                    side === "right",
-                })}
+          <FieldGroup title="Perfil de contorno">
+            <div className="flex gap-2 mb-2">
+              <select
+                value={dv?.perfil_de_contorno ?? ""}
+                onChange={(e) => updDV({ perfil_de_contorno: e.target.value })}
+                className="flex-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400"
               >
-                <DescInput
-                  value={(dv?.[field] as number) ?? 0}
-                  label={label}
-                  onChange={(v) => updDV({ [field]: v } as Partial<DespieceVR>)}
-                />
+                {perfiles.map((p) => (
+                  <option key={p.nro_perfil} value={p.nro_perfil}>
+                    {p.nro_perfil} — {p.descri}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={dv?.angulo ?? "45"}
+                onChange={(e) => updDV({ angulo: e.target.value })}
+                className="w-16 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-400"
+              >
+                {ANGULOS.map((a) => (
+                  <option key={a} value={a}>
+                    {a || "—"}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <FormulaInput
+                label="Cant. horiz."
+                value={dv?.formula_cantidad_contorno_ancho ?? ""}
+                onChange={(v) => updDV({ formula_cantidad_contorno_ancho: v })}
+                description="ej: hojas*2"
+                className={IW_F}
+              />
+              <FormulaInput
+                label="Cant. vert."
+                value={dv?.formula_cantidad_contorno_alto ?? ""}
+                onChange={(v) => updDV({ formula_cantidad_contorno_alto: v })}
+                description="ej: hojas*2"
+                className={IW_F}
+              />
+              <FormulaInput
+                label="Largo horiz."
+                value={dv?.formula_contorno_ancho ?? ""}
+                onChange={(v) => updDV({ formula_contorno_ancho: v })}
+                description="ej: ancho - 20"
+                className={IW_F}
+              />
+              <FormulaInput
+                label="Largo vert."
+                value={dv?.formula_contorno_alto ?? ""}
+                onChange={(v) => updDV({ formula_contorno_alto: v })}
+                description="ej: alto - 20"
+                className={IW_F}
+              />
+            </div>
+          </FieldGroup>
+          <FieldGroup title="Perfil de cruceta">
+            <div className="flex gap-2 mb-2">
+              <select
+                value={dv?.perfil_de_cruce ?? ""}
+                onChange={(e) => updDV({ perfil_de_cruce: e.target.value })}
+                className="flex-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400"
+              >
+                {perfiles.map((p) => (
+                  <option key={p.nro_perfil} value={p.nro_perfil}>
+                    {p.nro_perfil} — {p.descri}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={dv?.angulo_cruce ?? "45"}
+                onChange={(e) => updDV({ angulo_cruce: e.target.value })}
+                className="w-16 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-400"
+              >
+                {ANGULOS.map((a) => (
+                  <option key={a} value={a}>
+                    {a || "—"}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <FormulaInput
+                label="Largo horiz."
+                value={dv?.formula_cruce_ancho ?? ""}
+                onChange={(v) => updDV({ formula_cruce_ancho: v })}
+                description="ej: ancho - 20"
+                className={IW_F}
+              />
+              <FormulaInput
+                label="Largo vert."
+                value={dv?.formula_cruce_alto ?? ""}
+                onChange={(v) => updDV({ formula_cruce_alto: v })}
+                description="ej: alto - 20"
+                className={IW_F}
+              />
+              <Input
+                label="Desc. de vidrio"
+                type="number"
+                value={String(dv?.descuento_de_vidrio ?? 0)}
+                onValueChange={(v: string) =>
+                  updDV({ descuento_de_vidrio: parseFloat(v) || 0 })
+                }
+                size="sm"
+                endContent={
+                  <span className="text-[10px] text-zinc-400">mm</span>
+                }
+                classNames={IW}
+              />
+              <Input
+                label="Desc. de sí mismo"
+                type="number"
+                value={String(dv?.descuento_de_si_mismo ?? 0)}
+                onValueChange={(v: string) =>
+                  updDV({ descuento_de_si_mismo: parseFloat(v) || 0 })
+                }
+                size="sm"
+                endContent={
+                  <span className="text-[10px] text-zinc-400">mm</span>
+                }
+                classNames={IW}
+              />
+            </div>
+          </FieldGroup>
+          <FieldGroup title="Interiores del vidrio repartido">
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <FormulaInput
+                label="Cantidad"
+                value={dv?.formula_cantidad_interiores ?? ""}
+                onChange={(v) => updDV({ formula_cantidad_interiores: v })}
+                description="ej: (crucesH+1)*(crucesV+1)"
+                className={IW_F}
+              />
+              <FormulaInput
+                label="Ancho"
+                value={dv?.formula_ancho_interior ?? ""}
+                onChange={(v) => updDV({ formula_ancho_interior: v })}
+                description="ej: (ancho-10)/(crucesV+1)"
+                className={IW_F}
+              />
+              <FormulaInput
+                label="Alto"
+                value={dv?.formula_alto_interior ?? ""}
+                onChange={(v) => updDV({ formula_alto_interior: v })}
+                description="ej: (alto-10)/(crucesH+1)"
+                className={IW_F}
+              />
+            </div>
+            {/* Diagrama de descuentos del VR */}
+            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-4">
+              Descuentos de borde
+            </p>
+            <div className="flex justify-center">
+              <div className="relative w-56 h-36 mb-5">
+                <div className="absolute inset-0 rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-600" />
+                <div className="absolute inset-7 rounded-lg border-2 border-teal-300 dark:border-teal-600 bg-teal-50 dark:bg-teal-900/10 flex items-center justify-center">
+                  <span className="text-[10px] text-teal-400 font-medium">
+                    vidrio
+                  </span>
+                </div>
+                {(
+                  [
+                    ["descuento_arriba", "top", "Arr."],
+                    ["descuento_abajo", "bottom", "Abj."],
+                    ["descuento_izquierda", "left", "Izq."],
+                    ["descuento_derecha", "right", "Der."],
+                  ] as [keyof DespieceVR, string, string][]
+                ).map(([field, side, label]) => (
+                  <div
+                    key={field}
+                    className={clsx("absolute", {
+                      "top-0 left-1/2 -translate-x-1/2 -translate-y-1/2":
+                        side === "top",
+                      "bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2":
+                        side === "bottom",
+                      "left-0 top-1/2 -translate-x-1/2 -translate-y-1/2":
+                        side === "left",
+                      "right-0 top-1/2 translate-x-1/2 -translate-y-1/2":
+                        side === "right",
+                    })}
+                  >
+                    <DescInput
+                      value={(dv?.[field] as number) ?? 0}
+                      label={label}
+                      onChange={(v) =>
+                        updDV({ [field]: v } as Partial<DespieceVR>)
+                      }
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      </FieldGroup>
+            </div>
+          </FieldGroup>
+        </>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { Tratamiento } from "@/types";
+import { Tratamiento } from "@/types/index";
 import { SQUEMA } from "./squemaCatalogo";
 
 const TABLE = "tratamientos";

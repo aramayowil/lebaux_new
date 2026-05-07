@@ -1,21 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { TipoInterior } from "@/types/index";
-import { SQUEMA } from "./squemaCatalogo";
+import { Tipos } from "@/types";
 
-const TABLE = "tipo_interiores";
-
-// --- 1. LEER (read) ---
-export function useTiposInteriores() {
+const TABLE = "tipos";
+const SCHEMA = "obras";
+// --- 1. LEER ---
+export function useTipos() {
   return useQuery({
     queryKey: [TABLE],
     queryFn: async () => {
       const { data, error } = await supabase
-        .schema(SQUEMA)
+        .schema(SCHEMA)
         .from(TABLE)
         .select("*");
+
       if (error) throw error;
-      return data as TipoInterior[];
+      return data as Tipos[];
     },
   });
 }

@@ -1,44 +1,49 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { Accesorio } from "@/types/index";
-import { SQUEMA } from "./squemaCatalogo";
+import { Marco } from "@/types";
+import { SQUEMA } from "./squemaProductos";
 
-const TABLE = "accesorios";
+const TABLE = "marco";
 
 // --- 1. LEER ---
-export function useAccesorios() {
+export function useMarcos() {
   return useQuery({
     queryKey: [TABLE],
     queryFn: async () => {
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
-        .select("*")
-        .order("id", { ascending: true });
+        .select("*");
 
       if (error) throw error;
-      return data as Accesorio[];
+      return data as Marco[];
     },
   });
 }
 
 // --- 2. EDITAR / ACTUALIZAR ---
-export function useUpdateAccesorio() {
+
+export function useUpdateMarco() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (updates: Accesorio) => {
-      // Usamos cod_parte para identificar la fila y actualizar el resto
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: number;
+      payload: Partial<Omit<Marco, "id">>; // Evita que se envíe el ID en el body por error
+    }) => {
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
-        .update(updates)
-        .eq("id", updates.id)
+        .update(payload)
+        .eq("id", id)
         .select()
         .single();
 
       if (error) throw error;
-      return data as Accesorio;
+      return data as Marco;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [TABLE] });
@@ -47,7 +52,7 @@ export function useUpdateAccesorio() {
 }
 
 // --- 3. BORRAR ---
-export function useDeleteAccesorio() {
+export function useDeleteMarco() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -68,23 +73,39 @@ export function useDeleteAccesorio() {
 }
 
 // --- 4. CREAR ---
-export function useCreateAccesorio() {
+export function useCreateMarco() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (newAccesorio: Omit<Accesorio, "id">) => {
+    mutationFn: async (newMarco: Omit<Marco, "id">) => {
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
-        .insert([newAccesorio])
+        .insert([newMarco])
         .select()
         .single();
 
       if (error) throw error;
-      return data as Accesorio;
+      return data as Marco;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [TABLE] });
+    },
+  });
+}
+
+export function useMarcosByProducto(id_producto: number) {
+  return useQuery({
+    queryKey: [TABLE, "producto", id_producto],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .schema(SQUEMA)
+        .from(TABLE)
+        .select("*")
+        .eq("id_producto", id_producto);
+
+      if (error) throw error;
+      return data as Marco[];
     },
   });
 }

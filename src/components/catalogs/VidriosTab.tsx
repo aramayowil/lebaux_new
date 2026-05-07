@@ -28,7 +28,7 @@ import {
 } from "@/hooks/catalogo/useVidrios";
 import { useMonedas } from "@/hooks/catalogo/useMonedas";
 import { useTiposInteriores } from "@/hooks/catalogo/useTiposInteriores";
-import { CapitalizeText } from "@/utils/capitalizeText";
+import { capitalizeFirstLetter } from "@/utils/capitalize";
 
 // Helpers para conversión de colores (Access BGR <-> CSS Hex)
 function rgbNumToHex(n: number): string {
@@ -168,7 +168,7 @@ export default function VidriosTab() {
             <SelectItem key="all">Todos los tipos</SelectItem>
             {tiposInterior.map((t) => (
               <SelectItem key={String(t.id)}>
-                {CapitalizeText(t.descripcion)}
+                {capitalizeFirstLetter(t.descripcion)}
               </SelectItem>
             ))}
           </Select>
@@ -423,7 +423,7 @@ export default function VidriosTab() {
                   >
                     {tiposInterior.map((t) => (
                       <SelectItem key={String(t.id)}>
-                        {CapitalizeText(t.descripcion)}
+                        {capitalizeFirstLetter(t.descripcion)}
                       </SelectItem>
                     ))}
                   </Select>

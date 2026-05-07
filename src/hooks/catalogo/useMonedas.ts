@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { Moneda } from "@/types";
+import { Moneda } from "@/types/index";
 import { SQUEMA } from "./squemaCatalogo";
 
 const TABLE = "moneda";

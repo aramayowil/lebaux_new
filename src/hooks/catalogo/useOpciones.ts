@@ -1,33 +1,32 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { Accesorio } from "@/types/index";
+import { Opciones } from "@/types/index";
 import { SQUEMA } from "./squemaCatalogo";
 
-const TABLE = "accesorios";
+const TABLE = "opciones";
 
 // --- 1. LEER ---
-export function useAccesorios() {
+export function useOpciones() {
   return useQuery({
     queryKey: [TABLE],
     queryFn: async () => {
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
-        .select("*")
-        .order("id", { ascending: true });
+        .select("*");
 
       if (error) throw error;
-      return data as Accesorio[];
+      return data as Opciones[];
     },
   });
 }
 
 // --- 2. EDITAR / ACTUALIZAR ---
-export function useUpdateAccesorio() {
+export function useUpdateOpciones() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (updates: Accesorio) => {
+    mutationFn: async (updates: Opciones) => {
       // Usamos cod_parte para identificar la fila y actualizar el resto
       const { data, error } = await supabase
         .schema(SQUEMA)
@@ -38,7 +37,7 @@ export function useUpdateAccesorio() {
         .single();
 
       if (error) throw error;
-      return data as Accesorio;
+      return data as Opciones;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [TABLE] });
@@ -47,7 +46,7 @@ export function useUpdateAccesorio() {
 }
 
 // --- 3. BORRAR ---
-export function useDeleteAccesorio() {
+export function useDeleteOpciones() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -68,11 +67,11 @@ export function useDeleteAccesorio() {
 }
 
 // --- 4. CREAR ---
-export function useCreateAccesorio() {
+export function useCreateOpciones() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (newAccesorio: Omit<Accesorio, "id">) => {
+    mutationFn: async (newAccesorio: Omit<Opciones, "id">) => {
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
@@ -81,7 +80,7 @@ export function useCreateAccesorio() {
         .single();
 
       if (error) throw error;
-      return data as Accesorio;
+      return data as Opciones;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [TABLE] });
