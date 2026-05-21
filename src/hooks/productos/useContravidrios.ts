@@ -2,24 +2,29 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { Contravidrio } from "@/types";
 
-const TABLE = "contravidrios";
-const SQUEMA = "productos";
+const TABLE = "contravidrio";
+const SQUEMA = "opendata";
 
 export function useContravidriosByInterior(id_interior: number | undefined) {
   return useQuery({
     queryKey: [TABLE, "contravidrios", id_interior],
     queryFn: async () => {
-      if (!id_interior) return [];
+      if (typeof id_interior !== "number" || id_interior <= 0) return [];
+
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
         .select("*")
-        .eq("id_interior", id_interior);
+        .eq("id_interior", id_interior)
+        .order("id", { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`[Error ${TABLE}]:`, error.message);
+        throw error;
+      }
       return data as Contravidrio[];
     },
-    enabled: !!id_interior,
+    enabled: !!id_interior && id_interior > 0,
   });
 }
 
@@ -39,11 +44,9 @@ export function useAddContravidrio() {
       return data as Contravidrio;
     },
     onSuccess: (newItem) => {
-      // Invalidamos la lista específica de este interior
       queryClient.invalidateQueries({
         queryKey: [TABLE, "contravidrios", newItem.id_interior],
       });
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
     },
   });
 }
@@ -74,7 +77,6 @@ export function useUpdateContravidrio() {
       queryClient.invalidateQueries({
         queryKey: [TABLE, "contravidrios", updatedItem.id_interior],
       });
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
     },
   });
 }
@@ -83,7 +85,13 @@ export function useDeleteContravidrio() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({
+      id,
+      id_interior,
+    }: {
+      id: number;
+      id_interior: number;
+    }) => {
       const { error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
@@ -91,11 +99,12 @@ export function useDeleteContravidrio() {
         .eq("id", id);
 
       if (error) throw error;
-      return id;
+      return { id_interior };
     },
-    onSuccess: () => {
-      // Al eliminar, invalidamos toda la tabla para asegurar que las listas se refresquen
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({
+        queryKey: [TABLE, "contravidrios", result.id_interior],
+      });
     },
   });
 }

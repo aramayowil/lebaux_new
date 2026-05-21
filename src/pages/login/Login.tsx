@@ -2,16 +2,17 @@ import { Button, Image, Input } from "@heroui/react";
 import { useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabaseClient"; // Asegúrate de tener tu cliente de supabase aquí
+import { useAuthStore } from "@/store/authStore"; // Importamos tu store de autenticación
 import photo_login from "@/assets/images/fabrica/fabrica_1.webp";
 import NavBar from "@/components/login/NavBar";
 
 const Login = () => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
 
-  // Estilo unificado para los Inputs (Dark & Gold)
+  // Extraemos las acciones y estados reactivos desde tu Zustand Store
+  const { login, isCheckingAuth } = useAuthStore();
+
   const styleInput = {
     label: "text-zinc-400 font-medium",
     inputWrapper: [
@@ -22,38 +23,35 @@ const Login = () => {
     input: "text-white placeholder:text-zinc-500",
   };
 
-  const onSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const onSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!formData.email || !formData.password) {
       toast.error("Por favor, completa todos los campos.");
       return;
     }
 
-    setIsLoading(true);
-
-    const { data, error } = await supabase.auth.signInWithPassword({
+    // Ejecutamos el login centralizado del store
+    const resultado = await login({
       email: formData.email,
       password: formData.password,
     });
 
-    localStorage.setItem("token", JSON.stringify(data));
-
-    if (error) {
-      toast.error("Credenciales inválidas", { theme: "dark" });
-      setIsLoading(false);
-      console.log(error.code);
-      console.log(error.message);
+    if (resultado.success) {
+      toast.success("¡Bienvenido al sistema!", { theme: "dark" });
+      navigate("/inicio"); // O la ruta que maneje tu ProtectedRoute
     } else {
-      navigate("/inicio");
+      // Traducimos o mostramos el error devuelto por Supabase
+      toast.error(resultado.error || "Credenciales inválidas", {
+        theme: "dark",
+      });
     }
   };
 
   return (
     <div className="min-h-screen bg-black flex flex-col font-sans selection:bg-yellow-500/30">
-      {/* Navbar Minimalista */}
       <NavBar />
       <div className="flex-1 flex overflow-hidden">
-        {/* SECCIÓN IZQUIERDA: Imagen con Gradiente Técnico */}
+        {/* SECCIÓN IZQUIERDA: Imagen */}
         <div className="hidden lg:flex w-1/2 relative">
           <Image
             src={photo_login}
@@ -127,7 +125,7 @@ const Login = () => {
               </div>
 
               <Button
-                isLoading={isLoading}
+                isLoading={isCheckingAuth} // Usamos el estado de carga global de Zustand
                 color="warning"
                 type="submit"
                 className="w-full h-14 text-lg font-bold bg-yellow-600 text-black shadow-lg shadow-yellow-900/20"

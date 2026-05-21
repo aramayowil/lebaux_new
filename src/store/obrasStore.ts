@@ -13,13 +13,13 @@ export interface ModuloConfig {
   fila: number;
   col: number;
   tipo: TipoModulo;
-  idVidrio: string | null;
-  idRevestimiento: string | null; // vidrio secundario / revestimiento por paño
-  idContravidrio: number | null;
-  idContravidrioExt: number | null;
-  idProducto: number | null;
-  idMarco: number | null;
-  idInterior: number | null;
+  id_vidrio: string | null;
+  id_revestimiento: string | null; // vidrio secundario / revestimiento por paño
+  id_contravidrio: number | null;
+  id_contravidrio_ext: number | null;
+  id_producto: number | null;
+  id_marco: number | null;
+  id_interior: number | null;
   notas: string;
 }
 
@@ -28,13 +28,13 @@ export function emptyModulo(fila: number, col: number): ModuloConfig {
     fila,
     col,
     tipo: "vidrio",
-    idVidrio: null,
-    idRevestimiento: null,
-    idContravidrio: null,
-    idContravidrioExt: null,
-    idProducto: null,
-    idMarco: null,
-    idInterior: null,
+    id_vidrio: null,
+    id_revestimiento: null,
+    id_contravidrio: null,
+    id_contravidrio_ext: null,
+    id_producto: null,
+    id_marco: null,
+    id_interior: null,
     notas: "",
   };
 }
@@ -42,56 +42,57 @@ export function emptyModulo(fila: number, col: number): ModuloConfig {
 // ─── Configuración completa de una tipología ─────────────────────────────────
 
 export interface TipologiaConfig {
-  idTipologia: number;
+  id?: number;
+  id_tipologia: number;
   // Producto
-  idProducto: number | null;
-  idMarco: number | null;
-  idHoja: number | null;
-  idInterior: number | null;
-  idContravidrio: number | null;
-  idContravidrioExt: number | null;
-  idMosquitero: number | null;
-  idVidRepartido: number | null;
+  id_producto: number | null;
+  id_marco: number | null;
+  id_hoja: number | null;
+  id_interior: number | null;
+  id_contravidrio: number | null;
+  id_contravidrio_ext: number | null;
+  id_mosquitero: number | null;
+  id_vid_repartido: number | null;
   // Acabado
-  idTratamiento: number;
+  id_tratamiento: number;
   // Cruces
-  tipoCruce: 0 | 1 | 2; // 0=sin, 1=centrados, 2=variables
-  crucesH: number;
-  crucesV: number;
-  posH: number[]; // mm desde abajo (tipoCruce===2)
-  posV: number[]; // mm desde izquierda (tipoCruce===2)
+  tipo_cruce: 0 | 1 | 2; // 0=sin, 1=centrados, 2=variables
+  cruces_h: number;
+  cruces_v: number;
+  pos_h: number[]; // mm desde abajo (tipoCruce===2)
+  pos_v: number[]; // mm desde izquierda (tipoCruce===2)
   modulosConfig: ModuloConfig[];
   // Vidrio principal + revestimiento
-  idVidrio: string | null;
-  idRevestimiento: string | null; // revestimiento / material secundario global
+  id_vidrio: string | null;
+  id_revestimiento: string | null; // revestimiento / material secundario global
   // Opciones
-  conPremarco: boolean;
-  conTapajuntas: boolean;
+  con_premarco: boolean;
+  con_tapajuntas: boolean;
   notas: string;
 }
 
 export function emptyConfig(idTipologia: number): TipologiaConfig {
   return {
-    idTipologia,
-    idProducto: null,
-    idMarco: null,
-    idHoja: null,
-    idInterior: null,
-    idContravidrio: null,
-    idContravidrioExt: null,
-    idMosquitero: null,
-    idVidRepartido: null,
-    idTratamiento: 1,
-    tipoCruce: 0,
-    crucesH: 0,
-    crucesV: 0,
-    posH: [],
-    posV: [],
+    id_tipologia: idTipologia,
+    id_producto: null,
+    id_marco: null,
+    id_hoja: null,
+    id_interior: null,
+    id_contravidrio: null,
+    id_contravidrio_ext: null,
+    id_mosquitero: null,
+    id_vid_repartido: null,
+    id_tratamiento: 1,
+    tipo_cruce: 0,
+    cruces_h: 0,
+    cruces_v: 0,
+    pos_h: [],
+    pos_v: [],
     modulosConfig: [],
-    idVidrio: null,
-    idRevestimiento: null,
-    conPremarco: false,
-    conTapajuntas: false,
+    id_vidrio: null,
+    id_revestimiento: null,
+    con_premarco: false,
+    con_tapajuntas: false,
     notas: "",
   };
 }
@@ -188,13 +189,13 @@ export const useObrasStore = create<ObrasState>()(
       deleteObra: (id) =>
         set((s) => {
           const tipoIds = s.tipologias
-            .filter((t) => t.idObra === id)
+            .filter((t) => t.id_obra === id)
             .map((t) => t.id);
           return {
             obras: s.obras.filter((x) => x.id !== id),
-            tipologias: s.tipologias.filter((x) => x.idObra !== id),
-            configs: s.configs.filter((x) => !tipoIds.includes(x.idTipologia)),
-            despieces: s.despieces.filter((x) => x.idObra !== id),
+            tipologias: s.tipologias.filter((x) => x.id_obra !== id),
+            configs: s.configs.filter((x) => !tipoIds.includes(x.id_tipologia)),
+            despieces: s.despieces.filter((x) => x.id_obra !== id),
           };
         }),
       getObra: (id) => get().obras.find((x) => x.id === id),
@@ -214,8 +215,8 @@ export const useObrasStore = create<ObrasState>()(
       deleteTipologia: (id) =>
         set((s) => ({
           tipologias: s.tipologias.filter((x) => x.id !== id),
-          configs: s.configs.filter((x) => x.idTipologia !== id),
-          despieces: s.despieces.filter((x) => x.idTipologia !== id),
+          configs: s.configs.filter((x) => x.id_tipologia !== id),
+          despieces: s.despieces.filter((x) => x.id_tipologia !== id),
         })),
       duplicateTipologia: (id) => {
         const original = get().tipologias.find((x) => x.id === id);
@@ -225,23 +226,23 @@ export const useObrasStore = create<ObrasState>()(
           descripcion: `${original.descripcion} (copia)`,
         });
         const cfg = get().getConfig(id);
-        get().setConfig({ ...cfg, idTipologia: nueva.id });
+        get().setConfig({ ...cfg, id_tipologia: nueva.id });
         return nueva;
       },
       getTipologiasByObra: (idObra) =>
-        get().tipologias.filter((x) => x.idObra === idObra),
+        get().tipologias.filter((x) => x.id_obra === idObra),
 
       // ── Config ───────────────────────────────────────────────────────────────
       getConfig: (idTipologia) =>
-        get().configs.find((x) => x.idTipologia === idTipologia) ??
+        get().configs.find((x) => x.id_tipologia === idTipologia) ??
         emptyConfig(idTipologia),
 
       setConfig: (config) =>
         set((s) => ({
-          configs: s.configs.some((x) => x.idTipologia === config.idTipologia)
+          configs: s.configs.some((x) => x.id_tipologia === config.id_tipologia)
             ? s.configs.map((x) =>
-                x.idTipologia === config.idTipologia ? config : x,
-              )
+              x.id_tipologia === config.id_tipologia ? config : x,
+            )
             : [...s.configs, config],
         })),
 
@@ -265,8 +266,8 @@ export const useObrasStore = create<ObrasState>()(
         );
         const updated = existing
           ? cfg.modulosConfig.map((m) =>
-              m.fila === fila && m.col === col ? { ...m, ...data } : m,
-            )
+            m.fila === fila && m.col === col ? { ...m, ...data } : m,
+          )
           : [...cfg.modulosConfig, { ...emptyModulo(fila, col), ...data }];
         get().setConfig({ ...cfg, modulosConfig: updated });
       },
@@ -276,13 +277,13 @@ export const useObrasStore = create<ObrasState>()(
         set((s) => ({
           despieces: [
             ...s.despieces.filter(
-              (x) => !(x.idObra === idObra && x.idTipologia === idTipologia),
+              (x) => !(x.id_obra === idObra && x.id_tipologia === idTipologia),
             ),
             ...items,
           ],
         })),
       getDespieces: (idObra) =>
-        get().despieces.filter((x) => x.idObra === idObra),
+        get().despieces.filter((x) => x.id_obra === idObra),
     }),
     { name: "open2d2-obras" },
   ),

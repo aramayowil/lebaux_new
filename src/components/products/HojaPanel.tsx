@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Settings2,
   Package2,
-  AlertCircle,
 } from "lucide-react";
 import { useProductosStore } from "@/store/productosStore";
 import DespiecePerfilesPanel from "./DespiecePerfilesPanel";
@@ -18,6 +17,7 @@ import { useMarcos } from "@/hooks/productos/useMarco";
 import { useProductos } from "@/hooks/productos/useProducto";
 import { useUpdateHoja } from "@/hooks/productos/useHojas";
 import HojaPanelSkeleton from "./skeletons/HojaPanelSkeleton";
+import { Alert } from "@heroui/react";
 
 interface Props {
   hoja: Hoja;
@@ -49,6 +49,18 @@ export default function HojaPanel({
   const isLoading = isLoadingProductos || isLoadingMarcos;
   const isError = errorProductos || errorMarcos;
 
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center w-full">
+        <Alert
+          color="danger"
+          title="Error al cargar la hoja"
+          description="Por favor, recarga la página e intenta nuevamente. Si el error persiste, contactate con soporte técnico."
+        />
+      </div>
+    );
+  }
+
   const [tab, setTab] = useState<"perfiles" | "accesorios">("perfiles");
 
   const producto = productos.find((p) => p.id === id_producto);
@@ -59,15 +71,6 @@ export default function HojaPanel({
 
   return (
     <div className="flex flex-col bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
-      {isError && (
-        <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
-          <div className="text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            Error al cargar los datos
-          </div>
-        </div>
-      )}
-
       {isLoading ? (
         <HojaPanelSkeleton />
       ) : (
@@ -103,7 +106,7 @@ export default function HojaPanel({
                 }}
                 className="flex-1"
               />
-              {/* FIX: NumberInput no existe en HeroUI — usar Input type=number */}
+
               <Input
                 label="Cantidad"
                 type="number"

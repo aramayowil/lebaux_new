@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Input, Switch } from "@heroui/react";
 import { Plus, Trash2, Check, ChevronDown, ChevronUp, X } from "lucide-react";
 import FormulaInput from "@/components/ui/FormulaInput";
-import DespiecePerfilesPanel from "./DespiecePerfilesPanel";
+// import DespiecePerfilesPanel from "./DespiecePerfilesPanel";
 import DespieceAccesoriosPanel from "./DespieceAccesoriosPanel";
 import type {
   Interior,
@@ -20,7 +20,7 @@ import {
   useDeleteDespiecePerfilContravidrio,
   useDespiecePerfilesContravidrio,
   useUpdateDespiecePerfilContravidrio,
-} from "@/hooks/productos/despieces/useDespiecePerfilesContravios";
+} from "@/hooks/productos/despieces/useDespiecePerfilesContravidrios";
 import { usePerfiles } from "@/hooks/catalogo/usePerfiles";
 import { useUpdateInterior } from "@/hooks/productos/useInteriores";
 import {
@@ -69,6 +69,7 @@ import {
   VidrioRepartidoFormSkeleton,
 } from "./skeletons/InteriorEditorSkeleton";
 import { Alert } from "@heroui/react";
+import { Button } from "@heroui/react";
 
 interface Props {
   interior: Interior;
@@ -149,6 +150,18 @@ export default function InteriorEditor({ interior }: Props) {
   const isError =
     errorDespInt || errorCvs || errorCves || errorCrcs || errorVrs;
 
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center w-full">
+        <Alert
+          color="danger"
+          title="Error al editar el interior"
+          description="Por favor, recarga la página e intenta nuevamente. Si el error persiste, contactate con soporte técnico."
+        />
+      </div>
+    );
+  }
+
   const [subTab, setSubTab] = useState<"cv-int" | "cv-ext" | "cruces" | "vr">(
     "cv-int",
   );
@@ -184,23 +197,10 @@ export default function InteriorEditor({ interior }: Props) {
 
   return (
     <div className="flex flex-col bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
-      {isError && (
-        <Alert
-          status="error"
-          icon={<X className="w-4 h-4" />}
-          classNames={{
-            base: "mb-3 rounded-lg border border-transparent shadow-sm",
-            title: "text-sm font-medium",
-          }}
-        >
-          Error al cargar el interior.
-        </Alert>
-      )}
       {isLoading ? (
         <InteriorSkeleton />
       ) : (
         <>
-          {" "}
           {/* ── Cabecera ── */}
           <div className="flex items-center gap-3 px-4 py-3 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
             <div className="w-1.5 h-5 rounded-full bg-amber-400 shrink-0" />
@@ -238,7 +238,7 @@ export default function InteriorEditor({ interior }: Props) {
             >
               <div className="w-1 h-4 rounded-full bg-blue-400 shrink-0" />
               <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 uppercase tracking-wide flex-1">
-                Dimensiones y rebajes
+                Editando interior
               </span>
               {!despInt && (
                 <span className="text-[10px] text-amber-500 font-medium mr-1">
@@ -352,7 +352,12 @@ export default function InteriorEditor({ interior }: Props) {
                       onUpdate={(d) =>
                         updateContravidrio({ id: cv.id, data: d })
                       }
-                      onDelete={() => deleteContravidrio(cv.id)}
+                      onDelete={() =>
+                        deleteContravidrio({
+                          id: cv.id,
+                          id_interior: interior.id,
+                        })
+                      }
                     />
                   )}
                   getItemId={(cv) => cv.id}
@@ -372,11 +377,16 @@ export default function InteriorEditor({ interior }: Props) {
                   renderEditor={(cv: ContravidrioExterior) => (
                     <ContravidrioForm
                       cv={cv}
-                      nivel="contravidrioExt"
+                      nivel="contravidrio_ext"
                       onUpdate={(d) =>
                         updateContravidrioExt({ id: cv.id, data: d })
                       }
-                      onDelete={() => deleteContravidrioExt(cv.id)}
+                      onDelete={() =>
+                        deleteContravidrioExt({
+                          id: cv.id,
+                          id_interior: interior.id,
+                        })
+                      }
                     />
                   )}
                   getItemId={(cv) => cv.id}
@@ -420,7 +430,12 @@ export default function InteriorEditor({ interior }: Props) {
                       onUpdate={(d) =>
                         updateVidRepartido({ id: vr.id, data: d })
                       }
-                      onDelete={() => deleteVidRepartido(vr.id)}
+                      onDelete={() =>
+                        deleteVidRepartido({
+                          id: vr.id,
+                          id_interior: vr.id_interior,
+                        })
+                      }
                     />
                   )}
                   getItemId={(vr) => vr.id}
@@ -430,13 +445,6 @@ export default function InteriorEditor({ interior }: Props) {
           </div>
           {/* ── ③ PERFILES  ④ ACCESORIOS ── */}
           <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-            <div className="p-4">
-              <DespiecePerfilesPanel
-                nivel="hojas"
-                idParent={interior.id}
-                label="Perfiles del interior"
-              />
-            </div>
             <div className="p-4">
               <DespieceAccesoriosPanel
                 nivel="interior"
@@ -685,7 +693,7 @@ function ContravidrioForm({
   onDelete,
 }: {
   cv: Contravidrio | ContravidrioExterior;
-  nivel: "contravidrio" | "contravidrioExt";
+  nivel: "contravidrio" | "contravidrio_ext";
   onUpdate: (d: Partial<Contravidrio>) => void;
   onDelete: () => void;
 }) {
@@ -710,6 +718,20 @@ function ContravidrioForm({
 
   const isLoadingData = isLoadingPerfiles || isLoadingItems;
   const isErrorData = isErrorPerfiles || isErrorItems;
+
+  if (!perfiles || perfiles.length === 0) {
+    console.log("No hay perfiles cargados");
+    return (
+      <div className="flex items-center justify-center w-full">
+        <Alert
+          color="warning"
+          title="Catálogo vacío"
+          description="No hay perfiles cargados en el catálogo. Por favor, crea uno primero."
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {isErrorData && (
@@ -750,8 +772,9 @@ function ContravidrioForm({
                         updateDespiecePerfil({
                           nivel: nivel,
                           id: item.id,
+                          idParent: cv.id,
                           data: {
-                            id_perfil: e.target.value,
+                            id_perfil: parseInt(e.target.value),
                           },
                         })
                       }
@@ -769,6 +792,7 @@ function ContravidrioForm({
                         updateDespiecePerfil({
                           nivel: nivel,
                           id: item.id,
+                          idParent: cv.id,
                           data: {
                             angulo: e.target.value,
                           },
@@ -784,7 +808,11 @@ function ContravidrioForm({
                     </select>
                     <button
                       onClick={() =>
-                        deleteDespiecePerfil({ nivel: nivel, id: item.id })
+                        deleteDespiecePerfil({
+                          nivel: nivel,
+                          idParent: cv.id,
+                          id: item.id,
+                        })
                       }
                       className="p-1.5 text-zinc-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                     >
@@ -794,13 +822,14 @@ function ContravidrioForm({
                   <div className="grid grid-cols-2 gap-2">
                     <FormulaInput
                       label="Cant. horizontal"
-                      value={item.formula_cantidad_ancho}
+                      value={item.formula_cantidad_contravidrios_ancho}
                       onChange={(v) =>
                         updateDespiecePerfil({
                           nivel: nivel,
                           id: item.id,
+                          idParent: cv.id,
                           data: {
-                            formula_cantidad_ancho: v,
+                            formula_cantidad_contravidrios_ancho: v,
                           },
                         })
                       }
@@ -809,13 +838,14 @@ function ContravidrioForm({
                     />
                     <FormulaInput
                       label="Cant. vertical"
-                      value={item.formula_cantidad_alto}
+                      value={item.formula_cantidad_contravidrios_alto}
                       onChange={(v) =>
                         updateDespiecePerfil({
                           nivel: nivel,
                           id: item.id,
+                          idParent: cv.id,
                           data: {
-                            formula_cantidad_alto: v,
+                            formula_cantidad_contravidrios_alto: v,
                           },
                         })
                       }
@@ -829,6 +859,7 @@ function ContravidrioForm({
                         updateDespiecePerfil({
                           nivel: nivel,
                           id: item.id,
+                          idParent: cv.id,
                           data: {
                             formula_contravidrio_ancho: v,
                           },
@@ -844,6 +875,7 @@ function ContravidrioForm({
                         updateDespiecePerfil({
                           nivel: nivel,
                           id: item.id,
+                          idParent: cv.id,
                           data: {
                             formula_contravidrio_alto: v,
                           },
@@ -856,20 +888,30 @@ function ContravidrioForm({
                 </div>
               ))}
               <button
-                onClick={() =>
+                onClick={() => {
+                  const perfilSeleccionado = perfiles[0];
+
+                  // Validación preventiva: Si no hay perfil, no dispares la mutación
+                  if (!perfilSeleccionado?.id) {
+                    console.error(
+                      "No se puede guardar: ID de perfil no encontrado.",
+                    );
+                    return;
+                  }
                   addDespiecePerfil({
                     nivel: nivel,
-                    d: {
+                    idParent: cv.id,
+                    data: {
                       id_contravidrio: cv.id,
-                      id_perfil: perfiles[0]?.nro_perfil ?? "",
-                      formula_cantidad_ancho: "hojas*2",
-                      formula_cantidad_alto: "hojas*2",
+                      id_perfil: perfilSeleccionado.id,
+                      formula_cantidad_contravidrios_ancho: "hojas*2",
+                      formula_cantidad_contravidrios_alto: "hojas*2",
                       formula_contravidrio_ancho: "ancho - 20",
                       formula_contravidrio_alto: "alto - 10",
                       angulo: "90",
                     },
-                  })
-                }
+                  });
+                }}
                 className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 text-[11px] font-medium text-zinc-400 hover:border-amber-400 hover:text-amber-500 transition-colors"
               >
                 <Plus className="w-3 h-3" /> Agregar perfil
@@ -905,27 +947,51 @@ function CrucesForm({
 
   // --- HOOKS DE PERFILES ---
   const {
-    data: perfiles = [],
+    data: perfiles,
     isLoading: isLoadingPerfiles,
     isError: isErrorPerfiles,
   } = usePerfiles();
 
+  if (!perfiles || perfiles.length === 0) {
+    return (
+      <Alert
+        color="warning"
+        title="No hay perfiles cargados"
+        description="Por favor agregue perfiles al catalogo."
+      />
+    );
+  }
+
   const isLoading = isLoadingDespieceCruces || isLoadingPerfiles;
   const isError = isErrorDespieceCruces || isErrorPerfiles;
+
+  if (isError) {
+    return (
+      <Alert
+        color="danger"
+        title="Error al cargar"
+        description="Error al obtener al cargar los datos de los perfiles. Intente nuevamente mas tarde."
+      />
+    );
+  }
 
   const ANGULOS = ["45", "90", "0", ""];
 
   async function updDC(data: Partial<DespieceCruces>) {
+    if (!perfiles || perfiles.length === 0) {
+      console.warn("Intentando actualizar sin perfiles cargados");
+      return;
+    }
     let d = dc;
 
     if (!d)
       d = await addDespieceCruces({
         id_cruces: cruces.id,
-        id_perfil: perfiles[0]?.nro_perfil ?? "",
+        id_perfil: perfiles[0]?.id ?? 0,
         formula_cantidad: "1",
         formula_ancho_entero: "ancho - 20",
         formula_alto_entero: "alto - 20",
-        descuento_de_vidrio: 0,
+        descuento_vidrio: 0,
         descuento_de_si_mismo: 0,
         angulo: "90",
       });
@@ -935,19 +1001,6 @@ function CrucesForm({
 
   return (
     <div className="space-y-4">
-      {isError && (
-        <Alert
-          status="error"
-          icon={<X className="w-4 h-4" />}
-          classNames={{
-            base: "mb-3 rounded-lg border border-transparent shadow-sm",
-            title: "text-sm font-medium",
-          }}
-        >
-          Error al obtener datos del cruce.
-        </Alert>
-      )}
-
       {isLoading ? (
         <CrucesFormSkeleton />
       ) : (
@@ -963,7 +1016,7 @@ function CrucesForm({
             <div className="flex gap-2">
               <select
                 value={dc?.id_perfil ?? ""}
-                onChange={(e) => updDC({ id_perfil: e.target.value })}
+                onChange={(e) => updDC({ id_perfil: parseInt(e.target.value) })}
                 className="flex-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400"
               >
                 {perfiles.map((p) => (
@@ -1031,7 +1084,7 @@ function CrucesForm({
                 type="number"
                 value={String(dc?.descuento_de_vidrio ?? 0)}
                 onValueChange={(v: string) =>
-                  updDC({ descuento_de_vidrio: parseFloat(v) || 0 })
+                  updDC({ descuento_vidrio: parseFloat(v) || 0 })
                 }
                 size="sm"
                 endContent={
@@ -1068,7 +1121,7 @@ function VidRepartidoForm({
 }) {
   // --- HOOKS PERFILES--
   const {
-    data: perfiles = [],
+    data: perfiles,
     isLoading: isLoadingPerfiles,
     isError: isErrorPerfiles,
   } = usePerfiles();
@@ -1079,6 +1132,7 @@ function VidRepartidoForm({
     isLoading: isLoadingDespVR,
     isError: isErrorDespVR,
   } = useDespieceVRByVR(vr.id);
+
   const { mutateAsync: addDespieceVR } = useAddDespieceVR();
   const { mutateAsync: updateDespieceVR } = useUpdateDespieceVR();
   const ANGULOS = ["45", "90", "0", ""];
@@ -1087,256 +1141,290 @@ function VidRepartidoForm({
   const isError = isErrorPerfiles || isErrorDespVR;
 
   async function updDV(data: Partial<DespieceVR>) {
-    let d = dv;
+    if (!perfiles || perfiles.length === 0) {
+      console.warn("Intentando actualizar sin perfiles cargados");
+      return;
+    }
 
-    if (!d)
-      d = await addDespieceVR({
-        id_vr: vr.id,
-        perfil_de_contorno: perfiles[0]?.nro_perfil ?? "",
-        formula_cantidad_contorno_ancho: "hojas*2",
-        formula_cantidad_contorno_alto: "hojas*2",
-        formula_contorno_ancho: "ancho - 20",
-        formula_contorno_alto: "alto - 20",
-        angulo: "45",
-        perfil_de_cruce: perfiles[0]?.nro_perfil ?? "",
-        formula_cruce_ancho: "ancho - 20",
-        formula_cruce_alto: "alto - 20",
-        descuento_de_vidrio: 0,
-        descuento_de_si_mismo: 0,
-        angulo_cruce: "45",
-        formula_cantidad_interiores: "(crucesH+1)*(crucesV+1)",
-        formula_ancho_interior: "(ancho-10)/(crucesV+1)",
-        formula_alto_interior: "(alto-10)/(crucesH+1)",
-        descuento_izquierda: 5,
-        descuento_derecha: 5,
-        descuento_abajo: 5,
-        descuento_arriba: 5,
-      });
+    if (!dv) {
+      try {
+        console.log("Creando despiece inicial...");
+        await addDespieceVR({
+          id_vr: vr.id,
+          id_perfil_contorno: perfiles[0].id,
+          formula_cantidad_contorno_ancho: "hojas*2",
+          formula_cantidad_contorno_alto: "hojas*2",
+          formula_contorno_ancho: "ancho - 20",
+          formula_contorno_alto: "alto - 20",
+          angulo: "45",
+          id_perfil_cruce: perfiles[0].id,
+          formula_cruce_ancho: "ancho - 20",
+          formula_cruce_alto: "alto - 20",
+          descuento_de_vidrio: 0,
+          descuento_de_si_mismo: 0,
+          angulo_cruce: "45",
+          formula_cantidad_interiores: "(crucesH+1)*(crucesV+1)",
+          formula_ancho_interior: "(ancho-10)/(crucesV+1)",
+          formula_alto_interior: "(alto-10)/(crucesH+1)",
+          descuento_izquierda: 5,
+          descuento_derecha: 5,
+          descuento_abajo: 5,
+          descuento_arriba: 5,
+        });
+      } catch (error) {
+        console.error("Error al crear:", error);
+      }
+      return;
+    }
+    updateDespieceVR({
+      id: dv.id,
+      data,
+    });
+  }
 
-    updateDespieceVR({ id: d.id, data: data });
+  if (isLoading) return <VidrioRepartidoFormSkeleton />;
+
+  if (isError) {
+    return (
+      <Alert
+        color="danger"
+        title="Error al cargar el despiece de VR"
+        description="Por favor, recargue la página."
+      />
+    );
+  }
+
+  if (!perfiles || perfiles.length === 0) {
+    return (
+      <Alert
+        color="warning"
+        title="No hay perfiles cargados"
+        description="Por favor agregue perfiles al catalogo."
+      />
+    );
+  }
+
+  // Si no hay despiece (dv es null), mostramos la alerta con un botón para crearlo
+  if (!dv) {
+    return (
+      <div className="p-4 border-2 border-dashed border-zinc-200 rounded-xl space-y-4">
+        <Alert
+          color="warning"
+          title="Sin despiece"
+          description="Este vidrio repartido no tiene fórmulas de corte aún."
+        />
+        <Button
+          color="primary"
+          className="w-full text-zinc-800 dark:text-zinc-300"
+          variant="flat"
+          onPress={() => updDV({})} // Crea el despiece por defecto
+        >
+          Generar despiece inicial
+        </Button>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-4">
-      {isError && (
-        <Alert
-          status="error"
-          icon={<X className="w-4 h-4" />}
-          classNames={{
-            base: "mb-3 rounded-lg border border-transparent shadow-sm",
-            title: "text-sm font-medium",
-          }}
-        >
-          Error al obtener datos del vidrio repartido.
-        </Alert>
-      )}
-      {isLoading ? (
-        <VidrioRepartidoFormSkeleton />
-      ) : (
-        <>
-          {" "}
-          <FormHeader
-            name={vr.descripcion}
-            pred={vr.predeterminado}
-            onName={(v) => onUpdate({ descripcion: v })}
-            onPred={(v) => onUpdate({ predeterminado: v })}
-            onDelete={onDelete}
+      <FormHeader
+        name={vr.descripcion}
+        pred={vr.predeterminado}
+        onName={(v) => onUpdate({ descripcion: v })}
+        onPred={(v) => onUpdate({ predeterminado: v })}
+        onDelete={onDelete}
+      />
+      <FieldGroup title="Perfil de contorno">
+        <div className="flex gap-2 mb-2">
+          <select
+            value={dv.id_perfil_contorno}
+            onChange={(e) =>
+              updDV({ id_perfil_contorno: parseInt(e.target.value) })
+            }
+            className="flex-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400"
+          >
+            {perfiles.map((p) => (
+              <option key={p.id} value={p.nro_perfil}>
+                {p.nro_perfil} — {p.descri}
+              </option>
+            ))}
+          </select>
+          <select
+            value={dv.angulo}
+            onChange={(e) => updDV({ angulo: e.target.value })}
+            className="w-16 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-400"
+          >
+            {ANGULOS.map((a) => (
+              <option key={a} value={a}>
+                {a || "—"}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <FormulaInput
+            label="Cant. horiz."
+            value={dv.formula_cantidad_contorno_ancho}
+            onChange={(v) => updDV({ formula_cantidad_contorno_ancho: v })}
+            description="ej: hojas*2"
+            className={IW_F}
           />
-          <FieldGroup title="Perfil de contorno">
-            <div className="flex gap-2 mb-2">
-              <select
-                value={dv?.perfil_de_contorno ?? ""}
-                onChange={(e) => updDV({ perfil_de_contorno: e.target.value })}
-                className="flex-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400"
+          <FormulaInput
+            label="Cant. vert."
+            value={dv.formula_cantidad_contorno_alto}
+            onChange={(v) => updDV({ formula_cantidad_contorno_alto: v })}
+            description="ej: hojas*2"
+            className={IW_F}
+          />
+          <FormulaInput
+            label="Largo horiz."
+            value={dv.formula_contorno_ancho}
+            onChange={(v) => updDV({ formula_contorno_ancho: v })}
+            description="ej: ancho - 20"
+            className={IW_F}
+          />
+          <FormulaInput
+            label="Largo vert."
+            value={dv.formula_contorno_alto}
+            onChange={(v) => updDV({ formula_contorno_alto: v })}
+            description="ej: alto - 20"
+            className={IW_F}
+          />
+        </div>
+      </FieldGroup>
+      <FieldGroup title="Perfil de cruceta">
+        <div className="flex gap-2 mb-2">
+          <select
+            value={dv.id_perfil_cruce}
+            onChange={(e) =>
+              updDV({ id_perfil_cruce: parseInt(e.target.value) })
+            }
+            className="flex-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400"
+          >
+            {perfiles.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nro_perfil} — {p.descri}
+              </option>
+            ))}
+          </select>
+          <select
+            value={dv.angulo_cruce}
+            onChange={(e) => updDV({ angulo_cruce: e.target.value })}
+            className="w-16 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-400"
+          >
+            {ANGULOS.map((a) => (
+              <option key={a} value={a}>
+                {a || "—"}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <FormulaInput
+            label="Largo horiz."
+            value={dv.formula_cruce_ancho}
+            onChange={(v) => updDV({ formula_cruce_ancho: v })}
+            description="ej: ancho - 20"
+            className={IW_F}
+          />
+          <FormulaInput
+            label="Largo vert."
+            value={dv.formula_cruce_alto}
+            onChange={(v) => updDV({ formula_cruce_alto: v })}
+            description="ej: alto - 20"
+            className={IW_F}
+          />
+          <Input
+            label="Desc. de vidrio"
+            type="number"
+            value={String(dv.descuento_de_vidrio)}
+            onValueChange={(v: string) =>
+              updDV({ descuento_de_vidrio: parseFloat(v) || 0 })
+            }
+            size="sm"
+            endContent={<span className="text-[10px] text-zinc-400">mm</span>}
+            classNames={IW}
+          />
+          <Input
+            label="Desc. de sí mismo"
+            type="number"
+            value={String(dv.descuento_de_si_mismo)}
+            onValueChange={(v: string) =>
+              updDV({ descuento_de_si_mismo: parseFloat(v) || 0 })
+            }
+            size="sm"
+            endContent={<span className="text-[10px] text-zinc-400">mm</span>}
+            classNames={IW}
+          />
+        </div>
+      </FieldGroup>
+      <FieldGroup title="Interiores del vidrio repartido">
+        <div className="grid grid-cols-3 gap-3 mb-3">
+          <FormulaInput
+            label="Cantidad"
+            value={dv.formula_cantidad_interiores}
+            onChange={(v) => updDV({ formula_cantidad_interiores: v })}
+            description="ej: (crucesH+1)*(crucesV+1)"
+            className={IW_F}
+          />
+          <FormulaInput
+            label="Ancho"
+            value={dv.formula_ancho_interior}
+            onChange={(v) => updDV({ formula_ancho_interior: v })}
+            description="ej: (ancho-10)/(crucesV+1)"
+            className={IW_F}
+          />
+          <FormulaInput
+            label="Alto"
+            value={dv.formula_alto_interior}
+            onChange={(v) => updDV({ formula_alto_interior: v })}
+            description="ej: (alto-10)/(crucesH+1)"
+            className={IW_F}
+          />
+        </div>
+        {/* Diagrama de descuentos del VR */}
+        <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-4">
+          Descuentos de borde
+        </p>
+        <div className="flex justify-center">
+          <div className="relative w-56 h-36 mb-5">
+            <div className="absolute inset-0 rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-600" />
+            <div className="absolute inset-7 rounded-lg border-2 border-teal-300 dark:border-teal-600 bg-teal-50 dark:bg-teal-900/10 flex items-center justify-center">
+              <span className="text-[10px] text-teal-400 font-medium">
+                vidrio
+              </span>
+            </div>
+            {(
+              [
+                ["descuento_arriba", "top", "Arr."],
+                ["descuento_abajo", "bottom", "Abj."],
+                ["descuento_izquierda", "left", "Izq."],
+                ["descuento_derecha", "right", "Der."],
+              ] as [keyof DespieceVR, string, string][]
+            ).map(([field, side, label]) => (
+              <div
+                key={field}
+                className={clsx("absolute", {
+                  "top-0 left-1/2 -translate-x-1/2 -translate-y-1/2":
+                    side === "top",
+                  "bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2":
+                    side === "bottom",
+                  "left-0 top-1/2 -translate-x-1/2 -translate-y-1/2":
+                    side === "left",
+                  "right-0 top-1/2 translate-x-1/2 -translate-y-1/2":
+                    side === "right",
+                })}
               >
-                {perfiles.map((p) => (
-                  <option key={p.nro_perfil} value={p.nro_perfil}>
-                    {p.nro_perfil} — {p.descri}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={dv?.angulo ?? "45"}
-                onChange={(e) => updDV({ angulo: e.target.value })}
-                className="w-16 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-400"
-              >
-                {ANGULOS.map((a) => (
-                  <option key={a} value={a}>
-                    {a || "—"}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <FormulaInput
-                label="Cant. horiz."
-                value={dv?.formula_cantidad_contorno_ancho ?? ""}
-                onChange={(v) => updDV({ formula_cantidad_contorno_ancho: v })}
-                description="ej: hojas*2"
-                className={IW_F}
-              />
-              <FormulaInput
-                label="Cant. vert."
-                value={dv?.formula_cantidad_contorno_alto ?? ""}
-                onChange={(v) => updDV({ formula_cantidad_contorno_alto: v })}
-                description="ej: hojas*2"
-                className={IW_F}
-              />
-              <FormulaInput
-                label="Largo horiz."
-                value={dv?.formula_contorno_ancho ?? ""}
-                onChange={(v) => updDV({ formula_contorno_ancho: v })}
-                description="ej: ancho - 20"
-                className={IW_F}
-              />
-              <FormulaInput
-                label="Largo vert."
-                value={dv?.formula_contorno_alto ?? ""}
-                onChange={(v) => updDV({ formula_contorno_alto: v })}
-                description="ej: alto - 20"
-                className={IW_F}
-              />
-            </div>
-          </FieldGroup>
-          <FieldGroup title="Perfil de cruceta">
-            <div className="flex gap-2 mb-2">
-              <select
-                value={dv?.perfil_de_cruce ?? ""}
-                onChange={(e) => updDV({ perfil_de_cruce: e.target.value })}
-                className="flex-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400"
-              >
-                {perfiles.map((p) => (
-                  <option key={p.nro_perfil} value={p.nro_perfil}>
-                    {p.nro_perfil} — {p.descri}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={dv?.angulo_cruce ?? "45"}
-                onChange={(e) => updDV({ angulo_cruce: e.target.value })}
-                className="w-16 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-400"
-              >
-                {ANGULOS.map((a) => (
-                  <option key={a} value={a}>
-                    {a || "—"}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <FormulaInput
-                label="Largo horiz."
-                value={dv?.formula_cruce_ancho ?? ""}
-                onChange={(v) => updDV({ formula_cruce_ancho: v })}
-                description="ej: ancho - 20"
-                className={IW_F}
-              />
-              <FormulaInput
-                label="Largo vert."
-                value={dv?.formula_cruce_alto ?? ""}
-                onChange={(v) => updDV({ formula_cruce_alto: v })}
-                description="ej: alto - 20"
-                className={IW_F}
-              />
-              <Input
-                label="Desc. de vidrio"
-                type="number"
-                value={String(dv?.descuento_de_vidrio ?? 0)}
-                onValueChange={(v: string) =>
-                  updDV({ descuento_de_vidrio: parseFloat(v) || 0 })
-                }
-                size="sm"
-                endContent={
-                  <span className="text-[10px] text-zinc-400">mm</span>
-                }
-                classNames={IW}
-              />
-              <Input
-                label="Desc. de sí mismo"
-                type="number"
-                value={String(dv?.descuento_de_si_mismo ?? 0)}
-                onValueChange={(v: string) =>
-                  updDV({ descuento_de_si_mismo: parseFloat(v) || 0 })
-                }
-                size="sm"
-                endContent={
-                  <span className="text-[10px] text-zinc-400">mm</span>
-                }
-                classNames={IW}
-              />
-            </div>
-          </FieldGroup>
-          <FieldGroup title="Interiores del vidrio repartido">
-            <div className="grid grid-cols-3 gap-3 mb-3">
-              <FormulaInput
-                label="Cantidad"
-                value={dv?.formula_cantidad_interiores ?? ""}
-                onChange={(v) => updDV({ formula_cantidad_interiores: v })}
-                description="ej: (crucesH+1)*(crucesV+1)"
-                className={IW_F}
-              />
-              <FormulaInput
-                label="Ancho"
-                value={dv?.formula_ancho_interior ?? ""}
-                onChange={(v) => updDV({ formula_ancho_interior: v })}
-                description="ej: (ancho-10)/(crucesV+1)"
-                className={IW_F}
-              />
-              <FormulaInput
-                label="Alto"
-                value={dv?.formula_alto_interior ?? ""}
-                onChange={(v) => updDV({ formula_alto_interior: v })}
-                description="ej: (alto-10)/(crucesH+1)"
-                className={IW_F}
-              />
-            </div>
-            {/* Diagrama de descuentos del VR */}
-            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-4">
-              Descuentos de borde
-            </p>
-            <div className="flex justify-center">
-              <div className="relative w-56 h-36 mb-5">
-                <div className="absolute inset-0 rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-600" />
-                <div className="absolute inset-7 rounded-lg border-2 border-teal-300 dark:border-teal-600 bg-teal-50 dark:bg-teal-900/10 flex items-center justify-center">
-                  <span className="text-[10px] text-teal-400 font-medium">
-                    vidrio
-                  </span>
-                </div>
-                {(
-                  [
-                    ["descuento_arriba", "top", "Arr."],
-                    ["descuento_abajo", "bottom", "Abj."],
-                    ["descuento_izquierda", "left", "Izq."],
-                    ["descuento_derecha", "right", "Der."],
-                  ] as [keyof DespieceVR, string, string][]
-                ).map(([field, side, label]) => (
-                  <div
-                    key={field}
-                    className={clsx("absolute", {
-                      "top-0 left-1/2 -translate-x-1/2 -translate-y-1/2":
-                        side === "top",
-                      "bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2":
-                        side === "bottom",
-                      "left-0 top-1/2 -translate-x-1/2 -translate-y-1/2":
-                        side === "left",
-                      "right-0 top-1/2 translate-x-1/2 -translate-y-1/2":
-                        side === "right",
-                    })}
-                  >
-                    <DescInput
-                      value={(dv?.[field] as number) ?? 0}
-                      label={label}
-                      onChange={(v) =>
-                        updDV({ [field]: v } as Partial<DespieceVR>)
-                      }
-                    />
-                  </div>
-                ))}
+                <DescInput
+                  value={dv[field] as number}
+                  label={label}
+                  onChange={(v) => updDV({ [field]: v } as Partial<DespieceVR>)}
+                />
               </div>
-            </div>
-          </FieldGroup>
-        </>
-      )}
+            ))}
+          </div>
+        </div>
+      </FieldGroup>
     </div>
   );
 }

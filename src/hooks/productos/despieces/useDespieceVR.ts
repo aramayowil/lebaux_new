@@ -2,26 +2,27 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import type { DespieceVR } from "@/types";
 
-const TABLE = "vid_repartido";
-const SQUEMA = "productos";
+const TABLE = "despiece_perfiles_vidrio_repartido";
+const SQUEMA = "opendata";
 
 export function useDespieceVRByVR(idVR: number | undefined) {
   return useQuery({
     queryKey: [TABLE, "despiece_vr", idVR],
     queryFn: async () => {
-      if (!idVR) return undefined;
+      if (!idVR || idVR <= 0) return null;
 
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
         .select("*")
-        .eq("id_VR", idVR) // Ajusta el nombre de la columna según tu tabla
+        .eq("id_vr", idVR)
         .maybeSingle();
 
       if (error) throw error;
-      return data as DespieceVR | undefined;
+
+      return (data as DespieceVR) ?? null;
     },
-    enabled: !!idVR,
+    enabled: !!idVR && idVR > 0,
   });
 }
 
@@ -30,10 +31,12 @@ export function useAddDespieceVR() {
 
   return useMutation({
     mutationFn: async (newDespiece: Omit<DespieceVR, "id">) => {
+      const { id, ...dataToInsert } = newDespiece as any;
+
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
-        .insert(newDespiece)
+        .insert(dataToInsert)
         .select()
         .single();
 
@@ -41,11 +44,9 @@ export function useAddDespieceVR() {
       return data as DespieceVR;
     },
     onSuccess: (newItem) => {
-      // Invalidamos la caché del despiece específico para este ID de Vidrio Repartido
       queryClient.invalidateQueries({
         queryKey: [TABLE, "despiece_vr", newItem.id_vr],
       });
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
     },
   });
 }
@@ -61,31 +62,37 @@ export function useUpdateDespieceVR() {
       id: number;
       data: Partial<DespieceVR>;
     }) => {
+      // Limpiamos el objeto para no intentar actualizar la PK o FK accidentalmente
+      const { id: _, id_vr: __, ...updateData } = data as any;
+
       const { data: updated, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
-        .update(data)
+        .update(updateData)
         .eq("id", id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      return updated as DespieceVR;
+      return updated as DespieceVR | null;
     },
     onSuccess: (updatedItem) => {
-      queryClient.invalidateQueries({
-        queryKey: [TABLE, "despiece_vr", updatedItem.id_vr],
-      });
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
+      if (updatedItem) {
+        queryClient.invalidateQueries({
+          queryKey: [TABLE, "despiece_vr", updatedItem.id_vr],
+        });
+      }
     },
   });
 }
 
+// 4. DELETE: Borrar y limpiar interfaz
 export function useDeleteDespieceVR() {
   const queryClient = useQueryClient();
 
+  // Cambiamos el argumento para recibir ambos IDs
   return useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({ id, id_vr }: { id: number; id_vr: number }) => {
       const { error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
@@ -93,10 +100,13 @@ export function useDeleteDespieceVR() {
         .eq("id", id);
 
       if (error) throw error;
-      return id;
+      return { id, id_vr };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
+    onSuccess: (deletedData) => {
+      // Esto es lo que hace que la alerta de "Sin despiece" vuelva a aparecer
+      queryClient.invalidateQueries({
+        queryKey: [TABLE, "despiece_vr", deletedData.id_vr],
+      });
     },
   });
 }

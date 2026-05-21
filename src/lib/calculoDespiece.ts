@@ -19,9 +19,12 @@ export interface ContextoCalculo {
   ancho:   number
   alto:    number
   hojas:   number
-  crucesH: number
-  crucesV: number
-  [extra: string]: number
+  cruces_h: number
+  cruces_v: number
+  // Declaración explícita para evitar que caigan en la regla de 'number' del indexador
+  pos_h?:    number[]
+  pos_v?:    number[]
+  [extra: string]: any
 }
 
 /** Convierte una fórmula Access al scope de mathjs y la evalúa */

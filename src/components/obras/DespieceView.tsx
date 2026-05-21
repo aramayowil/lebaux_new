@@ -118,24 +118,50 @@ function PriceLine({
   );
 }
 
+// function CrucesInfo({ ctx }: { ctx: ResultadoDespiece["contexto"] }) {
+//   const tienePos = (ctx.pos_h?.length ?? 0) > 0 || (ctx.pos_v?.length ?? 0) > 0;
+//   if (!tienePos) {
+//     if (ctx.crucesH === 0 && ctx.crucesV === 0) return null;
+//     return (
+//       <span className="text-xs text-purple-600 dark:text-purple-400">
+//         {ctx.crucesH > 0 ? `${ctx.crucesH}H ` : ""}
+//         {ctx.crucesV > 0 ? `${ctx.crucesV}V ` : ""}
+//         centrados
+//       </span>
+//     );
+//   }
+//   return (
+//     <span className="text-xs text-purple-600 dark:text-purple-400">
+//       {(ctx.pos_v?.length ?? 0) > 0 &&
+//         `V: ${(ctx.pos_v as number[]).join(", ")} mm `}
+//       {(ctx.pos_h?.length ?? 0) > 0 &&
+//         `H: ${(ctx.pos_h as number[]).join(", ")} mm`}
+//     </span>
+//   );
+// }
+
 function CrucesInfo({ ctx }: { ctx: ResultadoDespiece["contexto"] }) {
-  const tienePos = (ctx.posH?.length ?? 0) > 0 || (ctx.posV?.length ?? 0) > 0;
+  // Consolidamos soporte tanto para camelCase como snake_case usando las propiedades explícitas
+  const posH = ctx.posH ?? ctx.pos_h;
+  const posV = ctx.posV ?? ctx.pos_v;
+
+  const tienePos = (posH?.length ?? 0) > 0 || (posV?.length ?? 0) > 0;
+
   if (!tienePos) {
-    if (ctx.crucesH === 0 && ctx.crucesV === 0) return null;
+    if (ctx.cruces_h === 0 && ctx.cruces_v === 0) return null;
     return (
       <span className="text-xs text-purple-600 dark:text-purple-400">
-        {ctx.crucesH > 0 ? `${ctx.crucesH}H ` : ""}
-        {ctx.crucesV > 0 ? `${ctx.crucesV}V ` : ""}
+        {ctx.cruces_h > 0 ? `${ctx.cruces_h}H ` : ""}
+        {ctx.cruces_v > 0 ? `${ctx.cruces_v}V ` : ""}
         centrados
       </span>
     );
   }
+
   return (
     <span className="text-xs text-purple-600 dark:text-purple-400">
-      {(ctx.posV?.length ?? 0) > 0 &&
-        `V: ${(ctx.posV as number[]).join(", ")} mm `}
-      {(ctx.posH?.length ?? 0) > 0 &&
-        `H: ${(ctx.posH as number[]).join(", ")} mm`}
+      {(posV?.length ?? 0) > 0 && `V: ${posV.join(", ")} mm `}
+      {(posH?.length ?? 0) > 0 && `H: ${posH.join(", ")} mm`}
     </span>
   );
 }
@@ -149,9 +175,9 @@ export default function DespieceView({ resultado }: DespieceViewProps) {
   const [tab, setTab] = useState<string>("resumen");
 
   const {
-    costoPerfiles,
-    costoAccesorios,
-    costoInteriores,
+    costo_perfiles,
+    costo_accesorios,
+    costo_interiores,
     resumenes,
     cortes,
     accesorios,
@@ -162,13 +188,13 @@ export default function DespieceView({ resultado }: DespieceViewProps) {
 
   const {
     iva,
-    porcentajeSobrePerfiles: pctPf,
-    porcentajeSobreAccesorios: pctAc,
-    porcentajeSobreVidrios: pctVi,
+    porcentaje_sobre_perfiles: pctPf,
+    porcentaje_sobre_accesorios: pctAc,
+    porcentaje_sobre_vidrios: pctVi,
   } = opciones;
-  const subtotalPf = costoPerfiles * (1 + pctPf / 100);
-  const subtotalAc = costoAccesorios * (1 + pctAc / 100);
-  const subtotalVi = costoInteriores * (1 + pctVi / 100);
+  const subtotalPf = costo_perfiles * (1 + pctPf / 100);
+  const subtotalAc = costo_accesorios * (1 + pctAc / 100);
+  const subtotalVi = costo_interiores * (1 + pctVi / 100);
   const subtotal = subtotalPf + subtotalAc + subtotalVi;
   const totalIva = subtotal * (1 + iva / 100);
 
@@ -247,7 +273,7 @@ export default function DespieceView({ resultado }: DespieceViewProps) {
         classNames={{ tabList: "gap-4" }}
       >
         {/* ── Resumen ── */}
-        <Tab key="resumen" title="Resumen">
+        <Tab key="resumen" title="Resumen" textValue="Resumen">
           <div className="space-y-4 pt-2">
             {/* Perfiles */}
             {resumenes.length > 0 && (
@@ -271,22 +297,22 @@ export default function DespieceView({ resultado }: DespieceViewProps) {
                     <tbody className="divide-y divide-steel-100 dark:divide-steel-800">
                       {resumenes.map((r) => (
                         <tr
-                          key={r.nroPerfil}
+                          key={r.nro_perfil}
                           className="hover:bg-steel-50 dark:hover:bg-steel-800/50"
                         >
                           <Td>
                             <span className="font-mono text-xs text-steel-400 mr-1">
-                              {r.nroPerfil}
+                              {r.nro_perfil}
                             </span>
                             <span className="text-steel-700 dark:text-steel-200">
-                              {r.descripcion}
+                              {r.descripcion_perfil}
                             </span>
                           </Td>
                           <Td right mono>
-                            {r.totalCortes}
+                            {r.total_cortes}
                           </Td>
                           <Td right mono>
-                            {r.totalMm.toLocaleString("es-AR")}
+                            {r.total_mm.toLocaleString("es-AR")}
                           </Td>
                           <Td right mono>
                             {r.tiras}
@@ -298,7 +324,7 @@ export default function DespieceView({ resultado }: DespieceViewProps) {
                             {formatKg(r.kg)}
                           </Td>
                           <Td right mono>
-                            {formatPesos(r.precioTotal)}
+                            {formatPesos(r.precio_total)}
                           </Td>
                         </tr>
                       ))}
@@ -315,7 +341,7 @@ export default function DespieceView({ resultado }: DespieceViewProps) {
                           {formatKg(totalKg)}
                         </Td>
                         <Td right mono>
-                          {formatPesos(costoPerfiles)}
+                          {formatPesos(costo_perfiles)}
                         </Td>
                       </tr>
                     </tfoot>
@@ -349,7 +375,7 @@ export default function DespieceView({ resultado }: DespieceViewProps) {
                         >
                           <Td>
                             <span className="font-mono text-xs text-steel-400 mr-1">
-                              {a.codParte}
+                              {a.cod_parte}
                             </span>
                             {a.descripcion}
                           </Td>
@@ -367,10 +393,10 @@ export default function DespieceView({ resultado }: DespieceViewProps) {
                             {a.cantidad} {a.unidad === 1 ? "m" : "u"}
                           </Td>
                           <Td right mono>
-                            {formatPesos(a.precioUnit)}
+                            {formatPesos(a.precio_unit)}
                           </Td>
                           <Td right mono>
-                            {formatPesos(a.precioTotal)}
+                            {formatPesos(a.precio_total)}
                           </Td>
                         </tr>
                       ))}
@@ -454,7 +480,11 @@ export default function DespieceView({ resultado }: DespieceViewProps) {
         </Tab>
 
         {/* ── Detalle ── */}
-        <Tab key="detalle" title="Detalle de cortes">
+        <Tab
+          key="detalle"
+          title="Detalle de cortes"
+          textValue="Detalle de cortes"
+        >
           <div className="pt-2">
             {cortes.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-8 text-steel-400">
@@ -494,20 +524,20 @@ export default function DespieceView({ resultado }: DespieceViewProps) {
                         </Td>
                         <Td>
                           <span className="font-mono text-xs text-steel-400 mr-1">
-                            {c.nroPerfil}
+                            {c.nro_perfil}
                           </span>
                           <span className="text-steel-600 dark:text-steel-300 text-xs">
-                            {c.descripcionPerfil}
+                            {c.descripcion_perfil}
                           </span>
                         </Td>
                         <Td right mono>
                           {c.cantidad}
                         </Td>
                         <Td right mono>
-                          {formatMm(c.medidaMm)}
+                          {formatMm(c.medida_mm)}
                         </Td>
                         <Td right mono>
-                          {c.totalMm.toLocaleString("es-AR")}
+                          {c.total_mm.toLocaleString("es-AR")}
                         </Td>
                         <Td right mono>
                           {c.angulo || "—"}
@@ -516,7 +546,7 @@ export default function DespieceView({ resultado }: DespieceViewProps) {
                           {formatKg(c.kg)}
                         </Td>
                         <Td right mono>
-                          {formatPesos(c.precioTotal)}
+                          {formatPesos(c.precio_total)}
                         </Td>
                       </tr>
                     ))}

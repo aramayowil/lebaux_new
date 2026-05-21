@@ -2,38 +2,26 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { VidRepartido } from "@/types";
 
-const TABLE = "vid_repartidos";
-const SQUEMA = "productos";
+const TABLE = "vidrio_repartido";
+const SQUEMA = "opendata";
 
 export function useVidRepartidosByInterior(idInterior: number | undefined) {
   return useQuery({
-    // Usamos una key única: la tabla, el identificador de tipo y el ID del interior
-    queryKey: [TABLE, "vid_repartidos", idInterior],
-
+    queryKey: [TABLE, "by_interior", idInterior],
     queryFn: async () => {
-      // Si no hay ID, retornamos un array vacío de inmediato
-      if (idInterior === undefined) return [];
+      if (!idInterior) return [];
 
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
         .select("*")
-        .eq("id_interior", idInterior);
+        .eq("id_interior", idInterior)
+        .order("id", { ascending: true });
 
-      if (error) {
-        console.error("Error al obtener vidrios repartidos:", error.message);
-        throw error;
-      }
-
-      // Retornamos los datos como el array de la interfaz VidRepartido
+      if (error) throw error;
       return data as VidRepartido[];
     },
-
-    // Solo se dispara la petición si idInterior tiene un valor válido
-    enabled: !!idInterior,
-
-    // Opcional: mantiene los datos cargados mientras se busca un nuevo ID
-    placeholderData: (previousData) => previousData,
+    enabled: !!idInterior && idInterior > 0,
   });
 }
 
@@ -41,7 +29,6 @@ export function useAddVidRepartido() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    // Definimos explícitamente la función de mutación
     mutationFn: async (newVid: Omit<VidRepartido, "id">) => {
       const { data, error } = await supabase
         .schema(SQUEMA)
@@ -53,16 +40,9 @@ export function useAddVidRepartido() {
       if (error) throw error;
       return data as VidRepartido;
     },
-
     onSuccess: (newItem) => {
-      // 1. Invalidamos la lista específica usando la misma estructura de QueryKey que el GET
       queryClient.invalidateQueries({
-        queryKey: [TABLE, "vid_repartidos", newItem.id_interior],
-      });
-
-      // 2. Refrescamos la caché global de la tabla
-      queryClient.invalidateQueries({
-        queryKey: [TABLE],
+        queryKey: [TABLE, "by_interior", newItem.id_interior],
       });
     },
   });
@@ -85,16 +65,17 @@ export function useUpdateVidRepartido() {
         .update(data)
         .eq("id", id)
         .select()
-        .single();
+        .maybeSingle(); // <--- Cambiado de .single() a .maybeSingle()
 
       if (error) throw error;
       return updated as VidRepartido;
     },
     onSuccess: (updatedItem) => {
-      queryClient.invalidateQueries({
-        queryKey: [TABLE, "vid_repartidos", updatedItem.id_interior],
-      });
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
+      if (updatedItem) {
+        queryClient.invalidateQueries({
+          queryKey: [TABLE, "by_interior", updatedItem.id_interior],
+        });
+      }
     },
   });
 }
@@ -103,7 +84,14 @@ export function useDeleteVidRepartido() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: number) => {
+    // Aseguramos que recibimos el objeto con ambos datos
+    mutationFn: async ({
+      id,
+      id_interior,
+    }: {
+      id: number;
+      id_interior: number;
+    }) => {
       const { error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
@@ -111,11 +99,13 @@ export function useDeleteVidRepartido() {
         .eq("id", id);
 
       if (error) throw error;
-      return id;
+      return { id, id_interior }; // Retornamos ambos para el onSuccess
     },
-    onSuccess: () => {
-      // Invalida todas las consultas de Vidrios Repartidos al borrar
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
+    onSuccess: (deletedVars) => {
+      // Ahora sí, invalidamos la clave exacta
+      queryClient.invalidateQueries({
+        queryKey: [TABLE, "by_interior", deletedVars.id_interior],
+      });
     },
   });
 }

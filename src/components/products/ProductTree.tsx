@@ -45,7 +45,7 @@ import {
   useHojasByMarco,
 } from "@/hooks/productos/useHojas";
 import {
-  useCreateInterior,
+  useAddInterior,
   useDeleteInterior,
   useInterioresByHoja,
 } from "@/hooks/productos/useInteriores";
@@ -106,7 +106,7 @@ export default function ProductTree({ selection, onSelect }: Props) {
   const { mutateAsync: deleteMarco } = useDeleteMarco();
   const { mutateAsync: createHoja } = useCreateHoja();
   const { mutateAsync: deleteHoja } = useDeleteHoja();
-  const { mutateAsync: createInterior } = useCreateInterior();
+  const { mutateAsync: createInterior } = useAddInterior();
   const { mutateAsync: deleteInterior } = useDeleteInterior();
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set(["p-1"]));

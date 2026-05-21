@@ -11,6 +11,7 @@ import {
   useUpdateDespiecePerfil,
 } from "@/hooks/productos/despieces/useDespiecePerfiles";
 import { DespiecePerfilSkeleton } from "./skeletons/DespicePerfilesPanelSkeleton";
+import { Alert } from "@heroui/react";
 
 // type Nivel =
 //   | "marcos"
@@ -19,18 +20,18 @@ import { DespiecePerfilSkeleton } from "./skeletons/DespicePerfilesPanelSkeleton
 //   | "contravidrioExt"
 //   | "cruces"
 //   | "mosquitero";
-type Nivel =
-  | "marcos"
-  | "hojas"
-  | "contravidrios"
-  | "contravidrios_ex"
+type nivel =
+  | "marco"
+  | "hoja"
+  | "contravidrio"
+  | "contravidrio_ex"
   | "mosquitero"
   | "vidrio_repartido";
 
 const ANGULOS = ["45", "90", "0", ""];
 
 interface Props {
-  nivel: Nivel;
+  nivel: nivel;
   idParent: number;
   label?: string;
 }
@@ -59,6 +60,31 @@ export default function DespiecePerfilesPanel({
   const isLoading = loadingPerfiles || loadingItems;
   const isError = errorPerfiles || errorItems;
 
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center w-full">
+        <Alert
+          color="danger"
+          title="Error al cargar el despiece de perfiles"
+          description="Por favor, recarga la página e intenta nuevamente. Si el error persiste, contactate con soporte técnico."
+        />
+      </div>
+    );
+  }
+
+  if (!perfiles || perfiles.length === 0) {
+    console.log("No hay perfiles cargados");
+    return (
+      <div className="flex items-center justify-center w-full">
+        <Alert
+          color="warning"
+          title="Catálogo vacío"
+          description="No hay perfiles cargados en el catálogo. Por favor, crea uno primero."
+        />
+      </div>
+    );
+  }
+
   async function update(id: number, data: Partial<DespiecePerfil>) {
     try {
       await updateDespiecePerfil({ nivel, id, data });
@@ -68,29 +94,27 @@ export default function DespiecePerfilesPanel({
   }
 
   async function handleAdd() {
-    await addDespiecePerfil({
-      nivel,
-      idParent,
-      data: {
-        id_perfil: perfiles[0]?.id ?? 0,
-        formula_cantidad: "1",
-        formula_perfil: "ancho",
-        angulo: "45",
-      },
-    });
+    try {
+      console.log("nivel", nivel);
+      console.log("idParent", idParent);
+      console.log("perfiles", perfiles);
+      await addDespiecePerfil({
+        nivel,
+        idParent,
+        data: {
+          id_perfil: perfiles[0].id,
+          formula_cantidad: "1",
+          formula_perfil: "ancho",
+          angulo: "45",
+        },
+      });
+    } catch (error) {
+      console.error("Error al intentar agregar el perfil:", error);
+    }
   }
 
   return (
     <div className="space-y-2.5">
-      {isError ? (
-        <div className="border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl py-6">
-          <EmptyState
-            icon={Layers}
-            title="Sin perfiles de corte"
-            description="Agregá las barras que componen este elemento"
-          />
-        </div>
-      ) : null}
       {isLoading ? (
         <DespiecePerfilSkeleton />
       ) : (

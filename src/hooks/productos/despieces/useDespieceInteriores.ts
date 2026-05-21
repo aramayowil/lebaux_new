@@ -3,25 +3,36 @@ import { supabase } from "@/lib/supabaseClient";
 import { DespieceInterior } from "@/types";
 
 const TABLE = "despiece_interior";
-const SQUEMA = "productos";
+const SQUEMA = "opendata";
 
 export function useDespieceInteriorByInterior(id_interior: number | undefined) {
   return useQuery({
-    queryKey: [TABLE, "despiece_interior", id_interior],
+    queryKey: [TABLE, "detail_by_interior", id_interior],
+
     queryFn: async () => {
-      if (!id_interior) return undefined;
+      if (typeof id_interior !== "number" || id_interior <= 0) return null;
 
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
         .select("*")
         .eq("id_interior", id_interior)
-        .maybeSingle(); // Devuelve 1 objeto o null si no hay nada
+        .maybeSingle();
 
-      if (error) throw error;
-      return data as DespieceInterior | undefined;
+      if (error) {
+        console.error(`[Error ${TABLE}]:`, error.message);
+        throw error;
+      }
+
+      return data;
     },
-    enabled: !!id_interior,
+
+    select: (data) => {
+      return (data as DespieceInterior) ?? undefined;
+    },
+
+    enabled: !!id_interior && id_interior > 0,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -41,11 +52,9 @@ export function useAddDespieceInterior() {
       return data as DespieceInterior;
     },
     onSuccess: (newItem) => {
-      // Invalidamos la cache específica de este interior
       queryClient.invalidateQueries({
-        queryKey: [TABLE, "despiece_interior", newItem.id_interior],
+        queryKey: [TABLE, "detail_by_interior", newItem.id_interior],
       });
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
     },
   });
 }
@@ -74,9 +83,8 @@ export function useUpdateDespieceInterior() {
     },
     onSuccess: (updatedItem) => {
       queryClient.invalidateQueries({
-        queryKey: [TABLE, "despiece_interior", updatedItem.id_interior],
+        queryKey: [TABLE, "detail_by_interior", updatedItem.id_interior],
       });
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
     },
   });
 }
@@ -85,7 +93,13 @@ export function useDeleteDespieceInterior() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({
+      id,
+      id_interior,
+    }: {
+      id: number;
+      id_interior: number;
+    }) => {
       const { error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
@@ -93,11 +107,12 @@ export function useDeleteDespieceInterior() {
         .eq("id", id);
 
       if (error) throw error;
-      return id;
+      return { id_interior };
     },
-    onSuccess: () => {
-      // Invalidamos globalmente para que todas las vistas se sincronicen
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
+    onSuccess: (vars) => {
+      queryClient.invalidateQueries({
+        queryKey: [TABLE, "detail_by_interior", vars.id_interior],
+      });
     },
   });
 }

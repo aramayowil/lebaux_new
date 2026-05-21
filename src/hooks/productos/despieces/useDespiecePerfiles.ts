@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { DespiecePerfil } from "@/types";
 
 const TABLE = "despiece_perfiles_";
-const SQUEMA = "productos";
+const SQUEMA = "opendata";
 
 //DESPICE PERFILES CONCONSISTE DE CONSISTE EN 6 TABLAS
 // 1. CONTRAVIDRIO EXTERIOR
@@ -15,12 +15,12 @@ const SQUEMA = "productos";
 //EJ -> despiece_perfiles_[nivel]
 
 type nivel =
-  | "marcos"
-  | "hojas"
+  | "marco"
+  | "hoja"
   | "mosquitero"
   | "vidrio_repartido"
-  | "contravidrios_ex"
-  | "contravidrios";
+  | "contravidrio_ex"
+  | "contravidrio";
 
 export function useDespiecePerfiles(
   nivel: nivel,
@@ -31,7 +31,18 @@ export function useDespiecePerfiles(
     queryFn: async () => {
       if (!idParent) return [];
       const tableName = `${TABLE}${nivel}`;
-      const foreignKey = `id_${nivel}`;
+
+      const foreignKeyMap: Record<nivel, string> = {
+        marco: "id_marco",
+        hoja: "id_hoja",
+        mosquitero: "id_mosquitero",
+        vidrio_repartido: "id_vr", // Verifica que así se llame en la DB
+        contravidrio_ex: "id_contravidrio",
+        contravidrio: "id_contravidrio",
+      };
+
+      const foreignKey = foreignKeyMap[nivel];
+
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(tableName)
@@ -51,7 +62,7 @@ export function useAddDespiecePerfil() {
   return useMutation({
     mutationFn: async ({
       nivel,
-      idParent, // Lo recibimos aparte para construir la FK
+      idParent,
       data,
     }: {
       nivel: nivel;
@@ -59,14 +70,24 @@ export function useAddDespiecePerfil() {
       data: Omit<DespiecePerfil, "id" | "id_parent">;
     }) => {
       const tableName = `${TABLE}${nivel}`;
-      const foreignKey = `id_${nivel}`;
+
+      const foreignKeyMap: Record<nivel, string> = {
+        marco: "id_marco",
+        hoja: "id_hoja",
+        mosquitero: "id_mosquitero",
+        vidrio_repartido: "id_vr",
+        contravidrio_ex: "id_contravidrio",
+        contravidrio: "id_contravidrio",
+      };
+
+      const foreignKey = foreignKeyMap[nivel];
 
       const { data: inserted, error } = await supabase
         .schema(SQUEMA)
         .from(tableName)
         .insert({
           ...data,
-          [foreignKey]: idParent, // Inserta en id_marco, id_hoja, etc.
+          [foreignKey]: idParent,
         })
         .select()
         .single();
@@ -76,7 +97,7 @@ export function useAddDespiecePerfil() {
     },
     onSuccess: ({ nivel, idParent }) => {
       queryClient.invalidateQueries({
-        queryKey: [TABLE, nivel, "perfiles", idParent],
+        queryKey: [TABLE + nivel, "perfiles", idParent],
       });
     },
   });
@@ -96,7 +117,17 @@ export function useUpdateDespiecePerfil() {
       data: Partial<DespiecePerfil>;
     }) => {
       const tableName = `${TABLE}${nivel}`;
-      const foreignKey = `id_${nivel}`;
+
+      const foreignKeyMap: Record<nivel, string> = {
+        marco: "id_marco",
+        hoja: "id_hoja",
+        mosquitero: "id_mosquitero",
+        vidrio_repartido: "id_vr",
+        contravidrio_ex: "id_contravidrio",
+        contravidrio: "id_contravidrio",
+      };
+
+      const foreignKey = foreignKeyMap[nivel];
 
       const { data: updated, error } = await supabase
         .schema(SQUEMA)
@@ -108,12 +139,14 @@ export function useUpdateDespiecePerfil() {
 
       if (error) throw error;
 
-      // Extraemos el idParent dinámicamente del objeto actualizado
-      return { updated, nivel, idParent: updated[foreignKey] };
+      return {
+        nivel,
+        idParent: updated[foreignKey],
+      };
     },
-    onSuccess: ({ nivel, idParent }) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({
-        queryKey: [TABLE, nivel, "perfiles", idParent],
+        queryKey: [TABLE + result.nivel, "perfiles", result.idParent],
       });
     },
   });
@@ -141,11 +174,12 @@ export function useDeleteDespiecePerfil() {
         .eq("id", id);
 
       if (error) throw error;
+
       return { nivel, idParent };
     },
-    onSuccess: ({ nivel, idParent }) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({
-        queryKey: [TABLE, nivel, "perfiles", idParent],
+        queryKey: [TABLE + result.nivel, "perfiles", result.idParent],
       });
     },
   });

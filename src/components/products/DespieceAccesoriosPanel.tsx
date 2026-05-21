@@ -1,5 +1,5 @@
 import { Select, SelectItem } from "@heroui/react";
-import { Plus, Trash2, Wrench, X } from "lucide-react";
+import { Plus, Trash2, Wrench } from "lucide-react";
 import FormulaInput from "@/components/ui/FormulaInput";
 import EmptyState from "@/components/ui/EmptyState";
 import type { DespieceAccesorio } from "@/types";
@@ -46,19 +46,42 @@ export default function DespieceAccesoriosPanel({
   const isLoading = isLoadingAccesorios || isLoadingDespieceAccesorios;
   const isError = isErrorAccesorios || isErrorDespieceAccesorios;
 
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center w-full">
+        <Alert
+          color="danger"
+          title="Error al cargar el despiece de accesorios"
+          description="Por favor, recarga la página e intenta nuevamente. Si el error persiste, contactate con soporte técnico."
+        />
+      </div>
+    );
+  }
+
+  if (!accesorios || accesorios.length === 0) {
+    console.log("No hay accesorios cargados");
+    return (
+      <div className="flex items-center justify-center w-full">
+        <Alert
+          color="warning"
+          title="Catálogo vacío"
+          description="No hay perfiles cargados en el catálogo. Por favor, crea uno primero."
+        />
+      </div>
+    );
+  }
+
   async function handleAdd() {
-    // Verificamos que existan accesorios cargados para no enviar un código vacío
     if (!accesorios || accesorios.length === 0) {
       console.error("No hay accesorios disponibles");
       return;
     }
     try {
-      // Se pasa un OBJETO ÚNICO con todas las propiedades que espera el hook
       await addDespieceAccesorio({
-        nivel: nivel, // "marco", "hoja", "interior", etc.
+        nivel: nivel,
+        idParent: idParent,
         data: {
-          id_parent: idParent,
-          id_accesorio: (accesorios[0]?.id).toString(),
+          id_accesorio: accesorios[0]?.id,
           formula_cantidad: "1",
         },
       });
@@ -69,20 +92,22 @@ export default function DespieceAccesoriosPanel({
 
   async function update(id: number, data: Partial<DespieceAccesorio>) {
     try {
-      await updateDespieceAccesorio({ id, data });
+      await updateDespieceAccesorio({
+        id: id,
+        nivel: nivel,
+        data: data,
+      });
       console.log("Actualizado con éxito");
     } catch (error) {
       console.error("Error al actualizar:", error);
     }
   }
 
-  async function handleDelete(nivel: string, item: DespieceAccesorio) {
-    // 1. Confirmación
+  async function handleDelete(item: DespieceAccesorio) {
     const ok = window.confirm(`¿Eliminar este accesorio?`);
     if (!ok) return;
 
     try {
-      // 2. Ejecución asíncrona pasando un solo objeto
       await deleteDespieceAccesorio({
         id: item.id,
         nivel: nivel,
@@ -97,18 +122,6 @@ export default function DespieceAccesoriosPanel({
 
   return (
     <div className="space-y-2.5">
-      {isError && (
-        <Alert
-          status="error"
-          icon={<X className="w-4 h-4" />}
-          classNames={{
-            base: "mb-3 rounded-lg border border-transparent shadow-sm",
-            title: "text-sm font-medium",
-          }}
-        >
-          Error al cargar los accesorios.
-        </Alert>
-      )}
       {isLoading ? (
         <AccesoriosPanelSkeleton />
       ) : (
@@ -165,7 +178,7 @@ export default function DespieceAccesoriosPanel({
                     size="sm"
                     selectedKeys={item.id_accesorio ? [item.id_accesorio] : []}
                     onSelectionChange={(k: any) =>
-                      update(item.id, { id_accesorio: [...k][0] as string })
+                      update(item.id, { id_accesorio: [...k][0] as number })
                     }
                     aria-label="Accesorio"
                     classNames={{
@@ -211,7 +224,7 @@ export default function DespieceAccesoriosPanel({
                   />
 
                   <button
-                    onClick={() => handleDelete(nivel, item)}
+                    onClick={() => handleDelete(item)}
                     className="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

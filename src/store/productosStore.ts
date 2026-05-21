@@ -191,10 +191,11 @@ const MOCK_DESPIECE_ACCESORIOS_MARCO: DespieceAccesorio[] = [
   {
     id: 1,
     id_parent: 1,
-    id_accesorio: "RUL-001",
+    id_accesorio: 1,
+    // id_accesorio: "RUL-001",
     formula_cantidad: "hojas * 2",
   },
-  { id: 2, id_parent: 1, id_accesorio: "ESP-001", formula_cantidad: "4" },
+  { id: 2, id_parent: 1, id_accesorio: 2, formula_cantidad: "4" },
 ];
 
 // ─── State types ─────────────────────────────────────────────────────────────

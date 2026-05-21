@@ -10,6 +10,10 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  Divider,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
 } from "@heroui/react";
 import {
   ArrowLeft,
@@ -28,22 +32,29 @@ import {
   Eraser,
   Palette,
   ChartPie,
+  Loader2,
 } from "lucide-react";
 
 import { useObrasStore } from "@/store/obrasStore";
-import { useProductosStore } from "@/store/productosStore";
 import TipologiaCanvas from "@/components/canvas/TipologiaCanvas";
 import TipologiaConfigPanel from "@/components/obras/TipologiaConfigPanel";
 import TravesanoModal from "@/components/obras/TravesanoModal";
 import NuevaTipologiaModal from "@/components/obras/NuevaTipologiaModal";
 import type { TipologiaConfig } from "@/store/obrasStore";
 import { useDespiece } from "@/hooks/useDespiece";
-
-import { Divider } from "@heroui/react";
-import { PopoverContent } from "@heroui/react";
-import { PopoverTrigger } from "@heroui/react";
-import { Popover } from "@heroui/react";
 import DespieceModal from "@/components/obras/DespieceModal";
+
+import { useHojas } from "@/hooks/productos/useHojas";
+import { useObra } from "@/hooks/obra/useObras";
+import {
+  useAddTipologia,
+  useDeleteTipologia,
+  useDuplicateTipologia,
+  useTipologiasByObra,
+  useUpdateTipologia,
+} from "@/hooks/obra/useTipologias";
+import { useProductos } from "@/hooks/productos/useProducto";
+import { useTipos } from "@/hooks/obra/useTipos";
 
 interface CruceModal {
   tipo: "H" | "V";
@@ -55,21 +66,47 @@ export default function ObraEditorPage() {
   const navigate = useNavigate();
   const idObra = Number(id);
 
+  const { getConfig, patchConfig } = useObrasStore();
+
+  // ── HOOKS PRODUCTOS Y TIPOS ──
   const {
-    getObra,
-    getTipologiasByObra,
-    addTipologia,
-    updateTipologia,
-    deleteTipologia,
-    duplicateTipologia,
-    getConfig,
-    patchConfig,
-  } = useObrasStore();
-  const { hojas } = useProductosStore();
+    data: productos,
+    isLoading: isLoadingProductos,
+    isError: isErrorProductos,
+  } = useProductos();
+  const {
+    data: tipos,
+    isLoading: isLoadingTipos,
+    isError: isErrorTipos,
+  } = useTipos();
 
-  const obra = getObra(idObra);
-  const tipologias = getTipologiasByObra(idObra);
+  // ── HOOKS HOJAS ──
+  const {
+    data: hojas,
+    isLoading: isLoadingHojas,
+    isError: isErrorHojas,
+  } = useHojas();
 
+  // ── HOOKS OBRAS ──
+  const {
+    data: obra,
+    isLoading: isLoadingObra,
+    isError: isErrorObra,
+  } = useObra(idObra);
+
+  // ── HOOKS TIPOLOGIAS ──
+  const {
+    data: tipologias = [],
+    isLoading: isLoadingTipologias,
+    isError: isErrorTipologias,
+  } = useTipologiasByObra(idObra);
+
+  const { mutateAsync: addTipologia } = useAddTipologia();
+  const { mutateAsync: updateTipologia } = useUpdateTipologia();
+  const { mutateAsync: deleteTipologia } = useDeleteTipologia();
+  const { mutateAsync: duplicateTipologia } = useDuplicateTipologia();
+
+  // ── ESTADOS DE UI ──
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showConfig, setShowConfig] = useState(true);
   const [showDespiece, setShowDespiece] = useState(false);
@@ -81,7 +118,62 @@ export default function ObraEditorPage() {
 
   const onCloseDespieceModal = () => setShowDespieceModal(false);
 
-  function handleCrearTipologia(
+  // ── EVALUACIÓN DE SELECCIÓN ACTIVA ──
+  const tipSel = tipologias.find((t) => t.id === selectedId) ?? null;
+  const configSel = tipSel ? getConfig(tipSel.id) : null;
+
+  const nHojas =
+    configSel?.id_hoja && hojas
+      ? (hojas.find((h) => h.id === configSel.id_hoja)?.cantidad ?? 1)
+      : 1;
+
+  const formaTipo =
+    productos && configSel
+      ? productos.find((p) => p.id === configSel.id_producto)?.id_tipo
+      : null;
+  const tipoDeProducto =
+    tipos && formaTipo
+      ? tipos.find((t) => t.id === formaTipo)?.forma_tipo
+      : undefined;
+
+  // Motor de despiece (Solo se ejecuta de manera interna si hay tipología activa)
+  const {
+    resultado: despieceResult,
+    error: despieceError,
+    configurado,
+  } = useDespiece(tipSel);
+
+  // ── ACCIONES DE CRUCES ──
+  function addCruceH(mm?: number) {
+    if (!selectedId || !tipSel) return;
+    const cfg = getConfig(selectedId);
+    const pos = mm ?? Math.round(tipSel.alto / 2);
+    const posH = [...(cfg.pos_h ?? []), pos].sort((a, b) => a - b);
+    patchConfig(selectedId, {
+      tipo_cruce: 2,
+      pos_h: posH,
+      cruces_h: posH.length,
+    });
+  }
+
+  function addCruceV(mm?: number) {
+    if (!selectedId || !tipSel) return;
+    const cfg = getConfig(selectedId);
+    const pos = mm ?? Math.round(tipSel.ancho / 2);
+    const posV = [...(cfg.pos_v ?? []), pos].sort((a, b) => a - b);
+    patchConfig(selectedId, {
+      tipo_cruce: 2,
+      pos_v: posV,
+      cruces_v: posV.length,
+    });
+  }
+
+  const selectTipologia = useCallback((id: number) => {
+    setSelectedId(id);
+    setShowConfig(true);
+  }, []);
+
+  async function handleCrearTipologia(
     datos: {
       descripcion: string;
       ancho: number;
@@ -90,60 +182,46 @@ export default function ObraEditorPage() {
     },
     config: Partial<TipologiaConfig>,
   ) {
-    const t = addTipologia({ ...datos, idObra });
-    if (config.idProducto) {
+    const t = await addTipologia({ ...datos, id_obra: idObra });
+    if (config.id_producto) {
       patchConfig(t.id, config);
     }
     setSelectedId(t.id);
   }
 
-  const tipSel = tipologias.find((t) => t.id === selectedId) ?? null;
-  const configSel = tipSel ? getConfig(tipSel.id) : null;
-  const nHojas = configSel?.idHoja
-    ? (hojas.find((h) => h.id === configSel.idHoja)?.cantidad ?? 1)
-    : 1;
-  const formaTipo = useProductosStore(
-    (state) =>
-      state.productos.find((p) => p.id === configSel?.idProducto)?.idTipo,
-  );
-  const tipoDeProducto = useProductosStore(
-    (state) => state.tipos.find((t) => t.id === formaTipo)?.formaTipo,
-  );
+  // ── CONTROL DE CARGA GLOBAL Y ERRORES ──
+  const globalLoading =
+    isLoadingProductos ||
+    isLoadingTipos ||
+    isLoadingHojas ||
+    isLoadingObra ||
+    isLoadingTipologias;
+  const globalError =
+    isErrorProductos ||
+    isErrorTipos ||
+    isErrorHojas ||
+    isErrorObra ||
+    isErrorTipologias;
 
-  // Motor de despiece
-  const {
-    resultado: despieceResult,
-    error: despieceError,
-    configurado,
-  } = useDespiece(tipSel);
-
-  // ── Acciones de cruces ─────────────────────────────────────────────────────
-  function addCruceH(mm?: number) {
-    if (!selectedId || !tipSel) return;
-    const cfg = getConfig(selectedId);
-    const pos = mm ?? Math.round(tipSel.alto / 2);
-    const posH = [...(cfg.posH ?? []), pos].sort((a, b) => a - b);
-    patchConfig(selectedId, { tipoCruce: 2, posH, crucesH: posH.length });
-  }
-  function addCruceV(mm?: number) {
-    if (!selectedId || !tipSel) return;
-    const cfg = getConfig(selectedId);
-    const pos = mm ?? Math.round(tipSel.ancho / 2);
-    const posV = [...(cfg.posV ?? []), pos].sort((a, b) => a - b);
-    patchConfig(selectedId, { tipoCruce: 2, posV, crucesV: posV.length });
-  }
-
-  const selectTipologia = useCallback((id: number) => {
-    setSelectedId(id);
-    setShowConfig(true);
-  }, []);
-
-  if (!obra) {
+  if (globalLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-3 text-steel-400">
-        <p>Obra no encontrada</p>
-        <Button variant="light" onPress={() => navigate("/obras")}>
-          ← Volver
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-56px)] gap-3 bg-white dark:bg-steel-950">
+        <Loader2 className="w-10 h-10 animate-spin text-amber-500" />
+        <p className="text-sm text-steel-500 font-medium">
+          Cargando datos del editor...
+        </p>
+      </div>
+    );
+  }
+
+  if (globalError || !obra) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-56px)] gap-4 bg-white dark:bg-steel-950">
+        <p className="text-sm font-semibold text-red-500">
+          No se pudo cargar la información de la obra
+        </p>
+        <Button variant="flat" size="sm" onPress={() => navigate("/obras")}>
+          ← Volver a Obras
         </Button>
       </div>
     );
@@ -158,7 +236,7 @@ export default function ObraEditorPage() {
           isIconOnly
           size="sm"
           onPress={() => navigate("/obras")}
-          className="text-steel-300 hover:text-steel-600 "
+          className="text-steel-300 hover:text-steel-600"
         >
           <ArrowLeft className="w-4.5 h-4.5" />
         </Button>
@@ -182,7 +260,7 @@ export default function ObraEditorPage() {
                       setShowDespiece(true);
                       setShowDespieceModal(true);
                     }}
-                    className="bg-steel-100 dark:bg-steel-800 hover:bg-[#db924b]/20 transition-colors  rounded-lg border border-steel-200 dark:border-steel-700"
+                    className="bg-steel-100 dark:bg-steel-800 hover:bg-[#db924b]/20 transition-colors rounded-lg border border-steel-200 dark:border-steel-700"
                   >
                     <ChartPie size={18} />
                   </Button>
@@ -225,9 +303,7 @@ export default function ObraEditorPage() {
                         >
                           Agregar tapajuntas
                         </Button>
-
                         <Divider className="my-1" />
-
                         <Button
                           size="sm"
                           variant="light"
@@ -244,9 +320,7 @@ export default function ObraEditorPage() {
                         >
                           Borrar tapajuntas
                         </Button>
-
                         <Divider className="my-1" />
-
                         <Button
                           size="sm"
                           variant="light"
@@ -278,7 +352,7 @@ export default function ObraEditorPage() {
               isIconOnly
               variant="light"
               size="sm"
-              className="bg-steel-100 dark:bg-steel-800 hover:bg-[#db924b]/20 transition-colors  rounded-lg border border-steel-200 dark:border-steel-700"
+              className="bg-steel-100 dark:bg-steel-800 hover:bg-[#db924b]/20 transition-colors rounded-lg border border-steel-200 dark:border-steel-700"
             >
               <Calculator size={19} />
             </Button>
@@ -286,7 +360,7 @@ export default function ObraEditorPage() {
         </div>
       </div>
 
-      {/* ── Body ── */}
+      {/* ── Body Principal ── */}
       <div className="flex flex-1 min-h-0">
         {/* ── Sidebar tipologías ── */}
         <aside className="w-56 shrink-0 border-r border-steel-200 dark:border-steel-800 bg-white dark:bg-steel-900 flex flex-col overflow-hidden">
@@ -312,7 +386,7 @@ export default function ObraEditorPage() {
                 Sin tipologías.
                 <br />
                 <button
-                  className="text-steel-500 underline hover:text-steel-700 mt-1"
+                  className="text-steel-500 underline hover:text-steel-700 mt-1 font-semibold"
                   onClick={() => setShowNuevoModal(true)}
                 >
                   Crear una ahora
@@ -322,7 +396,8 @@ export default function ObraEditorPage() {
             {tipologias.map((t) => {
               const cfg = getConfig(t.id);
               const isSel = selectedId === t.id;
-              const assigned = cfg.idProducto !== null;
+              const assigned =
+                cfg?.id_producto !== null && cfg?.id_producto !== undefined;
               return (
                 <li
                   key={t.id}
@@ -358,8 +433,8 @@ export default function ObraEditorPage() {
                           >
                             ×{t.cantidad}
                           </Chip>
-                          {cfg.tipoCruce === 1 &&
-                            (cfg.crucesH > 0 || cfg.crucesV > 0) && (
+                          {cfg?.tipo_cruce === 1 &&
+                            (cfg.cruces_h > 0 || cfg.cruces_v > 0) && (
                               <Chip
                                 size="sm"
                                 variant="flat"
@@ -369,12 +444,12 @@ export default function ObraEditorPage() {
                                   content: "text-xs px-1",
                                 }}
                               >
-                                {cfg.crucesH}H {cfg.crucesV}V
+                                {cfg.cruces_h}H {cfg.cruces_v}V
                               </Chip>
                             )}
-                          {cfg.tipoCruce === 2 &&
-                            ((cfg.posH?.length ?? 0) > 0 ||
-                              (cfg.posV?.length ?? 0) > 0) && (
+                          {cfg?.tipo_cruce === 2 &&
+                            ((cfg.pos_h?.length ?? 0) > 0 ||
+                              (cfg.pos_v?.length ?? 0) > 0) && (
                               <Chip
                                 size="sm"
                                 variant="flat"
@@ -384,8 +459,8 @@ export default function ObraEditorPage() {
                                   content: "text-xs px-1",
                                 }}
                               >
-                                {cfg.posH?.length ?? 0}H {cfg.posV?.length ?? 0}
-                                V var.
+                                {cfg.pos_h?.length ?? 0}H{" "}
+                                {cfg.pos_v?.length ?? 0}V var.
                               </Chip>
                             )}
                         </div>
@@ -412,7 +487,7 @@ export default function ObraEditorPage() {
                             color="danger"
                             onClick={(e: any) => {
                               e.stopPropagation();
-                              deleteTipologia(t.id);
+                              deleteTipologia({ id: t.id, id_obra: obra.id });
                               if (selectedId === t.id) setSelectedId(null);
                             }}
                           >
@@ -428,8 +503,8 @@ export default function ObraEditorPage() {
           </ul>
         </aside>
 
-        {/* ── Main canvas ── */}
-        {!tipSel ? (
+        {/* ── Vista Central: Condicional según Selección ── */}
+        {!tipSel || !configSel ? (
           <div className="flex-1 flex items-center justify-center bg-steel-50 dark:bg-steel-950/50">
             <div className="text-center space-y-2">
               <LayoutGrid
@@ -437,22 +512,36 @@ export default function ObraEditorPage() {
                 strokeWidth={1}
               />
               <p className="text-sm font-medium text-steel-500">
-                Seleccioná una tipología
+                {tipologias.length === 0
+                  ? "No hay tipologías cargadas"
+                  : "Seleccioná una tipología"}
               </p>
               <p className="text-xs text-steel-400">
-                o creá una nueva desde el panel izquierdo
+                {tipologias.length === 0
+                  ? "Creá una desde el panel izquierdo para comenzar"
+                  : "Elegí un elemento de la lista para editar"}
               </p>
+              {tipologias.length === 0 && (
+                <Button
+                  className="mt-2"
+                  size="sm"
+                  color="primary"
+                  onPress={() => setShowNuevoModal(true)}
+                >
+                  Crear Tipología
+                </Button>
+              )}
             </div>
           </div>
         ) : (
           <div className="flex flex-1 min-w-0 min-h-0">
             <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-slate-100 dark:bg-steel-950/80">
-              {/* Barra de tipología */}
+              {/* Barra interna superior de la tipología */}
               <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-steel-900 border-b border-steel-100 dark:border-steel-800 shrink-0">
                 <Input
                   value={tipSel.descripcion}
                   onValueChange={(v: string) =>
-                    updateTipologia(tipSel.id, { descripcion: v })
+                    updateTipologia({ id: tipSel.id, data: { descripcion: v } })
                   }
                   size="sm"
                   className="max-w-44"
@@ -467,10 +556,13 @@ export default function ObraEditorPage() {
                     type="number"
                     value={String(tipSel.ancho)}
                     onValueChange={(v: string) =>
-                      updateTipologia(tipSel.id, { ancho: parseInt(v) || 600 })
+                      updateTipologia({
+                        id: tipSel.id,
+                        data: { ancho: parseInt(v) || 600 },
+                      })
                     }
                     size="sm"
-                    className="w-30"
+                    className="w-24"
                     classNames={{
                       inputWrapper:
                         "h-7 min-h-unit-7 bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-700",
@@ -486,10 +578,13 @@ export default function ObraEditorPage() {
                     type="number"
                     value={String(tipSel.alto)}
                     onValueChange={(v: string) =>
-                      updateTipologia(tipSel.id, { alto: parseInt(v) || 600 })
+                      updateTipologia({
+                        id: tipSel.id,
+                        data: { alto: parseInt(v) || 600 },
+                      })
                     }
                     size="sm"
-                    className="w-20"
+                    className="w-24"
                     classNames={{
                       inputWrapper:
                         "h-7 min-h-unit-7 bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-700",
@@ -505,10 +600,13 @@ export default function ObraEditorPage() {
                     type="number"
                     value={String(tipSel.cantidad)}
                     onValueChange={(v: string) =>
-                      updateTipologia(tipSel.id, { cantidad: parseInt(v) || 1 })
+                      updateTipologia({
+                        id: tipSel.id,
+                        data: { cantidad: parseInt(v) || 1 },
+                      })
                     }
                     size="sm"
-                    className="w-14"
+                    className="w-16"
                     classNames={{
                       inputWrapper:
                         "h-7 min-h-unit-7 bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-700",
@@ -560,27 +658,25 @@ export default function ObraEditorPage() {
                 </div>
               </div>
 
-              {/* Canvas */}
+              {/* Canvas contenedor */}
               <div className="flex-1 flex items-center justify-center overflow-hidden relative">
-                {configSel && (
-                  <TipologiaCanvas
-                    tipologia={tipSel}
-                    config={configSel}
-                    tipoDeProducto={tipoDeProducto}
-                    hojas={nHojas}
-                    width={Math.max(
-                      360,
-                      (showConfig
-                        ? window.innerWidth - 224 - 288
-                        : window.innerWidth - 224) - 32,
-                    )}
-                    height={Math.max(280, window.innerHeight - 200)}
-                  />
-                )}
+                <TipologiaCanvas
+                  tipologia={tipSel}
+                  config={configSel}
+                  tipoDeProducto={tipoDeProducto}
+                  hojas={nHojas}
+                  width={Math.max(
+                    360,
+                    (showConfig
+                      ? window.innerWidth - 224 - 288
+                      : window.innerWidth - 224) - 32,
+                  )}
+                  height={Math.max(280, window.innerHeight - 200)}
+                />
               </div>
             </div>
 
-            {/* Panel config */}
+            {/* Panel lateral de configuración */}
             {showConfig && (
               <aside className="w-72 shrink-0 border-l border-steel-200 dark:border-steel-800 bg-white dark:bg-steel-900 overflow-y-auto scrollbar-thin">
                 <div className="px-4 py-4 border-b border-steel-100 dark:border-steel-800">
@@ -612,14 +708,14 @@ export default function ObraEditorPage() {
           </div>
         )}
       </div>
-      {/* ── NuevaTipologiaModal ── */}
+
+      {/* ── Modales Globales ── */}
       <NuevaTipologiaModal
         isOpen={showNuevoModal}
         onOpenChange={() => setShowNuevoModal(false)}
         onCrear={handleCrearTipologia}
       />
 
-      {/* ── Modal posición de cruce ── */}
       {cruceModal && tipSel && (
         <CrucePositionModal
           tipo={cruceModal.tipo}
@@ -643,8 +739,12 @@ export default function ObraEditorPage() {
           const nuevosH = Array.from({ length: data.cantidad }, (_, i) =>
             Math.round((tipSel.alto / (data.cantidad + 1)) * (i + 1)),
           );
-          const posH = [...(cfg.posH ?? []), ...nuevosH].sort((a, b) => a - b);
-          patchConfig(selectedId, { tipoCruce: 2, posH, crucesH: posH.length });
+          const posH = [...(cfg.pos_h ?? []), ...nuevosH].sort((a, b) => a - b);
+          patchConfig(selectedId, {
+            tipo_cruce: 2,
+            pos_h: posH,
+            cruces_h: posH.length,
+          });
         }}
       />
     </div>

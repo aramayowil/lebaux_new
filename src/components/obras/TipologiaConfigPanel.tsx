@@ -39,21 +39,21 @@ export default function TipologiaConfigPanel({
   const upd = (data: Partial<TipologiaConfig>) =>
     patchConfig(idTipologia, data);
 
-  const interioresDeHoja = interiores.filter((i) => i.idHoja === cfg.idHoja);
+  const interioresDeHoja = interiores.filter((i) => i.id_hoja === cfg.id_hoja);
   const cvDeInterior = contravidrios.filter(
-    (c) => c.idInterior === cfg.idInterior,
+    (c) => c.id_interior === cfg.id_interior,
   );
   const cveDeInterior = contravidriosExt.filter(
-    (c) => c.idInterior === cfg.idInterior,
+    (c) => c.id_interior === cfg.id_interior,
   );
   const vrDeInterior = vidRepartidos.filter(
-    (v) => v.idInterior === cfg.idInterior,
+    (v) => v.id_interior === cfg.id_interior,
   );
-  const tratamiento = tratamientos.find((t) => t.id === cfg.idTratamiento);
+  const tratamiento = tratamientos.find((t) => t.id === cfg.id_tratamiento);
 
   // Posiciones de cruces variables
-  const posH = cfg.posH ?? [];
-  const posV = cfg.posV ?? [];
+  const posH = cfg.pos_h ?? [];
+  const posV = cfg.pos_v ?? [];
 
   // Paños resultantes de cruces variables
   function segmentos(total: number, pos: number[]) {
@@ -67,7 +67,7 @@ export default function TipologiaConfigPanel({
   const nFilas = filasAltos.length;
   const nCols = colsAnchos.length;
   const tieneModulos =
-    cfg.tipoCruce === 2 && (posH.length > 0 || posV.length > 0);
+    cfg.tipo_cruce === 2 && (posH.length > 0 || posV.length > 0);
 
   function addPosH() {
     const sugerido =
@@ -78,7 +78,7 @@ export default function TipologiaConfigPanel({
             alto - 50,
           );
     const next = [...posH, sugerido].sort((a, b) => a - b);
-    upd({ posH: next, crucesH: next.length });
+    upd({ pos_h: next, cruces_h: next.length });
   }
   function addPosV() {
     const sugerido =
@@ -89,32 +89,32 @@ export default function TipologiaConfigPanel({
             ancho - 50,
           );
     const next = [...posV, sugerido].sort((a, b) => a - b);
-    upd({ posV: next, crucesV: next.length });
+    upd({ pos_v: next, cruces_v: next.length });
   }
   function setPosH(i: number, val: number) {
     const next = [...posH];
     next[i] = val;
-    upd({ posH: next, crucesH: next.length });
+    upd({ pos_h: next, cruces_h: next.length });
   }
   function setPosV(i: number, val: number) {
     const next = [...posV];
     next[i] = val;
-    upd({ posV: next, crucesV: next.length });
+    upd({ pos_v: next, cruces_v: next.length });
   }
   function delPosH(i: number) {
     const next = posH.filter((_, idx) => idx !== i);
     upd({
-      posH: next,
-      crucesH: next.length,
-      tipoCruce: next.length + posV.length > 0 ? 2 : 0,
+      pos_h: next,
+      cruces_h: next.length,
+      tipo_cruce: next.length + posV.length > 0 ? 2 : 0,
     });
   }
   function delPosV(i: number) {
     const next = posV.filter((_, idx) => idx !== i);
     upd({
-      posV: next,
-      crucesV: next.length,
-      tipoCruce: posH.length + next.length > 0 ? 2 : 0,
+      pos_v: next,
+      cruces_v: next.length,
+      tipo_cruce: posH.length + next.length > 0 ? 2 : 0,
     });
   }
 
@@ -138,9 +138,9 @@ export default function TipologiaConfigPanel({
           <Select
             label="Tratamiento"
             size="sm"
-            selectedKeys={[String(cfg.idTratamiento)]}
+            selectedKeys={[String(cfg.id_tratamiento)]}
             onSelectionChange={(k: any) =>
-              upd({ idTratamiento: parseInt([...k][0] as string) || 1 })
+              upd({ id_tratamiento: parseInt([...k][0] as string) || 1 })
             }
             classNames={TW}
           >
@@ -171,16 +171,16 @@ export default function TipologiaConfigPanel({
         </div>
 
         {/* Sin cruces: configuración global */}
-        {cfg.tipoCruce === 0 && (
+        {cfg.tipo_cruce === 0 && (
           <div className="space-y-3">
             {/* Separar vidrios por tipo para mostrar agrupados */}
             {(() => {
               const vidrosCrudos = vidrios.filter((v) => {
-                const t = tiposInterior.find((x) => x.id === v.tipoRev);
+                const t = tiposInterior.find((x) => x.id === v.tipo_rev);
                 return !t || t.descripcion.toLowerCase().includes("vidrio");
               });
               const revestimientos = vidrios.filter((v) => {
-                const t = tiposInterior.find((x) => x.id === v.tipoRev);
+                const t = tiposInterior.find((x) => x.id === v.tipo_rev);
                 return (
                   t &&
                   !t.descripcion.toLowerCase().includes("vidrio") &&
@@ -188,10 +188,9 @@ export default function TipologiaConfigPanel({
                 );
               });
               const telas = vidrios.filter((v) => {
-                const t = tiposInterior.find((x) => x.id === v.tipoRev);
+                const t = tiposInterior.find((x) => x.id === v.tipo_rev);
                 return t && t.descripcion.toLowerCase().includes("mosquit");
               });
-
               return (
                 <>
                   {/* Vidrio principal */}
@@ -199,21 +198,28 @@ export default function TipologiaConfigPanel({
                     label="Vidrio / material de relleno"
                     placeholder="Sin asignar"
                     size="sm"
-                    selectedKeys={cfg.idVidrio ? [cfg.idVidrio] : []}
+                    selectedKeys={cfg.id_vidrio ? [cfg.id_vidrio] : []}
                     onSelectionChange={(k: any) =>
-                      upd({ idVidrio: ([...k][0] as string) || null })
+                      upd({ id_vidrio: ([...k][0] as string) || null })
                     }
                     classNames={TW}
                   >
                     {vidrosCrudos.length > 0 && (
-                      <SelectItem key="__grp_vidrios" isReadOnly textValue="">
+                      <SelectItem
+                        key="__grp_vidrios"
+                        isReadOnly
+                        textValue="Vidrios"
+                      >
                         <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">
                           Vidrios
                         </span>
                       </SelectItem>
                     )}
                     {vidrosCrudos.map((v) => (
-                      <SelectItem key={v.codigo} textValue={v.descri}>
+                      <SelectItem
+                        key={v.codigo}
+                        textValue={`${v.descri} ${v.espesor}mm`}
+                      >
                         <span>{v.descri}</span>
                         <span className="text-xs text-zinc-400 ml-2">
                           {v.espesor}mm
@@ -221,7 +227,11 @@ export default function TipologiaConfigPanel({
                       </SelectItem>
                     ))}
                     {revestimientos.length > 0 && (
-                      <SelectItem key="__grp_rev" isReadOnly textValue="">
+                      <SelectItem
+                        key="__grp_rev"
+                        isReadOnly
+                        textValue="Revestimientos"
+                      >
                         <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">
                           Revestimientos
                         </span>
@@ -229,10 +239,13 @@ export default function TipologiaConfigPanel({
                     )}
                     {revestimientos.map((v) => {
                       const tipo = tiposInterior.find(
-                        (t) => t.id === v.tipoRev,
+                        (t) => t.id === v.tipo_rev,
                       );
                       return (
-                        <SelectItem key={v.codigo} textValue={v.descri}>
+                        <SelectItem
+                          key={v.codigo}
+                          textValue={`${v.descri} ${tipo?.descripcion ?? ""}`}
+                        >
                           <span>{v.descri}</span>
                           <span className="text-xs text-zinc-400 ml-2">
                             {tipo?.descripcion ?? ""}
@@ -241,7 +254,11 @@ export default function TipologiaConfigPanel({
                       );
                     })}
                     {telas.length > 0 && (
-                      <SelectItem key="__grp_tela" isReadOnly textValue="">
+                      <SelectItem
+                        key="__grp_tela"
+                        isReadOnly
+                        textValue="Telas / Mosquitero"
+                      >
                         <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">
                           Telas / Mosquitero
                         </span>
@@ -261,10 +278,12 @@ export default function TipologiaConfigPanel({
                       placeholder="Sin revestimiento"
                       size="sm"
                       selectedKeys={
-                        cfg.idRevestimiento ? [cfg.idRevestimiento] : []
+                        cfg.id_revestimiento ? [cfg.id_revestimiento] : []
                       }
                       onSelectionChange={(k: any) =>
-                        upd({ idRevestimiento: ([...k][0] as string) || null })
+                        upd({
+                          id_revestimiento: ([...k][0] as string) || null,
+                        })
                       }
                       classNames={TW}
                     >
@@ -275,10 +294,13 @@ export default function TipologiaConfigPanel({
                       </SelectItem>
                       {revestimientos.map((v) => {
                         const tipo = tiposInterior.find(
-                          (t) => t.id === v.tipoRev,
+                          (t) => t.id === v.tipo_rev,
                         );
                         return (
-                          <SelectItem key={v.codigo} textValue={v.descri}>
+                          <SelectItem
+                            key={v.codigo}
+                            textValue={`${v.descri} ${tipo?.descripcion ?? ""}`}
+                          >
                             <span>{v.descri}</span>
                             <span className="text-xs text-zinc-400 ml-2">
                               {tipo?.descripcion ?? ""}
@@ -293,16 +315,18 @@ export default function TipologiaConfigPanel({
             })()}
 
             {/* Contravidrio interior */}
-            {cfg.idInterior && cvDeInterior.length > 0 && (
+            {cfg.id_interior && cvDeInterior.length > 0 && (
               <Select
                 label="Contravidrio interior"
                 placeholder="Sin asignar"
                 size="sm"
                 selectedKeys={
-                  cfg.idContravidrio ? [String(cfg.idContravidrio)] : []
+                  cfg.id_contravidrio ? [String(cfg.id_contravidrio)] : []
                 }
                 onSelectionChange={(k: any) =>
-                  upd({ idContravidrio: parseInt([...k][0] as string) || null })
+                  upd({
+                    id_contravidrio: parseInt([...k][0] as string) || null,
+                  })
                 }
                 classNames={TW}
               >
@@ -320,17 +344,19 @@ export default function TipologiaConfigPanel({
             )}
 
             {/* Contravidrio exterior */}
-            {cfg.idInterior && cveDeInterior.length > 0 && (
+            {cfg.id_interior && cveDeInterior.length > 0 && (
               <Select
                 label="Contravidrio exterior"
                 placeholder="Sin asignar"
                 size="sm"
                 selectedKeys={
-                  cfg.idContravidrioExt ? [String(cfg.idContravidrioExt)] : []
+                  cfg.id_contravidrio_ext
+                    ? [String(cfg.id_contravidrio_ext)]
+                    : []
                 }
                 onSelectionChange={(k: any) =>
                   upd({
-                    idContravidrioExt: parseInt([...k][0] as string) || null,
+                    id_contravidrio_ext: parseInt([...k][0] as string) || null,
                   })
                 }
                 classNames={TW}
@@ -348,17 +374,19 @@ export default function TipologiaConfigPanel({
               </Select>
             )}
 
-            {/* Vidrio repartido — las fórmulas están en DespieceVR (tabla separada) */}
-            {cfg.idInterior && vrDeInterior.length > 0 && (
+            {/* Vidrio repartido */}
+            {cfg.id_interior && vrDeInterior.length > 0 && (
               <Select
                 label="Vidrio repartido"
                 placeholder="Sin vidrio repartido"
                 size="sm"
                 selectedKeys={
-                  cfg.idVidRepartido ? [String(cfg.idVidRepartido)] : []
+                  cfg.id_vid_repartido ? [String(cfg.id_vid_repartido)] : []
                 }
                 onSelectionChange={(k: any) =>
-                  upd({ idVidRepartido: parseInt([...k][0] as string) || null })
+                  upd({
+                    id_vid_repartido: parseInt([...k][0] as string) || null,
+                  })
                 }
                 classNames={TW}
               >
@@ -370,8 +398,8 @@ export default function TipologiaConfigPanel({
                         <span>{vr.descripcion}</span>
                         {despVR && (
                           <span className="text-xs text-zinc-400">
-                            {despVR.formulaAnchoInterior} ×{" "}
-                            {despVR.formulaAltoInterior}
+                            {despVR.formula_ancho_interior} ×{" "}
+                            {despVR.formula_alto_interior}
                           </span>
                         )}
                       </div>
@@ -384,7 +412,7 @@ export default function TipologiaConfigPanel({
         )}
 
         {/* Con cruces: aviso de configuración por módulo */}
-        {cfg.tipoCruce > 0 && (
+        {cfg.tipo_cruce > 0 && (
           <p className="text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/40 rounded-lg px-3 py-2 leading-relaxed">
             El vidrio y revestimiento se configura por paño ↓ en la grilla de la
             sección Cruces.
@@ -404,21 +432,21 @@ export default function TipologiaConfigPanel({
         <div className="grid grid-cols-2 gap-2">
           <Button
             size="sm"
-            variant={cfg.conPremarco ? "solid" : "flat"}
-            color={cfg.conPremarco ? "primary" : "default"}
-            onPress={() => upd({ conPremarco: !cfg.conPremarco })}
+            variant={cfg.con_premarco ? "solid" : "flat"}
+            color={cfg.con_premarco ? "primary" : "default"}
+            onPress={() => upd({ con_premarco: !cfg.con_premarco })}
             className="text-[10px] h-8"
           >
-            {cfg.conPremarco ? "Con Premarco" : "Sin Premarco"}
+            {cfg.con_premarco ? "Con Premarco" : "Sin Premarco"}
           </Button>
           <Button
             size="sm"
-            variant={cfg.conTapajuntas ? "solid" : "flat"}
-            color={cfg.conTapajuntas ? "primary" : "default"}
-            onPress={() => upd({ conTapajuntas: !cfg.conTapajuntas })}
+            variant={cfg.con_tapajuntas ? "solid" : "flat"}
+            color={cfg.con_tapajuntas ? "primary" : "default"}
+            onPress={() => upd({ con_tapajuntas: !cfg.con_tapajuntas })}
             className="text-[10px] h-8"
           >
-            {cfg.conTapajuntas ? "Con Tapajuntas" : "Sin Tapajuntas"}
+            {cfg.con_tapajuntas ? "Con Tapajuntas" : "Sin Tapajuntas"}
           </Button>
         </div>
       </div>
@@ -436,31 +464,37 @@ export default function TipologiaConfigPanel({
         <Select
           label="Tipo de cruces"
           size="sm"
-          selectedKeys={[String(cfg.tipoCruce)]}
+          selectedKeys={[String(cfg.tipo_cruce)]}
           onSelectionChange={(k: any) => {
             const tipo = parseInt([...k][0] as string) as 0 | 1 | 2;
             if (tipo === 0)
               upd({
-                tipoCruce: 0,
-                crucesH: 0,
-                crucesV: 0,
-                posH: [],
-                posV: [],
+                tipo_cruce: 0,
+                cruces_h: 0,
+                cruces_v: 0,
+                pos_h: [],
+                pos_v: [],
                 modulosConfig: [],
               });
             else if (tipo === 1)
-              upd({ tipoCruce: 1, posH: [], posV: [], modulosConfig: [] });
-            else upd({ tipoCruce: 2, crucesH: 0, crucesV: 0 });
+              upd({ tipo_cruce: 1, pos_h: [], pos_v: [], modulosConfig: [] });
+            else upd({ tipo_cruce: 2, cruces_h: 0, cruces_v: 0 });
           }}
           classNames={TW}
         >
-          <SelectItem key="0">Sin cruces</SelectItem>
-          <SelectItem key="1">Centrados (equidistantes)</SelectItem>
-          <SelectItem key="2">Posición variable (mm)</SelectItem>
+          <SelectItem key="0" textValue="Sin cruces">
+            Sin cruces
+          </SelectItem>
+          <SelectItem key="1" textValue="Centrados (equidistantes)">
+            Centrados (equidistantes)
+          </SelectItem>
+          <SelectItem key="2" textValue="Posición variable (mm)">
+            Posición variable (mm)
+          </SelectItem>
         </Select>
 
         {/* ── Centrados ── */}
-        {cfg.tipoCruce === 1 && (
+        {cfg.tipo_cruce === 1 && (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <Input
@@ -468,8 +502,11 @@ export default function TipologiaConfigPanel({
                 type="number"
                 min={0}
                 max={10}
-                value={String(cfg.crucesH)}
-                onValueChange={(v: any) => upd({ crucesH: parseInt(v) || 0 })}
+                value={String(cfg.cruces_h)}
+                onValueChange={(v: any) => upd({ cruces_h: parseInt(v) || 0 })}
+                onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
+                  e.target.select()
+                }
                 size="sm"
                 description="Variable 'crucesH'"
                 classNames={IW}
@@ -479,8 +516,11 @@ export default function TipologiaConfigPanel({
                 type="number"
                 min={0}
                 max={10}
-                value={String(cfg.crucesV)}
-                onValueChange={(v: any) => upd({ crucesV: parseInt(v) || 0 })}
+                value={String(cfg.cruces_v)}
+                onValueChange={(v: any) => upd({ cruces_v: parseInt(v) || 0 })}
+                onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
+                  e.target.select()
+                }
                 size="sm"
                 description="Variable 'crucesV'"
                 classNames={IW}
@@ -488,26 +528,26 @@ export default function TipologiaConfigPanel({
             </div>
 
             {/* Grilla de paños — centrados */}
-            {(cfg.crucesH > 0 || cfg.crucesV > 0) && cfg.idHoja && (
+            {(cfg.cruces_h > 0 || cfg.cruces_v > 0) && cfg.id_hoja && (
               <GrillaModulos
-                nFilas={cfg.crucesH + 1}
-                nCols={cfg.crucesV + 1}
-                filasAltos={Array.from({ length: cfg.crucesH + 1 }, () =>
-                  Math.round(alto / (cfg.crucesH + 1)),
+                nFilas={cfg.cruces_h + 1}
+                nCols={cfg.cruces_v + 1}
+                filasAltos={Array.from({ length: cfg.cruces_h + 1 }, () =>
+                  Math.round(alto / (cfg.cruces_h + 1)),
                 )}
-                colsAnchos={Array.from({ length: cfg.crucesV + 1 }, () =>
-                  Math.round(ancho / (cfg.crucesV + 1)),
+                colsAnchos={Array.from({ length: cfg.cruces_v + 1 }, () =>
+                  Math.round(ancho / (cfg.cruces_v + 1)),
                 )}
                 idTipologia={idTipologia}
                 interioresDeHoja={interioresDeHoja}
-                interiorDefault={cfg.idInterior}
+                interiorDefault={cfg.id_interior}
                 vidrios={vidrios}
                 tiposInterior={tiposInterior}
-                vidrioDefault={cfg.idVidrio}
+                vidrioDefault={cfg.id_vidrio}
                 cvInteriores={cvDeInterior}
                 cvExteriores={cveDeInterior}
-                cvIntDefault={cfg.idContravidrio}
-                cvExtDefault={cfg.idContravidrioExt}
+                cvIntDefault={cfg.id_contravidrio}
+                cvExtDefault={cfg.id_contravidrio_ext}
                 getModulo={getModulo}
                 patchModulo={patchModulo}
               />
@@ -516,7 +556,7 @@ export default function TipologiaConfigPanel({
         )}
 
         {/* ── Variables ── */}
-        {cfg.tipoCruce === 2 && (
+        {cfg.tipo_cruce === 2 && (
           <div className="space-y-3">
             {/* Horizontales */}
             <div className="space-y-1.5">
@@ -555,6 +595,9 @@ export default function TipologiaConfigPanel({
                     max={alto - 1}
                     value={String(pos)}
                     onValueChange={(v: any) => setPosH(i, parseInt(v) || 0)}
+                    onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
+                      e.target.select()
+                    }
                     endContent={
                       <span className="text-[10px] text-zinc-400">mm</span>
                     }
@@ -618,6 +661,9 @@ export default function TipologiaConfigPanel({
                     max={ancho - 1}
                     value={String(pos)}
                     onValueChange={(v: any) => setPosV(i, parseInt(v) || 0)}
+                    onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
+                      e.target.select()
+                    }
                     endContent={
                       <span className="text-[10px] text-zinc-400">mm</span>
                     }
@@ -645,7 +691,7 @@ export default function TipologiaConfigPanel({
             </div>
 
             {/* Grilla de paños — variables */}
-            {tieneModulos && cfg.idHoja && (
+            {tieneModulos && cfg.id_hoja && (
               <GrillaModulos
                 nFilas={nFilas}
                 nCols={nCols}
@@ -653,14 +699,14 @@ export default function TipologiaConfigPanel({
                 colsAnchos={colsAnchos}
                 idTipologia={idTipologia}
                 interioresDeHoja={interioresDeHoja}
-                interiorDefault={cfg.idInterior}
+                interiorDefault={cfg.id_interior}
                 vidrios={vidrios}
                 tiposInterior={tiposInterior}
-                vidrioDefault={cfg.idVidrio}
+                vidrioDefault={cfg.id_vidrio}
                 cvInteriores={cvDeInterior}
                 cvExteriores={cveDeInterior}
-                cvIntDefault={cfg.idContravidrio}
-                cvExtDefault={cfg.idContravidrioExt}
+                cvIntDefault={cfg.id_contravidrio}
+                cvExtDefault={cfg.id_contravidrio_ext}
                 getModulo={getModulo}
                 patchModulo={patchModulo}
               />
@@ -682,13 +728,13 @@ export default function TipologiaConfigPanel({
   );
 }
 
-// ── GrillaModulos — grilla unificada de paños con interior + vidrio por celda ─
+// ── GrillaModulos ──
 
 interface Vidrio2 {
   codigo: string;
   descri: string;
   espesor: number;
-  tipoRev: number;
+  tipo_rev: number;
 }
 interface CV2 {
   id: number;
@@ -739,13 +785,12 @@ function GrillaModulos({
   const tieneCV = cvInteriores.length > 0;
   const tieneCVE = cvExteriores.length > 0;
 
-  // Separar vidrios por tipo para los selectores de celda
   const vidrosCrudos = vidrios.filter((v) => {
-    const t = tiposInterior.find((x) => x.id === v.tipoRev);
+    const t = tiposInterior.find((x) => x.id === v.tipo_rev);
     return !t || t.descripcion.toLowerCase().includes("vidrio");
   });
   const revestimientos = vidrios.filter((v) => {
-    const t = tiposInterior.find((x) => x.id === v.tipoRev);
+    const t = tiposInterior.find((x) => x.id === v.tipo_rev);
     return (
       t &&
       !t.descripcion.toLowerCase().includes("vidrio") &&
@@ -817,7 +862,6 @@ function GrillaModulos({
                   mod.idContravidrioExt &&
                   mod.idContravidrioExt !== cvExtDefault;
                 const hasDiff = diffInterior || diffVidrio || diffCV || diffCVE;
-
                 return (
                   <div
                     key={col}
@@ -908,7 +952,10 @@ function GrillaModulos({
                         </span>
                       </SelectItem>
                       {vidrosCrudos.map((v) => (
-                        <SelectItem key={v.codigo} textValue={v.descri}>
+                        <SelectItem
+                          key={v.codigo}
+                          textValue={`${v.descri} ${v.espesor}mm`}
+                        >
                           <span className="text-[10px]">{v.descri}</span>
                           <span className="text-[9px] text-zinc-400 ml-1">
                             {v.espesor}mm
@@ -943,10 +990,13 @@ function GrillaModulos({
                         </SelectItem>
                         {revestimientos.map((v) => {
                           const tipo = tiposInterior.find(
-                            (t) => t.id === v.tipoRev,
+                            (t) => t.id === v.tipo_rev,
                           );
                           return (
-                            <SelectItem key={v.codigo} textValue={v.descri}>
+                            <SelectItem
+                              key={v.codigo}
+                              textValue={`${v.descri} ${tipo?.descripcion ?? ""}`}
+                            >
                               <span className="text-[10px]">{v.descri}</span>
                               <span className="text-[9px] text-zinc-400 ml-1">
                                 {tipo?.descripcion ?? ""}

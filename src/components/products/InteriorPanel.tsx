@@ -1,10 +1,11 @@
 import InteriorEditor from "./InteriorEditor";
-import { Square, ChevronRight, AlertCircle } from "lucide-react";
+import { Square, ChevronRight } from "lucide-react";
 import type { Interior } from "@/types";
 import { useProductos } from "@/hooks/productos/useProducto";
 import { useMarcos } from "@/hooks/productos/useMarco";
 import { useHojas } from "@/hooks/productos/useHojas";
 import InteriorPanelSkeleton from "./skeletons/interiorPanelSkeleton";
+import { Alert } from "@heroui/react";
 
 interface Props {
   interior: Interior;
@@ -38,20 +39,24 @@ export default function InteriorPanel({
   const isLoading = isLoadingProductos || isLoadingMarcos || isLoadingHojas;
   const isError = isErrorProductos || isErrorMarcos || isErrorHojas;
 
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center w-full">
+        <Alert
+          color="danger"
+          title="Error al cargar el interior"
+          description="Por favor, recarga la página e intenta nuevamente. Si el error persiste, contactate con soporte técnico."
+        />
+      </div>
+    );
+  }
+
   const producto = productos.find((p) => p.id === idProducto);
   const marco = marcos.find((m) => m.id === idMarco);
   const hoja = hojas.find((h) => h.id === idHoja);
 
   return (
     <div className="flex flex-col gap-0">
-      {isError && (
-        <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
-          <div className="text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            Error al cargar los datos
-          </div>
-        </div>
-      )}
       {isLoading ? (
         <InteriorPanelSkeleton />
       ) : (

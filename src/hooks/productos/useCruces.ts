@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type { Cruces } from "@/types";
 
 const TABLE = "cruces";
-const SQUEMA = "productos";
+const SQUEMA = "opendata";
 
 export function useCrucesByInterior(idInterior: number | undefined) {
   return useQuery({
@@ -14,7 +14,7 @@ export function useCrucesByInterior(idInterior: number | undefined) {
         .schema(SQUEMA)
         .from(TABLE)
         .select("*")
-        .eq("id_Interior", idInterior);
+        .eq("id_interior", idInterior);
 
       if (error) throw error;
       return data as Cruces[];
@@ -39,7 +39,6 @@ export function useAddCruces() {
       return data as Cruces;
     },
     onSuccess: (newItem) => {
-      // Invalidamos solo la lista de este interior para ser eficientes
       queryClient.invalidateQueries({
         queryKey: [TABLE, "cruces", newItem.id_interior],
       });
@@ -88,7 +87,6 @@ export function useDeleteCruces() {
       return id;
     },
     onSuccess: () => {
-      // Invalida todo lo relacionado con la tabla para limpiar la UI
       queryClient.invalidateQueries({ queryKey: [TABLE] });
     },
   });

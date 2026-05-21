@@ -2,26 +2,32 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { DespieceCruces } from "@/types";
 
-const TABLE = "cruces";
-const SQUEMA = "productos";
+const TABLE = "despiece_cruces";
+const SQUEMA = "opendata";
 
 export function useDespieceCrucesByCruces(idCruces: number | undefined) {
   return useQuery({
-    queryKey: [TABLE, "despiece_cruces", idCruces],
+    queryKey: [TABLE, "detail_by_cruce", idCruces],
+
     queryFn: async () => {
-      if (!idCruces) return undefined;
+      if (typeof idCruces !== "number" || idCruces <= 0) return null;
 
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
         .select("*")
-        .eq("id_Cruces", idCruces) // Ajusta el nombre de la FK según tu DB
+        .eq("id_cruces", idCruces)
         .maybeSingle();
 
-      if (error) throw error;
-      return data as DespieceCruces | undefined;
+      if (error) {
+        console.error(`[Error ${TABLE}]:`, error.message);
+        throw error;
+      }
+
+      return data ?? null;
     },
-    enabled: !!idCruces,
+    enabled: !!idCruces && idCruces > 0,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -41,11 +47,9 @@ export function useAddDespieceCruces() {
       return data as DespieceCruces;
     },
     onSuccess: (newItem) => {
-      // Invalidamos la caché del despiece específico para este ID de cruce
       queryClient.invalidateQueries({
-        queryKey: [TABLE, "despiece_cruces", newItem.id_cruces],
+        queryKey: [TABLE, "detail_by_cruce", newItem.id_cruces],
       });
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
     },
   });
 }
@@ -74,9 +78,8 @@ export function useUpdateDespieceCruces() {
     },
     onSuccess: (updatedItem) => {
       queryClient.invalidateQueries({
-        queryKey: [TABLE, "despiece_cruces", updatedItem.id_cruces],
+        queryKey: [TABLE, "detail_by_cruce", updatedItem.id_cruces],
       });
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
     },
   });
 }
@@ -85,7 +88,13 @@ export function useDeleteDespieceCruces() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({
+      id,
+      id_cruces,
+    }: {
+      id: number;
+      id_cruces: number;
+    }) => {
       const { error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
@@ -93,10 +102,12 @@ export function useDeleteDespieceCruces() {
         .eq("id", id);
 
       if (error) throw error;
-      return id;
+      return { id_cruces };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({
+        queryKey: [TABLE, "detail_by_cruce", result.id_cruces],
+      });
     },
   });
 }

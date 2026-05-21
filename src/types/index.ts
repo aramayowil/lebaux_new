@@ -42,7 +42,7 @@ export interface Perfil {
 export interface Accesorio {
   id: number;
   cod_parte: string;
-  idColor?: number; // Id color
+  id_color?: number; // Id color
   descri: string;
   precio: number;
   contenido?: number; // CONTENIDO (cantidad por bolsa/caja)
@@ -191,9 +191,9 @@ export interface DespiecePerfil {
 export interface DespiecePerfilContravidrio {
   id: number;
   id_contravidrio: number;
-  id_perfil: string;
-  formula_cantidad_ancho: string; // "Formula cantidad contravidrios ancho"
-  formula_cantidad_alto: string; // "Formula cantidad contravidrios alto"
+  id_perfil: number;
+  formula_cantidad_contravidrios_ancho: string; // "Formula cantidad contravidrios ancho"
+  formula_cantidad_contravidrios_alto: string; // "Formula cantidad contravidrios alto"
   formula_contravidrio_ancho: string;
   formula_contravidrio_alto: string;
   angulo: string;
@@ -203,8 +203,8 @@ export interface DespiecePerfilContravidrio {
 export interface DespieceAccesorio {
   id: number; // agregado por el interprete
   id_parent: number;
-  id_accesorio: string;
-  formula_cantidad: string;
+  id_accesorio: number;
+  formula_cantidad: string; 
 }
 
 // Despiece interior (tabla "Despiece interior"): fórmulas y descuentos del interior
@@ -224,11 +224,11 @@ export interface DespieceInterior {
 export interface DespieceCruces {
   id: number;
   id_cruces: number;
-  id_perfil: string;
+  id_perfil: number;
   formula_cantidad: string;
   formula_ancho_entero: string; // "Formula de ancho entero"
   formula_alto_entero: string; // "Formula de alto entero"
-  descuento_de_vidrio: number;
+  descuento_vidrio: number;
   descuento_de_si_mismo: number;
   angulo: string;
 }
@@ -238,14 +238,14 @@ export interface DespieceVR {
   id: number;
   id_vr: number;
   // contorno
-  perfil_de_contorno: string;
+  id_perfil_contorno: number;
   formula_cantidad_contorno_ancho: string;
   formula_cantidad_contorno_alto: string;
   formula_contorno_ancho: string;
   formula_contorno_alto: string;
   angulo: string;
   // cruceta
-  perfil_de_cruce: string;
+  id_perfil_cruce: number;
   formula_cruce_ancho: string;
   formula_cruce_alto: string;
   descuento_de_vidrio: number;
@@ -289,7 +289,7 @@ export interface Obra {
 
 export interface ObraTipologia {
   id: number;
-  idObra: number;
+  id_obra: number;
   cantidad: number;
   descripcion: string;
   ancho: number;
@@ -379,11 +379,11 @@ export type TipoElemento = "PF" | "AC" | "VD" | "TL" | "MO" | "MN";
 
 export interface ObraDespiece {
   id: number;
-  idObra: number;
-  idTipologia: number;
-  idProductoEnTipo: number;
-  idProducto: number;
-  tipoElemento: TipoElemento;
+  id_obra: number;
+  id_tipologia: number;
+  id_producto_en_tipo: number;
+  id_producto: number;
+  tipo_elemento: TipoElemento;
   elemento: string;
   cantidad: number;
   ancho: number;
@@ -394,7 +394,7 @@ export interface ObraDespiece {
   manual: boolean;
   error: boolean;
   anulado: boolean;
-  agregadoTipo: boolean;
+  agregado_tipo: boolean;
   modificado?: Date;
 }
 

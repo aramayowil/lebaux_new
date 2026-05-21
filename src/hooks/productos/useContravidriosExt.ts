@@ -2,24 +2,29 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { ContravidrioExterior } from "@/types";
 
-const TABLE = "contravidriosExt";
-const SQUEMA = "productos";
+const TABLE = "contravidrio_exterior";
+const SQUEMA = "opendata";
 
-export function useContravidriosExtByInterior(idInterior: number | undefined) {
+export function useContravidriosExtByInterior(id_interior: number | undefined) {
   return useQuery({
-    queryKey: [TABLE, "ext", idInterior],
+    queryKey: [TABLE, "contravidrio_ext", id_interior],
     queryFn: async () => {
-      if (!idInterior) return [];
+      if (typeof id_interior !== "number" || id_interior <= 0) return [];
+
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
         .select("*")
-        .eq("id_Interior", idInterior);
+        .eq("id_interior", id_interior)
+        .order("id", { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`[Error ${TABLE}]:`, error.message);
+        throw error;
+      }
       return data as ContravidrioExterior[];
     },
-    enabled: !!idInterior,
+    enabled: !!id_interior && id_interior > 0,
   });
 }
 
@@ -27,11 +32,11 @@ export function useAddContravidrioExt() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (newExt: Omit<ContravidrioExterior, "id">) => {
+    mutationFn: async (newCV: Omit<ContravidrioExterior, "id">) => {
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
-        .insert(newExt)
+        .insert(newCV)
         .select()
         .single();
 
@@ -39,11 +44,9 @@ export function useAddContravidrioExt() {
       return data as ContravidrioExterior;
     },
     onSuccess: (newItem) => {
-      // Refrescamos específicamente la lista de este interior
       queryClient.invalidateQueries({
-        queryKey: [TABLE, "ext", newItem.id_interior],
+        queryKey: [TABLE, "contravidrio_ext", newItem.id_interior],
       });
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
     },
   });
 }
@@ -72,9 +75,8 @@ export function useUpdateContravidrioExt() {
     },
     onSuccess: (updatedItem) => {
       queryClient.invalidateQueries({
-        queryKey: [TABLE, "ext", updatedItem.id_interior],
+        queryKey: [TABLE, "contravidrio_ext", updatedItem.id_interior],
       });
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
     },
   });
 }
@@ -83,7 +85,13 @@ export function useDeleteContravidrioExt() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({
+      id,
+      id_interior,
+    }: {
+      id: number;
+      id_interior: number;
+    }) => {
       const { error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
@@ -91,11 +99,12 @@ export function useDeleteContravidrioExt() {
         .eq("id", id);
 
       if (error) throw error;
-      return id;
+      return { id_interior };
     },
-    onSuccess: () => {
-      // Invalidamos todas las consultas del exterior para asegurar limpieza
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({
+        queryKey: [TABLE, "contravidrio_ext", result.id_interior],
+      });
     },
   });
 }
