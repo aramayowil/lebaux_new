@@ -55,6 +55,7 @@ import {
 } from "@/hooks/obra/useTipologias";
 import { useProductos } from "@/hooks/productos/useProducto";
 import { useTipos } from "@/hooks/obra/useTipos";
+import { NumberInput } from "@heroui/react";
 
 interface CruceModal {
   tipo: "H" | "V";
@@ -552,8 +553,7 @@ export default function ObraEditorPage() {
                 />
 
                 <div className="flex items-center gap-1 text-xs font-mono text-steel-500">
-                  <Input
-                    type="number"
+                  <NumberInput
                     value={String(tipSel.ancho)}
                     onValueChange={(v: string) =>
                       updateTipologia({
@@ -574,8 +574,7 @@ export default function ObraEditorPage() {
                     aria-label="Ancho"
                   />
                   <span className="text-steel-300">×</span>
-                  <Input
-                    type="number"
+                  <NumberInput
                     value={String(tipSel.alto)}
                     onValueChange={(v: string) =>
                       updateTipologia({
@@ -596,8 +595,7 @@ export default function ObraEditorPage() {
                     aria-label="Alto"
                   />
                   <span className="text-steel-400 text-xs">·</span>
-                  <Input
-                    type="number"
+                  <NumberInput
                     value={String(tipSel.cantidad)}
                     onValueChange={(v: string) =>
                       updateTipologia({
@@ -687,7 +685,7 @@ export default function ObraEditorPage() {
                 <div className="p-4">
                   <TipologiaConfigPanel
                     key={tipSel.id}
-                    idTipologia={tipSel.id}
+                    id_tipologia={tipSel.id}
                     ancho={tipSel.ancho}
                     alto={tipSel.alto}
                   />

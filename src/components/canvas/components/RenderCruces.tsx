@@ -23,7 +23,7 @@ const RenderCruces = ({
   contravidrioThick,
   colors,
 }: RenderCrucesProps) => {
-  const tipoDeCruce = config.tipoCruce;
+  const tipoDeCruce = config.tipo_cruce;
   if (tipoDeCruce === 0) return null;
 
   // 1. OBTENCIÓN DE POSICIONES
@@ -31,8 +31,8 @@ const RenderCruces = ({
   let posH: number[] = [];
 
   if (tipoDeCruce === 1) {
-    const cantV = Number(config?.crucesV) || 0;
-    const cantH = Number(config?.crucesH) || 0;
+    const cantV = Number(config?.cruces_v) || 0;
+    const cantH = Number(config?.cruces_h) || 0;
     posV = Array.from({ length: cantV }).map(
       (_, i) => (width / (cantV + 1)) * (i + 1),
     );
@@ -40,8 +40,8 @@ const RenderCruces = ({
       (_, i) => (height / (cantH + 1)) * (i + 1),
     );
   } else {
-    posV = Array.isArray(config.posV) ? config.posV : [];
-    posH = (Array.isArray(config.posH) ? config.posH : []).map(
+    posV = Array.isArray(config.pos_v) ? config.pos_v : [];
+    posH = (Array.isArray(config.pos_h) ? config.pos_h : []).map(
       (p) => height - p,
     );
   }

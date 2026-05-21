@@ -36,9 +36,9 @@ export default function TipologiaCanvas({
   height = 480,
 }: Props) {
   // COLORES DEL CANVAS SEGÚN EL TRATAMIENTO DE LA SERIE
-  const { idTratamiento } = config;
+  const { id_tratamiento } = config;
   const { tratamientos } = useCatalogosStore();
-  const tratamiento = tratamientos.find((t) => t.id === idTratamiento);
+  const tratamiento = tratamientos.find((t) => t.id === id_tratamiento);
 
   const COLORS = {
     colorDeAluminio: tratamiento?.color || "#f2f2f2",
@@ -78,12 +78,12 @@ export default function TipologiaCanvas({
     const innerH = drawH - espesoPerfil * 2;
 
     // Mapeo de divisiones existentes
-    const posH = (config.posH ?? [])
+    const posH = (config.pos_h ?? [])
       .slice()
       .sort((a, b) => a - b)
       .map((mm) => innerH - mm * scale);
 
-    const posV = (config.posV ?? [])
+    const posV = (config.pos_v ?? [])
       .slice()
       .sort((a, b) => a - b)
       .map((mm) => mm * scale);

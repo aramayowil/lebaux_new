@@ -4,6 +4,7 @@ import { useProductosStore } from "@/store/productosStore";
 import { useCatalogosStore } from "@/store/catalogosStore";
 import { useObrasStore, type TipologiaConfig } from "@/store/obrasStore";
 import clsx from "clsx";
+import { NumberInput } from "@heroui/react";
 
 const TW = {
   trigger:
@@ -15,13 +16,13 @@ const IW = {
 };
 
 interface Props {
-  idTipologia: number;
+  id_tipologia: number;
   ancho: number;
   alto: number;
 }
 
 export default function TipologiaConfigPanel({
-  idTipologia,
+  id_tipologia,
   ancho,
   alto,
 }: Props) {
@@ -35,9 +36,9 @@ export default function TipologiaConfigPanel({
   } = useProductosStore();
   const { tratamientos, vidrios, tiposInterior } = useCatalogosStore();
 
-  const cfg = getConfig(idTipologia);
+  const cfg = getConfig(id_tipologia);
   const upd = (data: Partial<TipologiaConfig>) =>
-    patchConfig(idTipologia, data);
+    patchConfig(id_tipologia, data);
 
   const interioresDeHoja = interiores.filter((i) => i.id_hoja === cfg.id_hoja);
   const cvDeInterior = contravidrios.filter(
@@ -497,9 +498,8 @@ export default function TipologiaConfigPanel({
         {cfg.tipo_cruce === 1 && (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Horiz. (crucesH)"
-                type="number"
+              <NumberInput
+                label="Horizontales"
                 min={0}
                 max={10}
                 value={String(cfg.cruces_h)}
@@ -508,12 +508,11 @@ export default function TipologiaConfigPanel({
                   e.target.select()
                 }
                 size="sm"
-                description="Variable 'crucesH'"
+                description="Cruces horizontales"
                 classNames={IW}
               />
-              <Input
-                label="Vert. (crucesV)"
-                type="number"
+              <NumberInput
+                label="Verticales"
                 min={0}
                 max={10}
                 value={String(cfg.cruces_v)}
@@ -522,7 +521,7 @@ export default function TipologiaConfigPanel({
                   e.target.select()
                 }
                 size="sm"
-                description="Variable 'crucesV'"
+                description="Cruces verticales"
                 classNames={IW}
               />
             </div>
@@ -538,7 +537,7 @@ export default function TipologiaConfigPanel({
                 colsAnchos={Array.from({ length: cfg.cruces_v + 1 }, () =>
                   Math.round(ancho / (cfg.cruces_v + 1)),
                 )}
-                idTipologia={idTipologia}
+                idTipologia={id_tipologia}
                 interioresDeHoja={interioresDeHoja}
                 interiorDefault={cfg.id_interior}
                 vidrios={vidrios}
@@ -697,7 +696,7 @@ export default function TipologiaConfigPanel({
                 nCols={nCols}
                 filasAltos={filasAltos}
                 colsAnchos={colsAnchos}
-                idTipologia={idTipologia}
+                idTipologia={id_tipologia}
                 interioresDeHoja={interioresDeHoja}
                 interiorDefault={cfg.id_interior}
                 vidrios={vidrios}
