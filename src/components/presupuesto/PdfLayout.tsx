@@ -1,7 +1,4 @@
-import { IAbertura as Abertura } from "@/interfaces/IAbertura";
-import { IAbertura_Compuesta as Aberturas_Compuestas } from "@/interfaces/IAberturaCompuesta";
-import { colors } from "@/models/IColors";
-import { vidrios } from "@/models/IVidrios";
+import { Obra, ObraTipologia } from "@/types";
 import {
   Document,
   Page,
@@ -37,9 +34,9 @@ const styles = StyleSheet.create({
     width: "45%",
     display: "flex",
     flexDirection: "column",
-    justifyContent: "flex-start", // Alinea al inicio (arriba)
+    justifyContent: "flex-start",
     alignItems: "center",
-    paddingTop: 0, // Eliminado el padding superior para subir la imagen
+    paddingTop: 0,
     paddingBottom: 10,
   },
   condicionesContainer: {
@@ -56,7 +53,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#eba434",
     borderTopStyle: "dashed",
-    marginHorizontal: 30, // Alineado con el padding de condiciones
+    marginHorizontal: 30,
   },
   observacionesTitle: {
     fontSize: 9,
@@ -88,14 +85,10 @@ function obtenerFechaHoy() {
   return `${dia}/${mes}/${año}`;
 }
 
-function capitalizar(texto: string) {
-  return texto.charAt(0).toUpperCase() + texto.slice(1);
-}
-
 interface PDFProps {
   idPresupuesto: string;
-  aberturas: Abertura[];
-  aberturasCompuestas: Aberturas_Compuestas[];
+  obra: Obra;
+  tipologias: ObraTipologia[];
   detalleCompra: {
     total: number;
     descuento: number;
@@ -105,15 +98,17 @@ interface PDFProps {
   };
   nameCliente: string;
   observaciones: string;
+  images?: Record<number, string>;
 }
 
 function PDF({
   idPresupuesto,
-  aberturas,
-  aberturasCompuestas,
+  obra,
+  tipologias,
   detalleCompra,
   nameCliente = "",
   observaciones,
+  images,
 }: PDFProps) {
   const IvaPorcentaje = 10.5;
 
@@ -124,7 +119,7 @@ function PDF({
         <View style={styles.section}>
           <Image
             src="/images/logos/LEBAUX-LOGO.png"
-            style={{ width: 180, height: 45 }}
+            style={{ width: 160, height: 40 }}
           />
           <Text style={{ fontSize: 24, fontWeight: "bold", color: "#eba434" }}>
             PRESUPUESTO
@@ -136,6 +131,9 @@ function PDF({
           <View>
             <Text style={{ fontSize: 11 }}>
               Sres. {nameCliente.toUpperCase()}
+            </Text>
+            <Text style={{ fontSize: 10, color: "#666", marginTop: 4 }}>
+              Obra: {obra.direccion || "S/D"}
             </Text>
           </View>
           <View style={{ alignItems: "flex-end", gap: 2 }}>
@@ -152,7 +150,9 @@ function PDF({
             flexDirection: "row",
             padding: 8,
             fontSize: 10,
-            borderBottom: "2px solid #eba434",
+            borderBottomWidth: 2,
+            borderBottomColor: "#eba434",
+            borderBottomStyle: "solid",
             backgroundColor: "#f8f8f8",
           }}
         >
@@ -161,23 +161,29 @@ function PDF({
           <Text style={{ width: "20%", textAlign: "right" }}>Total</Text>
         </View>
 
-        {/* --- ITEMS ABERTURAS SIMPLES ---*/}
+        {/* --- ITEMS TIPOLOGIAS --- */}
         <View>
-          {aberturas.map((abertura, index) => {
+          {tipologias.map((tipologia, index) => {
+            // Mantenemos tus cálculos de negocio para precio en el código nuevo
+            const areaM2 = (tipologia.ancho / 1000) * (tipologia.alto / 1000);
+            const precioUnitario = areaM2 * 100000;
+            const precioTotal = precioUnitario * tipologia.cantidad;
+
+            // Algoritmo original de escalado y renderizado proporcional de imágenes
             const AREA_MAX_W = 230;
             const AREA_MAX_H = 180;
             const umbral = 500;
             const escalaBase = 0.25;
 
             let widthCalculado: number;
-            if (abertura.medidas.base <= umbral) {
-              widthCalculado = abertura.medidas.base * escalaBase;
+            if (tipologia.ancho <= umbral) {
+              widthCalculado = tipologia.ancho * escalaBase;
             } else {
-              const excedente = abertura.medidas.base - umbral;
+              const excedente = tipologia.ancho - umbral;
               widthCalculado = umbral * escalaBase + excedente * 0.03;
             }
 
-            const aspect = abertura.medidas.altura / abertura.medidas.base;
+            const aspect = tipologia.alto / tipologia.ancho;
             let finalWidth = widthCalculado;
             let finalHeight = widthCalculado * aspect;
 
@@ -203,23 +209,23 @@ function PDF({
                   flexDirection: "row",
                   alignItems: "stretch",
                   marginTop: 5,
-                  paddingTop: 15, // Mantiene el espacio superior del bloque
+                  paddingTop: 15,
                   paddingBottom: 10,
                   paddingHorizontal: 8,
                 }}
               >
-                {/* COLUMNA IZQUIERDA: IMAGEN (MODIFICADA PARA SUBIR) */}
+                {/* COLUMNA IZQUIERDA: IMAGEN (Estilo viejo de Lebaux) */}
                 <View style={styles.imageContainer}>
-                  <Text
+                  {/* <Text
                     style={{
-                      marginBottom: 2, // Reducido de 5 a 2
+                      marginBottom: 2,
                       fontSize: 10,
                       color: "#333",
-                      marginTop: -10, // Margen negativo para forzar la subida hacia el borde superior
+                      marginTop: -10,
                     }}
                   >
-                    {abertura.cod_abertura}
-                  </Text>
+                    T-{tipologia.id}
+                  </Text> */}
                   <View
                     style={{
                       width: "100%",
@@ -227,14 +233,16 @@ function PDF({
                       justifyContent: "center",
                     }}
                   >
-                    <Image
-                      src={abertura.capturedImageBase64}
-                      style={{ width: finalWidth, height: finalHeight }}
-                    />
+                    {images && images[tipologia.id] && (
+                      <Image
+                        src={images[tipologia.id]}
+                        style={{ width: finalWidth, height: finalHeight }}
+                      />
+                    )}
                   </View>
                 </View>
 
-                {/* COLUMNA DERECHA: TEXTO */}
+                {/* COLUMNA DERECHA: TEXTO (Distribución 55% asimétrica) */}
                 <View
                   style={{
                     width: "55%",
@@ -252,91 +260,25 @@ function PDF({
                       marginBottom: 2,
                     }}
                   >
-                    {capitalizar(abertura.linea)}
+                    {tipologia.descripcion}
                   </Text>
 
-                  <Text
-                    style={{
-                      fontSize: 10,
-                      color: "#444",
-                      lineHeight: 1.1,
-                      marginBottom: 5,
-                    }}
-                  >
-                    {abertura.descripcion_abertura.replace(/\s+/g, " ").trim()}
-                  </Text>
-
-                  <View style={{ gap: 2 }}>
+                  <View style={{ gap: 2, marginTop: 4 }}>
                     <Text style={{ fontSize: 10 }}>
                       Medidas:{" "}
                       <Text style={{ fontWeight: "bold" }}>
-                        {abertura.medidas.base} x {abertura.medidas.altura} mm
+                        {tipologia.ancho} x {tipologia.alto} mm
                       </Text>
                     </Text>
+                    {tipologia.hor1 && tipologia.hor1 > 0 ? (
+                      <Text style={{ fontSize: 10, color: "#555" }}>
+                        Cruce Horizontal: {tipologia.hor1} mm
+                      </Text>
+                    ) : null}
                     <Text style={{ fontSize: 10 }}>
-                      Color:{" "}
-                      {colors.find((c) => c.key === abertura.color)?.label ||
-                        abertura.color}
-                    </Text>
-                    <Text style={{ fontSize: 10 }}>
-                      Vidrio:{" "}
-                      {vidrios.find((v) => v.key === abertura.vidrio)?.label ||
-                        abertura.vidrio}
-                    </Text>
-                    <Text style={{ fontSize: 10 }}>
-                      Cantidad: {abertura.cantidad}
+                      Cantidad: {tipologia.cantidad}
                     </Text>
                   </View>
-
-                  {(abertura.accesorios.premarco > 0 ||
-                    abertura.accesorios.mosquitero > 0 ||
-                    abertura.accesorios.persiana > 0) && (
-                    <View
-                      style={{
-                        marginTop: 6,
-                        padding: 4,
-                        backgroundColor: "#fafafa",
-                        borderLeft: "2px solid #eba434",
-                      }}
-                    >
-                      {abertura.accesorios.mosquitero > 0 && (
-                        <Text style={{ fontSize: 10 }}>
-                          • Mosquitero: $
-                          {formatCurrency(abertura.accesorios.mosquitero)}
-                        </Text>
-                      )}
-                      {abertura.accesorios.premarco > 0 && (
-                        <Text style={{ fontSize: 10 }}>
-                          • Premarco: $
-                          {formatCurrency(abertura.accesorios.premarco)}
-                        </Text>
-                      )}
-                      {abertura.accesorios.persiana > 0 && (
-                        <Text style={{ fontSize: 10 }}>
-                          • Persiana Enrrollable: $
-                          {formatCurrency(abertura.accesorios.persiana)}
-                        </Text>
-                      )}
-                    </View>
-                  )}
-
-                  {abertura.precioColocacion > 0 && (
-                    <View
-                      style={{
-                        marginTop: 6,
-                        padding: 4,
-                        backgroundColor: "#fafafa",
-                        borderLeft: "2px solid #eba434",
-                      }}
-                    >
-                      {abertura.precioColocacion > 0 && (
-                        <Text style={{ fontSize: 10 }}>
-                          • Colocación: $
-                          {formatCurrency(abertura.precioColocacion)}
-                        </Text>
-                      )}
-                    </View>
-                  )}
 
                   <View
                     style={{
@@ -346,7 +288,7 @@ function PDF({
                     }}
                   >
                     <Text style={{ fontSize: 10, color: "#666" }}>
-                      P. Unitario: ${formatCurrency(abertura.precio)}
+                      P. Unitario: ${formatCurrency(precioUnitario)}
                     </Text>
                     <Text
                       style={{
@@ -355,221 +297,7 @@ function PDF({
                         color: "#eba434",
                       }}
                     >
-                      Importe: ${formatCurrency(abertura.precioFinal)}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-
-        {/* --- ITEMS ABERTURAS COMPUESTAS ---*/}
-        <View>
-          {aberturasCompuestas.map((compuesta, index) => {
-            const AREA_MAX_W = 230;
-            const AREA_MAX_H = 180;
-            const umbral = 500;
-            const escalaBase = 0.25;
-
-            let widthCalculado: number;
-            if (compuesta.medidas_compuesta.base <= umbral) {
-              widthCalculado = compuesta.medidas_compuesta.base * escalaBase;
-            } else {
-              const excedente = compuesta.medidas_compuesta.base - umbral;
-              widthCalculado = umbral * escalaBase + excedente * 0.03;
-            }
-
-            const aspect =
-              compuesta.medidas_compuesta.altura /
-              compuesta.medidas_compuesta.base;
-            let finalWidth = widthCalculado;
-            let finalHeight = widthCalculado * aspect;
-
-            if (finalWidth > AREA_MAX_W) {
-              const ratio = AREA_MAX_W / finalWidth;
-              finalWidth *= ratio;
-              finalHeight *= ratio;
-            }
-            if (finalHeight > AREA_MAX_H) {
-              const ratio = AREA_MAX_H / finalHeight;
-              finalWidth *= ratio;
-              finalHeight *= ratio;
-            }
-
-            return (
-              <View
-                key={index}
-                wrap={false}
-                style={{
-                  borderBottomWidth: 1.5,
-                  borderBottomColor: "#eba434",
-                  borderBottomStyle: "solid",
-                  flexDirection: "row",
-                  alignItems: "stretch",
-                  marginTop: 5,
-                  paddingTop: 15, // Mantiene el espacio superior del bloque
-                  paddingBottom: 10,
-                  paddingHorizontal: 8,
-                }}
-              >
-                {/* COLUMNA IZQUIERDA: IMAGEN (MODIFICADA PARA SUBIR) */}
-                <View style={styles.imageContainer}>
-                  <Text
-                    style={{
-                      marginBottom: 2, // Reducido de 5 a 2
-                      fontSize: 10,
-                      color: "#333",
-                      marginTop: -10, // Margen negativo para forzar la subida hacia el borde superior
-                    }}
-                  >
-                    {compuesta.cod_compuesta}
-                  </Text>
-                  <View
-                    style={{
-                      width: "100%",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Image
-                      src={compuesta.capturedImageBase64_compuesta}
-                      style={{ width: finalWidth, height: finalHeight }}
-                    />
-                  </View>
-                </View>
-
-                {/* COLUMNA DERECHA: TEXTO */}
-                <View
-                  style={{
-                    width: "55%",
-                    paddingLeft: 10,
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "flex-start",
-                  }}
-                >
-                  {/* LISTADO DE MÓDULOS INTERNOS */}
-                  {compuesta.configuracion.map((modulo, index) => (
-                    <View key={index}>
-                      <Text
-                        style={{
-                          fontSize: 10,
-                          color: "#444",
-                          lineHeight: 1.1,
-                          marginBottom: 2,
-                        }}
-                      >
-                        {`${modulo.abertura.descripcion_abertura} ${capitalizar(modulo.abertura.linea)}`}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 10,
-                          color: "#444",
-                          lineHeight: 1.1,
-                          marginBottom: 2,
-                        }}
-                      >
-                        {`${modulo.abertura.medidas.base} x ${modulo.abertura.medidas.altura} mm`}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 10,
-                          color: "#444",
-                          lineHeight: 1.1,
-                          marginBottom: 6,
-                        }}
-                      >
-                        {`Vidrio: ${capitalizar(modulo.abertura.vidrio)}`}
-                      </Text>
-                      {/* {(modulo.abertura.accesorios?.premarco || 0 > 0) && (
-                        <View
-                          style={{
-                            marginTop: 6,
-                            padding: 4,
-                            backgroundColor: '#fafafa',
-                            borderLeft: '2px solid #eba434',
-                          }}
-                        >
-                          {modulo.abertura.accesorios?.mosquitero ||
-                            (0 > 0 && (
-                              <Text style={{ fontSize: 9 }}>
-                                • Mosquitero: $
-                                {formatCurrency(
-                                  modulo.abertura.accesorios?.mosquitero || 0,
-                                )}
-                              </Text>
-                            ))}
-                        </View>
-                      )} */}
-                    </View>
-                  ))}
-
-                  <View style={{ gap: 2 }}>
-                    <Text style={{ fontSize: 10 }}>
-                      Medidas:{" "}
-                      <Text style={{ fontWeight: "bold" }}>
-                        {compuesta.medidas_compuesta.base} x{" "}
-                        {compuesta.medidas_compuesta.altura} mm
-                      </Text>
-                    </Text>
-                    <Text style={{ fontSize: 10 }}>
-                      Color:{" "}
-                      {colors.find((c) => c.key === compuesta.color_compuesta)
-                        ?.label || compuesta.descripcion_compuesta}
-                    </Text>
-                    <Text style={{ fontSize: 10 }}>
-                      Cantidad: {compuesta.cantidad_compuesta}
-                    </Text>
-                  </View>
-
-                  {compuesta.precioColocacion_compuesta > 0 && (
-                    <View
-                      style={{
-                        marginTop: 6,
-                        padding: 4,
-                        backgroundColor: "#fafafa",
-                        borderLeft: "2px solid #eba434",
-                      }}
-                    >
-                      {compuesta.precioColocacion_compuesta > 0 && (
-                        <Text style={{ fontSize: 10 }}>
-                          • Colocación: $
-                          {formatCurrency(compuesta.precioColocacion_compuesta)}
-                        </Text>
-                      )}
-                    </View>
-                  )}
-
-                  <View
-                    style={{
-                      marginTop: "auto",
-                      paddingTop: 10,
-                      alignItems: "flex-end",
-                    }}
-                  >
-                    <Text style={{ fontSize: 10, color: "#666" }}>
-                      P. Unitario: ${formatCurrency(compuesta.precio_compuesta)}
-                    </Text>
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        fontWeight: "bold",
-                        color: "#eba434",
-                      }}
-                    >
-                      Importe: $
-                      {formatCurrency(
-                        (compuesta.precio_compuesta +
-                          compuesta.precioColocacion_compuesta) *
-                          compuesta.cantidad_compuesta,
-                      )}
-                      {/* {formatCurrency(
-                        (abertura.precio +
-                          abertura.accesorios.mosquitero +
-                          abertura.accesorios.premarco) *
-                          abertura.cantidad,
-                      )} */}
+                      Importe: ${formatCurrency(precioTotal)}
                     </Text>
                   </View>
                 </View>
@@ -673,7 +401,7 @@ function PDF({
           </View>
         )}
 
-        {/* TEXTO LEGAL Y CONDICIONES */}
+        {/* TEXTO LEGAL Y CONDICIONES (Recuperados de la versión original) */}
         <View wrap={false} style={styles.condicionesContainer}>
           <Text style={{ fontWeight: "bold", marginBottom: 4 }}>
             Para realizar la cotización y/o el presupuesto, debe tener sus vanos

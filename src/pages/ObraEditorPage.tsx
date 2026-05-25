@@ -353,6 +353,7 @@ export default function ObraEditorPage() {
               isIconOnly
               variant="light"
               size="sm"
+              onPress={() => navigate(`/obras/${idObra}/presupuesto`)}
               className="bg-steel-100 dark:bg-steel-800 hover:bg-[#db924b]/20 transition-colors rounded-lg border border-steel-200 dark:border-steel-700"
             >
               <Calculator size={19} />

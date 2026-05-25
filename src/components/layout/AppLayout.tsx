@@ -64,7 +64,7 @@ export default function AppLayout() {
         className={clsx(
           "flex flex-col h-full border-r border-steel-100 dark:border-steel-800",
           "bg-white dark:bg-steel-900 transition-all duration-200 ease-in-out shrink-0",
-          collapsed ? "w-[64px]" : "w-[240px]",
+          collapsed ? "w-[64px]" : "w-[210px]",
         )}
       >
         {/* Logo Section */}
@@ -83,7 +83,7 @@ export default function AppLayout() {
             alt="Lebaux"
             className={clsx(
               "transition-all duration-300 object-contain select-none pointer-events-none",
-              collapsed ? "h-6 w-6" : "h-8",
+              collapsed ? "h-8 w-8" : "h-9",
               "mix-blend-multiply dark:mix-blend-normal",
             )}
           />

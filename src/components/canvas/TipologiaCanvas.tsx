@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Stage, Layer, Group } from "react-konva";
 import type { ObraTipologia } from "@/types";
 import type { TipologiaConfig } from "@/store/obrasStore";
@@ -25,6 +25,7 @@ interface Props {
   hojas?: number;
   width?: number;
   height?: number;
+  onReady?: (base64: string) => void;
 }
 
 export default function TipologiaCanvas({
@@ -34,6 +35,7 @@ export default function TipologiaCanvas({
   hojas = 1,
   width = 640,
   height = 480,
+  onReady,
 }: Props) {
   // COLORES DEL CANVAS SEGÚN EL TRATAMIENTO DE LA SERIE
   const { id_tratamiento } = config;
@@ -42,7 +44,7 @@ export default function TipologiaCanvas({
 
   const COLORS = {
     colorDeAluminio: tratamiento?.color || "#f2f2f2",
-    vidrio: "#C5DDE8",
+    vidrio: "#C5EAFC",
     contorno: tratamiento?.color ? invertirColor(tratamiento.color) : "#94a3b8", // bordes y contornos
     lineasCotas: "#878484", // color de flechas y lineas de cotas
   };
@@ -110,13 +112,11 @@ export default function TipologiaCanvas({
 
   const handleLeafContextMenu = (e: any, index: number) => {
     e.evt.preventDefault();
-    e.cancelBubble = true; // Evita que el evento llegue al Stage
+    e.cancelBubble = true;
 
     const stage = e.target.getStage();
     const pointerPos = stage.getPointerPosition();
 
-    // Calculamos coordenadas relativas al dibujo en milímetros
-    // relativeY se calcula de abajo hacia arriba (estilo carpintería)
     const relX = (pointerPos.x - layout.ox) / layout.scale;
     const relY = H - (pointerPos.y - layout.oy) / layout.scale;
 
@@ -135,6 +135,21 @@ export default function TipologiaCanvas({
     return () => window.removeEventListener("click", handleClose);
   }, []);
 
+  // --- CAPTURA DE IMAGEN ---
+  const stageRef = useRef<any>(null);
+  useEffect(() => {
+    if (onReady && stageRef.current) {
+      // Damos un pequeño respiro para que Konva termine de pintar
+      const timer = setTimeout(() => {
+        if (stageRef.current) {
+          const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2 });
+          onReady(dataUrl);
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [onReady, layout, tipoDeProducto, config, hojas]); // Re-capturar si cambian estos valores
+
   // --- RENDERIZADO DEL LAYOUT ---
   const renderSelectedLayout = () => {
     const tipo = tipoDeProducto.toLowerCase();
@@ -149,8 +164,8 @@ export default function TipologiaCanvas({
       config: config,
       tipologia: tipologia,
       hojas: hojas,
-      isFocused: !!menu, // desplejar menu contextual
-      focusedHoja: menu?.hojaIndex ?? -1, // hoja que se despleja el menu contextual
+      isFocused: !!menu,
+      focusedHoja: menu?.hojaIndex ?? -1,
       colors: COLORS,
       onContextMenu: handleLeafContextMenu,
     };
@@ -174,12 +189,13 @@ export default function TipologiaCanvas({
   return (
     <div className="relative select-none" style={{ width, height }}>
       <Stage
+        // ref={stageRef}
         width={width}
         height={height}
         onContextMenu={handleStageContextMenu}
       >
         <Layer>
-          <Group x={layout.ox} y={layout.oy}>
+          <Group ref={stageRef} x={layout.ox} y={layout.oy}>
             {renderSelectedLayout()}
           </Group>
 
@@ -200,13 +216,10 @@ export default function TipologiaCanvas({
           y={menu.y}
           onClose={() => setMenu(null)}
           onAction={(accion) => {
-            // Aquí ya tienes todos los datos para tu Store:
             console.log("Acción:", accion);
             console.log("Hoja:", menu.hojaIndex);
             console.log("Altura (mm):", menu.relativeY);
             console.log("Ancho (mm):", menu.relativeX);
-
-            // Ejemplo: if(accion === "Travesaño") addTravesaño(menu.relativeY)
           }}
         />
       )}

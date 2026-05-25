@@ -11,6 +11,7 @@ import ObraEditorPage from "@/pages/ObraEditorPage";
 import ProductosPage from "@/pages/ProductosPage";
 import CatalogosPage from "@/pages/CatalogosPage";
 import OpcionesPage from "@/pages/OpcionesPage";
+import PresupuestoPage from "@/pages/PresupuestoPage";
 import Login from "@/pages/login/Login"; // 💡 Corregido el @/ por consistencia
 import Register from "@/pages/login/Register";
 import ProtectedRoute from "./routes/ProtectedRoute"; // Ajustá si tu carpeta es src/routes/ProtectedRoute
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/inicio" element={<InicioPge />} />
           <Route path="/obras" element={<ObrasPage />} />
           <Route path="/obras/:id" element={<ObraEditorPage />} />
+          <Route path="/obras/:id/presupuesto" element={<PresupuestoPage />} />
           <Route path="/productos" element={<ProductosPage />} />
           <Route path="/catalogos" element={<CatalogosPage />} />
           <Route path="/opciones" element={<OpcionesPage />} />

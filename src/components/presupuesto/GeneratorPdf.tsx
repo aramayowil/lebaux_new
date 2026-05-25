@@ -9,26 +9,25 @@ import {
   addToast,
 } from "@heroui/react";
 import { useState, useEffect } from "react";
-import {
-  HiOutlineDocumentText,
-  HiOutlineUser,
-  HiOutlineCloudArrowDown,
-  HiOutlineChatBubbleBottomCenterText,
-} from "react-icons/hi2";
-import PDF from "@/components/PdfLayout";
+
+import PDF from "@/components/presupuesto/PdfLayout";
 import { pdf } from "@react-pdf/renderer";
 
-// STORES Y HOOKS
-import useAberturasStore from "@/stores/useAberturasStore";
-import useAberturasCompuestasStore from "@/stores/useAberturasCompustasStore";
-import { usePresupuestosDB } from "@/hooks/usePresupuestosDB";
-// Supongamos que tienes un store para la configuración de la obra actual
-import { useConfigObraStore } from "@/stores/useConfigObraStore";
-
 // INTERFACES
-import IPresupuesto from "@/interfaces/IPresupuesto";
+import { Obra, ObraTipologia } from "@/types";
 import { useNavigate } from "react-router-dom";
-import useBorradorObraStore from "@/stores/useBorradorObraStore";
+import {
+  CloudDownload,
+  FileText,
+  MessageSquareText,
+  UserRound,
+} from "lucide-react";
+
+import { useObrasStore } from "@/store/obrasStore";
+import { useProductos } from "@/hooks/productos/useProducto";
+import { useTipos } from "@/hooks/obra/useTipos";
+import { useHojas } from "@/hooks/productos/useHojas";
+import TipologiaCanvas from "@/components/canvas/TipologiaCanvas";
 
 function obtenerFechaHoy() {
   return new Date().toLocaleDateString("es-AR");
@@ -37,6 +36,8 @@ function obtenerFechaHoy() {
 type GeneratorPdfProps = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  obra: Obra;
+  tipologias: ObraTipologia[];
   compra: {
     total: number;
     descuento: number;
@@ -46,39 +47,40 @@ type GeneratorPdfProps = {
   };
 };
 
-function GeneratorPdf({ isOpen, onOpenChange, compra }: GeneratorPdfProps) {
+function GeneratorPdf({
+  isOpen,
+  onOpenChange,
+  obra,
+  tipologias,
+  compra,
+}: GeneratorPdfProps) {
   const navigate = useNavigate();
 
-  // EXTRAEMOS DATOS DE LA OBRA ACTUAL (Si es que venimos de "Editar")
-  const { idObraActual, clienteActual, esEdicion, observacionesActuales } =
-    useConfigObraStore();
-
-  const [nameCliente, setNameCliente] = useState("");
+  const [nameCliente, setNameCliente] = useState(
+    obra.nombre + " " + obra.apellido,
+  );
   const [observaciones, setObservaciones] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // 1. Extraemos funciones del hook (Asegúrate de tener actualizarPresupuesto en tu hook)
-  const { guardarPresupuesto, actualizarPresupuesto, createId } =
-    usePresupuestosDB();
+  // --- HOOKS PARA RENDERIZAR LOS CANVAS OCULTOS ---
+  const { getConfig } = useObrasStore();
+  const { data: productos } = useProductos();
+  const { data: tipos } = useTipos();
+  const { data: hojas } = useHojas();
 
-  const aberturasStore = useAberturasStore((state) => state.aberturas);
-  const aberturasCompuestasStore = useAberturasCompuestasStore(
-    (state) => state.aberturasComps,
-  );
+  const [canvasImages, setCanvasImages] = useState<Record<number, string>>({});
 
-  // Sincronizar los campos si es una edición
   useEffect(() => {
-    if (isOpen && esEdicion) {
-      setNameCliente(clienteActual || "");
-      setObservaciones(observacionesActuales || "");
+    if (isOpen && obra) {
+      setNameCliente(`${obra.nombre} ${obra.apellido}`.trim());
+      // Reiniciamos las imágenes cuando se abre el modal para forzar nueva captura si cambió algo
+      setCanvasImages({});
     }
-  }, [isOpen, esEdicion, clienteActual, observacionesActuales]);
+  }, [isOpen, obra]);
 
   const handleFinalizar = () => {
-    localStorage.clear();
-    localStorage.setItem("heroui-theme", "dark");
-    navigate("/", { replace: true });
-    window.location.reload();
+    // Si necesitas hacer alguna limpieza al terminar
+    navigate(`/obras/${obra.id}`);
   };
 
   const generarPDF = async (): Promise<void> => {
@@ -91,47 +93,29 @@ function GeneratorPdf({ isOpen, onOpenChange, compra }: GeneratorPdfProps) {
       return;
     }
 
+    if (Object.keys(canvasImages).length !== tipologias.length && tipologias.length > 0) {
+      addToast({
+        title: "Generando esquemas",
+        description: "Aguarde un instante mientras se renderizan los dibujos.",
+        color: "warning",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // 2. DETERMINAR EL ID (Usar el existente o crear uno nuevo)
-      let idFinal = idObraActual;
-      if (!esEdicion || !idFinal) {
-        idFinal = await createId();
-      }
-
-      // 3. PREPARAR EL OBJETO
-      const presupuestoData: IPresupuesto = {
-        id: idFinal,
-        cliente: nameCliente.trim(),
-        fecha: obtenerFechaHoy(),
-        items: [...aberturasStore, ...aberturasCompuestasStore],
-        detalleCompra: {
-          total: compra.total,
-          descuento: compra.descuento || 0,
-          saldoPendiente: compra.saldoPendiente || 0,
-          iva: compra.iva,
-          importeFinal: compra.importeFinal,
-        },
-        observaciones: observaciones || "",
-        estado: "pendiente",
-      };
-
-      // 4. GUARDAR O ACTUALIZAR SEGÚN EL MODO
-      if (esEdicion) {
-        await actualizarPresupuesto(idFinal, presupuestoData);
-      } else {
-        await guardarPresupuesto(presupuestoData);
-      }
+      const idFinal = `PRE-${obra.id}-${Date.now().toString().slice(-4)}`;
 
       // 5. GENERAR EL DOCUMENTO PDF
       const blob = await pdf(
         <PDF
           idPresupuesto={idFinal}
-          aberturas={aberturasStore}
-          aberturasCompuestas={aberturasCompuestasStore}
+          obra={obra}
+          tipologias={tipologias}
           detalleCompra={compra}
           nameCliente={nameCliente.trim()}
           observaciones={observaciones}
+          images={canvasImages}
         />,
       ).toBlob();
 
@@ -139,15 +123,12 @@ function GeneratorPdf({ isOpen, onOpenChange, compra }: GeneratorPdfProps) {
       const url = URL.createObjectURL(blob);
       const enlace = document.createElement("a");
       enlace.href = url;
-      enlace.download = `${idFinal}-${nameCliente.replace(/\s+/g, "_").toUpperCase()}-${obtenerFechaHoy()}.pdf`;
+      enlace.download = `${idFinal}-${nameCliente.replace(/\s+/g, "_").toUpperCase()}-${obtenerFechaHoy().replace(/\//g, "-")}.pdf`;
       enlace.click();
 
-      // 7. FINALIZACIÓN
-      useBorradorObraStore.getState().setAberturas([]);
-      useBorradorObraStore.getState().setAberturasComps([]);
       addToast({
-        title: esEdicion ? "Actualización exitosa" : "¡Éxito!",
-        description: `Presupuesto ${idFinal} ${esEdicion ? "actualizado" : "guardado"}.`,
+        title: "¡Éxito!",
+        description: `Presupuesto ${idFinal} generado correctamente.`,
         color: "success",
       });
 
@@ -159,7 +140,7 @@ function GeneratorPdf({ isOpen, onOpenChange, compra }: GeneratorPdfProps) {
 
       handleFinalizar();
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error al generar PDF:", error);
       addToast({
         title: "Error de exportación",
         description: "No se pudo procesar el presupuesto.",
@@ -170,38 +151,68 @@ function GeneratorPdf({ isOpen, onOpenChange, compra }: GeneratorPdfProps) {
   };
 
   return (
-    <Modal
+    <>
+      <div style={{ position: "absolute", top: "-9999px", left: "-9999px", opacity: 0, pointerEvents: "none" }}>
+        {isOpen && tipologias.map((tipologia) => {
+          const configSel = getConfig(tipologia.id);
+          const nHojas = configSel?.id_hoja && hojas
+              ? (hojas.find((h) => h.id === configSel.id_hoja)?.cantidad ?? 1)
+              : 1;
+
+          const formaTipo = productos && configSel
+              ? productos.find((p) => p.id === configSel.id_producto)?.id_tipo
+              : null;
+          
+          const tipoDeProducto = tipos && formaTipo
+              ? tipos.find((t) => t.id === formaTipo)?.forma_tipo
+              : undefined;
+
+          // Si no hay config válido (ej: no se seleccionó producto), evitamos fallos
+          if (!configSel || !tipoDeProducto) return null;
+
+          return (
+            <TipologiaCanvas
+              key={tipologia.id}
+              tipologia={tipologia}
+              config={configSel}
+              tipoDeProducto={tipoDeProducto}
+              hojas={nHojas}
+              width={400}
+              height={400}
+              onReady={(base64) => {
+                setCanvasImages((prev) => ({ ...prev, [tipologia.id]: base64 }));
+              }}
+            />
+          );
+        })}
+      </div>
+
+      <Modal
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       size="md"
       backdrop="blur"
       classNames={{
-        base: "bg-zinc-950 border border-white/10 shadow-2xl rounded-[2rem]",
-        closeButton: "hover:bg-white/5 transition-colors",
+        base: "bg-white dark:bg-zinc-950 border border-steel-200 dark:border-white/10 shadow-2xl rounded-[2rem]",
+        closeButton:
+          "hover:bg-steel-100 dark:hover:bg-white/5 transition-colors",
       }}
     >
       <ModalContent>
-        {(onClose) => (
+        {(onClose: (isOpen: boolean) => void) => (
           <>
             <ModalBody className="pt-10 pb-4 px-8">
               <div className="flex flex-col gap-8">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
-                    <HiOutlineDocumentText
-                      className="text-amber-500"
-                      size={24}
-                    />
+                    <FileText className="text-amber-500" size={24} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white uppercase tracking-tight">
-                      {esEdicion
-                        ? "Actualizar Cotización"
-                        : "Confirmar Cotización"}
+                    <h3 className="text-lg font-bold text-steel-900 dark:text-white uppercase tracking-tight">
+                      Confirmar Cotización
                     </h3>
-                    <p className="text-xs text-zinc-500 font-medium">
-                      {esEdicion
-                        ? `Modificando presupuesto: ${idObraActual}`
-                        : "Se asignará un número correlativo automáticamente."}
+                    <p className="text-xs text-steel-500 dark:text-zinc-500 font-medium">
+                      Obra de {obra.nombre} {obra.apellido}
                     </p>
                   </div>
                 </div>
@@ -216,14 +227,18 @@ function GeneratorPdf({ isOpen, onOpenChange, compra }: GeneratorPdfProps) {
                     value={nameCliente}
                     onValueChange={setNameCliente}
                     startContent={
-                      <HiOutlineUser className="text-zinc-500" size={18} />
+                      <UserRound
+                        className="text-steel-400 dark:text-zinc-500"
+                        size={18}
+                      />
                     }
                     classNames={{
                       label:
-                        "text-[10px] font-black tracking-[0.2em] text-zinc-500 ml-1",
+                        "text-[10px] font-black tracking-[0.2em] text-steel-500 dark:text-zinc-500 ml-1",
                       inputWrapper:
-                        "border-white/10 hover:border-amber-500/50 focus-within:!border-amber-500 h-14 bg-white/5 transition-all rounded-xl",
-                      input: "text-zinc-100 text-sm font-semibold",
+                        "border-steel-200 dark:border-white/10 hover:border-[#db924b]/50 focus-within:!border-[#db924b] h-14 bg-steel-50 dark:bg-white/5 transition-all rounded-xl",
+                      input:
+                        "text-steel-900 dark:text-zinc-100 text-sm font-semibold",
                     }}
                   />
 
@@ -236,17 +251,17 @@ function GeneratorPdf({ isOpen, onOpenChange, compra }: GeneratorPdfProps) {
                     value={observaciones}
                     onValueChange={setObservaciones}
                     startContent={
-                      <HiOutlineChatBubbleBottomCenterText
-                        className="text-zinc-500 mt-1"
+                      <MessageSquareText
+                        className="text-steel-400 dark:text-zinc-500 mt-1"
                         size={18}
                       />
                     }
                     classNames={{
                       label:
-                        "text-[10px] font-black tracking-[0.2em] text-zinc-500 ml-1",
+                        "text-[10px] font-black tracking-[0.2em] text-steel-500 dark:text-zinc-500 ml-1",
                       inputWrapper:
-                        "border-white/10 hover:border-amber-500/50 focus-within:!border-amber-500 bg-white/5 transition-all rounded-xl",
-                      input: "text-zinc-100 text-sm",
+                        "border-steel-200 dark:border-white/10 hover:border-[#db924b]/50 focus-within:!border-[#db924b] bg-steel-50 dark:bg-white/5 transition-all rounded-xl",
+                      input: "text-steel-900 dark:text-zinc-100 text-sm",
                     }}
                   />
                 </div>
@@ -258,7 +273,7 @@ function GeneratorPdf({ isOpen, onOpenChange, compra }: GeneratorPdfProps) {
                 <Button
                   variant="flat"
                   onPress={onClose}
-                  className="flex-1 font-bold text-zinc-400 hover:text-white transition-colors bg-white/5 rounded-xl"
+                  className="flex-1 font-bold text-steel-600 dark:text-zinc-400 hover:text-steel-900 dark:hover:text-white transition-colors bg-steel-100 dark:bg-white/5 rounded-xl"
                 >
                   VOLVER
                 </Button>
@@ -266,16 +281,10 @@ function GeneratorPdf({ isOpen, onOpenChange, compra }: GeneratorPdfProps) {
                   color="warning"
                   isLoading={isLoading}
                   onPress={generarPDF}
-                  className="flex-2 bg-amber-500 text-black font-black uppercase tracking-wider rounded-xl shadow-[0_8px_20px_rgba(245,158,11,0.2)]"
-                  startContent={
-                    !isLoading && <HiOutlineCloudArrowDown size={20} />
-                  }
+                  className="flex-2 bg-[#db924b] text-white font-black uppercase tracking-wider rounded-xl shadow-[0_8px_20px_rgba(219,146,75,0.3)]"
+                  startContent={!isLoading && <CloudDownload size={20} />}
                 >
-                  {isLoading
-                    ? "PROCESANDO..."
-                    : esEdicion
-                      ? "ACTUALIZAR Y DESCARGAR"
-                      : "FINALIZAR Y DESCARGAR"}
+                  {isLoading ? "PROCESANDO..." : "FINALIZAR Y DESCARGAR"}
                 </Button>
               </div>
             </ModalFooter>
@@ -283,6 +292,7 @@ function GeneratorPdf({ isOpen, onOpenChange, compra }: GeneratorPdfProps) {
         )}
       </ModalContent>
     </Modal>
+    </>
   );
 }
 
