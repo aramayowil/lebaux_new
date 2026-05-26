@@ -11,7 +11,7 @@
 
 import { useState } from "react";
 import { Select, SelectItem, Chip, Button } from "@heroui/react";
-import { Settings, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   useObrasStore,
   type ModuloConfig,
@@ -218,7 +218,6 @@ function ModuloCellEditor({
   vidrios,
   productos,
   marcos,
-  interiores,
   onUpdate,
 }: {
   modulo: ModuloConfig;

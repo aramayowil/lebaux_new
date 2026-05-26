@@ -88,7 +88,7 @@ export function calcularCostoPerfil(
   pesoMetro: number,
   longTiraMm: number,
   precioKg: number,
-  cantidadCortes: number,
+  // cantidadCortes: number,
   medidaMm: number,
 ): { kg: number; precioTira: number; precioCorte: number } {
   const metrosTira = longTiraMm / 1000

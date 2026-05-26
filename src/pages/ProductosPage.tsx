@@ -15,10 +15,8 @@ import { useProductos } from "@/hooks/productos/useProducto";
 import { useMarcos } from "@/hooks/productos/useMarco";
 import { useHojas } from "@/hooks/productos/useHojas";
 import { useInteriores } from "@/hooks/productos/useInteriores";
-import {
-  ErrorState,
-  ProductosSkeleton,
-} from "@/components/products/skeletons/productoPageSkeleton";
+import { ErrorState } from "@/components/products/skeletons/productoPageSkeleton";
+import { Skeleton } from "@heroui/react";
 
 export default function ProductosPage() {
   const [selection, setSelection] = useState<TreeSelection | null>(null);
@@ -40,7 +38,44 @@ export default function ProductosPage() {
   const isLoading = loadP || loadM || loadH || loadI;
   const isError = errP || errM || errH || errI;
 
+  if (isError) {
+    return <ErrorState />;
+  }
+
   const renderPanel = () => {
+    if (isLoading) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-6 animate-pulse w-full">
+          {/* Caja del Icono Simulado */}
+          <div className="relative flex items-center justify-center w-20 h-20">
+            {/* Caja contenedora base */}
+            <Skeleton className="w-20 h-20 rounded-2xl" />
+
+            {/* Silueta interna que emula al icono de Layers */}
+            <div className="absolute inset-0 flex items-center justify-center z-10">
+              <div className="w-9 h-9 bg-white/20 dark:bg-zinc-900/30 rounded-lg backdrop-blur-sm border border-white/10" />
+            </div>
+
+            {/* Mini indicador absoluto simulando el MousePointer en la esquina */}
+            <div className="absolute -bottom-2 -right-2 bg-white dark:bg-zinc-950 p-1.5 rounded-full border border-zinc-100 dark:border-zinc-800 shadow-md z-20">
+              <Skeleton className="w-5 h-5 rounded-full" />
+            </div>
+          </div>
+
+          {/* Bloques de Texto del Párrafo Simulado */}
+          <div className="text-center space-y-3 w-full max-w-[280px] flex flex-col items-center">
+            {/* Simula: Título (Configurador de Tipologías) */}
+            <Skeleton className="h-5 w-48 rounded-md" />
+
+            {/* Simula: Renglón 1 del párrafo de ayuda */}
+            <Skeleton className="h-3 w-full rounded" />
+
+            {/* Simula: Renglón 2 del párrafo de ayuda */}
+            <Skeleton className="h-3 w-4/5 rounded" />
+          </div>
+        </div>
+      );
+    }
     if (!selection) {
       return (
         <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-6 animate-in fade-in zoom-in-95 duration-500">
@@ -111,25 +146,17 @@ export default function ProductosPage() {
 
   return (
     <div className="flex h-[calc(100vh-56px)] -m-6 overflow-hidden bg-zinc-50 dark:bg-zinc-950">
-      {isLoading ? (
-        <ProductosSkeleton />
-      ) : isError ? (
-        <ErrorState />
-      ) : (
-        <>
-          {/* Sidebar */}
-          <aside className="w-72 shrink-0 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 flex flex-col shadow-sm z-10">
-            <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700">
-              <ProductTree selection={selection} onSelect={setSelection} />
-            </div>
-          </aside>
+      {/* Sidebar */}
+      <aside className="w-72 shrink-0 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 flex flex-col shadow-sm z-10">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700">
+          <ProductTree selection={selection} onSelect={setSelection} />
+        </div>
+      </aside>
 
-          {/* Editor Principal */}
-          <main className="flex-1 overflow-y-auto bg-transparent relative">
-            <div className="p-8 max-w-4xl mx-auto">{renderPanel()}</div>
-          </main>
-        </>
-      )}
+      {/* Editor Principal */}
+      <main className="flex-1 overflow-y-auto bg-transparent relative">
+        <div className="p-8 max-w-4xl mx-auto">{renderPanel()}</div>
+      </main>
     </div>
   );
 }

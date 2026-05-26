@@ -16,14 +16,10 @@ interface Props {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  // 1. AGREGAMOS ONBLUR OPCIONAL EN LAS PROPS
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
   size?: "sm" | "md";
-  className?: {
-    inputWrapper?: string;
-    input?: string;
-    label?: string;
-    description?: string;
-    endContent?: string;
-  };
+  className?: string; // Simplificado a string estándar de Tailwind
   description?: string;
 }
 
@@ -31,33 +27,37 @@ export default function FormulaInput({
   label,
   value,
   onChange,
+  onBlur, // 2. RECIBIMOS LA PROP
   size = "sm",
   className,
   description,
 }: Props) {
-  const [focused, setFocused] = useState(false); // <--- Ahora lo usaremos
+  // Mantenemos este estado únicamente para alternar el color del icono de ayuda
+  const [isFocused, setIsFocused] = useState(false);
 
   return (
-    <div className={clsx("relative", className)}>
+    <div className={clsx("relative w-full", className)}>
       <Input
         label={label}
         value={value}
         onValueChange={onChange}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+        // 3. ENLAZAMOS LOS EVENTOS CORRECTAMENTE
+        onFocus={() => setIsFocused(true)}
+        onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+          setIsFocused(false);
+          if (onBlur) onBlur(e); // Ejecuta la sincronización con la base de datos (Supabase)
+        }}
         size={size}
         description={description}
         variant="bordered"
         classNames={{
           input: "font-mono text-xs",
           label: "text-zinc-500 dark:text-zinc-400 font-medium",
+          // 4. MEJORA: Usamos "focus-within:" nativo de Tailwind para evitar re-renders innecesarios en los bordes
           inputWrapper: clsx(
             "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800",
-            "hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm",
-
-            focused
-              ? "!border-amber-500/60 shadow-[0_0_0_1px_rgba(219,146,75,0.2)]"
-              : "",
+            "hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm transition-colors",
+            "focus-within:!border-amber-500/60 focus-within:shadow-[0_0_0_1px_rgba(219,146,75,0.2)]",
           ),
         }}
         endContent={
@@ -66,8 +66,8 @@ export default function FormulaInput({
               <button
                 type="button"
                 className={clsx(
-                  "shrink-0 transition-colors p-1",
-                  focused ? "text-[#db924b]" : "text-zinc-400",
+                  "shrink-0 transition-colors p-1 outline-none",
+                  isFocused ? "text-[#db924b]" : "text-zinc-400",
                 )}
               >
                 <HelpCircle className="w-3.5 h-3.5" />

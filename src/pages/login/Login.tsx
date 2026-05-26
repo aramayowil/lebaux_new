@@ -14,13 +14,19 @@ const Login = () => {
   const { login, isCheckingAuth } = useAuthStore();
 
   const styleInput = {
-    label: "text-zinc-400 font-medium",
-    inputWrapper: [
-      "bg-zinc-900/50",
-      "border-zinc-800",
-      "hover:border-zinc-700",
+    // 1. Hacemos el label significativamente más claro (zinc-300) y legible
+    label: "text-zinc-300 font-medium text-md pl-0.5",
+
+    // Contenedor principal sin cambios de hover/focus para cumplir tu regla previa
+    inputWrapper: ["bg-zinc-900/50", "border-zinc-800"].join(" "),
+
+    // 2. Corregimos la banda negra inyectando las directivas directas de Tailwind para autofill
+    input: [
+      "text-white placeholder:text-zinc-500",
+      "autofill:transition-colors",
+      "autofill:duration-[999999s]", // Truco técnico: congela el color para que el navegador no intente repintar el fondo
+      "file:bg-transparent",
     ].join(" "),
-    input: "text-white placeholder:text-zinc-500",
   };
 
   const onSubmit = async (e: React.SubmitEvent) => {
@@ -117,7 +123,7 @@ const Login = () => {
                 <div className="flex justify-end">
                   <Link
                     to="/password/reset"
-                    className="mt-2 text-xs text-zinc-500 hover:text-yellow-500 transition-colors"
+                    className="mt-2 text-sm text-zinc-500 hover:text-yellow-500 transition-colors"
                   >
                     ¿Olvidaste tu contraseña?
                   </Link>

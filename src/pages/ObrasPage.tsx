@@ -37,18 +37,20 @@ import {
   useObras,
   useUpdateObra,
 } from "@/hooks/obra/useObras";
-import ObrasSkeleton from "@/components/obras/skeletons/obrasSkeleton";
+
+// ── 1. IMPORTACIÓN DEL NUEVO ESQUELETO MÓDULAR ────────────────────────────────
+import ObrasPageSkeleton from "@/components/obras/skeletons/obrasSkeleton";
+
 import { toastSuccess } from "@/utils/toasts/ToastSuccess";
 import { toastError } from "@/utils/toasts/ToastError";
 import { toastWarning } from "@/utils/toasts/ToastWarning";
 
-// ── Clases base de inputs reutilizables ───────────────────────────────────────
 const inputBase = {
   label:
-    "font-sans font-bold text-[11px] text-steel-500 dark:text-steel-400 uppercase tracking-wider",
+    "font-bold text-[11px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider",
   inputWrapper:
-    "border-steel-200 dark:border-steel-700 focus-within:!border-lebaux-amber rounded-xl bg-white dark:bg-steel-900",
-  input: "font-sans text-sm text-steel-700 dark:text-steel-200",
+    "border-zinc-200 dark:border-zinc-800 focus-within:!border-amber-500 rounded-xl bg-white dark:bg-zinc-900/50",
+  input: "text-sm text-zinc-800 dark:text-zinc-200",
 };
 
 export default function ObrasPage() {
@@ -59,9 +61,7 @@ export default function ObrasPage() {
 
   // --- Mutations ---
   const { mutateAsync: addObra, isPending: isAdding } = useAddObra();
-
   const { mutateAsync: updateObra, isPending: isUpdating } = useUpdateObra();
-
   const {
     mutateAsync: deleteObra,
     isPending: isDeleting,
@@ -160,8 +160,7 @@ export default function ObrasPage() {
     }
   };
 
-  // --- Render ---
-  if (isLoading) return <ObrasSkeleton />;
+  // ── 2. SE REMOVIÓ EL CONDICIONAL SUPERIOR DE `isLoading` ───────────────────
   if (loadError)
     return (
       <div className="max-w-5xl mx-auto p-8">
@@ -174,242 +173,250 @@ export default function ObrasPage() {
     );
 
   return (
-    <div className="max-w-5xl mx-auto p-4 space-y-6 animate-in fade-in duration-500">
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-steel-100 dark:border-steel-800">
+    <div className="max-w-7xl mx-auto space-y-6 pb-12 px-4 md:px-0 animate-in fade-in duration-400">
+      {/* ── Header Consistente (Siempre renderizado y visible) ────────────── */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/50">
         <div>
-          <p className="text-[10px] font-sans font-bold uppercase tracking-widest text-steel-400 dark:text-steel-500 mb-1">
-            Gestión de proyectos
-          </p>
-          <h1 className="font-display text-3xl font-bold text-steel-800 dark:text-steel-100 tracking-tight">
-            Obras
-          </h1>
-          <p className="text-steel-500 dark:text-steel-400 text-sm mt-1 font-sans">
-            {obras?.length ?? 0}{" "}
-            {(obras?.length ?? 0) === 1
-              ? "proyecto registrado"
-              : "proyectos registrados"}
+          <h2 className="text-3xl font-extrabold text-zinc-800 dark:text-zinc-100 tracking-tight">
+            Módulo de Obras
+          </h2>
+          <p className="text-zinc-400 text-xs mt-1 flex items-center gap-1.5 font-medium">
+            {isLoading ? (
+              // Indicador mínimo y sutil para la métrica mientras resuelve la consulta de base de datos
+              <span className="inline-block w-20 h-3 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+            ) : (
+              <>
+                {obras?.length ?? 0}{" "}
+                {(obras?.length ?? 0) === 1
+                  ? "proyecto registrado en total"
+                  : "proyectos registrados en total"}
+              </>
+            )}
           </p>
         </div>
         <Button
           onPress={openNew}
           startContent={<Plus className="w-4 h-4" strokeWidth={2.5} />}
-          className="font-sans font-bold bg-lebaux-amber hover:bg-lebaux-amber-hover text-white px-6 rounded-full shadow-md shadow-lebaux-amber/20 transition-colors"
+          className="font-bold bg-amber-500 hover:bg-amber-600 text-white px-5 rounded-xl shadow-none transition-colors"
         >
           Nueva obra
         </Button>
-      </div>
+      </header>
 
-      {/* ── Filtros ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <Input
-          isClearable
-          placeholder="Buscar cliente o ciudad..."
-          startContent={<Search className="w-4 h-4 text-steel-400" />}
-          value={search}
-          onValueChange={setSearch}
-          className="max-w-sm"
-          variant="bordered"
-          classNames={{
-            input:
-              "font-sans text-sm text-steel-700 dark:text-steel-200 placeholder:text-steel-400",
-            inputWrapper: [
-              "border-steel-200 dark:border-steel-700",
-              "bg-white dark:bg-steel-900",
-              "hover:border-lebaux-amber",
-              "focus-within:!border-lebaux-amber",
-              "rounded-xl h-10 transition-colors",
-            ].join(" "),
-          }}
-        />
-        {search && (
-          <Chip
-            variant="flat"
-            classNames={{
-              base: "bg-lebaux-amber/10 border-0",
-              content: "text-[11px] font-sans font-bold text-lebaux-amber",
-            }}
-          >
-            {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
-          </Chip>
-        )}
-      </div>
+      {/* ── 3. INYECCIÓN DEL NUEVO ESQUELETO ABAJO DEL HEADER ───────────────── */}
+      {isLoading ? (
+        <ObrasPageSkeleton />
+      ) : (
+        <>
+          {/* Filtros Avanzados */}
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <Input
+              isClearable
+              placeholder="Buscar cliente o ciudad..."
+              startContent={<Search className="w-4 h-4 text-zinc-400" />}
+              value={search}
+              onValueChange={setSearch}
+              className="max-w-sm"
+              variant="bordered"
+              classNames={{
+                input:
+                  "text-sm text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-400",
+                inputWrapper: [
+                  "border-zinc-200 dark:border-zinc-800",
+                  "bg-white dark:bg-zinc-900/50",
+                  "hover:border-amber-500",
+                  "focus-within:!border-amber-500",
+                  "rounded-xl h-10 transition-colors",
+                ].join(" "),
+              }}
+            />
+            {search && (
+              <Chip
+                variant="flat"
+                className="bg-amber-500/10 border-0 text-[11px] font-bold text-amber-600 dark:text-amber-400"
+              >
+                {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
+              </Chip>
+            )}
+          </div>
 
-      {/* ── Tabla ───────────────────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-steel-100 dark:border-steel-800 overflow-hidden bg-white dark:bg-steel-900">
-        <Table
-          aria-label="Tabla de obras"
-          removeWrapper
-          classNames={{
-            th: [
-              "bg-steel-50 dark:bg-steel-950/60",
-              "text-[10px] font-sans font-bold uppercase tracking-widest",
-              "text-steel-400 dark:text-steel-500",
-              "border-b border-steel-100 dark:border-steel-800",
-              "py-3 px-5",
-            ].join(" "),
-            td: "py-0 px-5 border-b border-steel-50 dark:border-steel-900",
-          }}
-        >
-          <TableHeader>
-            <TableColumn>Cliente</TableColumn>
-            <TableColumn>Ubicación</TableColumn>
-            <TableColumn>Contacto</TableColumn>
-            <TableColumn className="w-32 text-center">Acciones</TableColumn>
-          </TableHeader>
+          {/* Tabla Unificada con Estilo de Dashboard */}
+          <div className="rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 overflow-hidden bg-white dark:bg-zinc-900/50">
+            <Table
+              aria-label="Tabla de obras"
+              removeWrapper
+              classNames={{
+                th: [
+                  "bg-zinc-50 dark:bg-zinc-950/40",
+                  "text-[10px] font-bold uppercase tracking-widest",
+                  "text-zinc-400 dark:text-zinc-500",
+                  "border-b border-zinc-100 dark:border-zinc-800/60",
+                  "py-3 px-5",
+                ].join(" "),
+                td: "py-0 px-5 border-b border-zinc-100 dark:border-zinc-800/40",
+              }}
+            >
+              <TableHeader>
+                <TableColumn>Cliente</TableColumn>
+                <TableColumn>Ubicación</TableColumn>
+                <TableColumn>Contacto</TableColumn>
+                <TableColumn className="w-32 text-center">Acciones</TableColumn>
+              </TableHeader>
 
-          <TableBody
-            emptyContent={
-              <div className="py-20 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-steel-100 dark:bg-steel-800 flex items-center justify-center mx-auto mb-4">
-                  <Folder
-                    className="w-7 h-7 text-steel-400 dark:text-steel-500"
-                    strokeWidth={1.5}
-                  />
-                </div>
-                <p className="font-display font-bold text-lg text-steel-700 dark:text-steel-300">
-                  Sin proyectos todavía
-                </p>
-                <p className="text-sm text-steel-400 dark:text-steel-500 font-sans mt-1">
-                  Creá tu primera obra para comenzar
+              <TableBody
+                emptyContent={
+                  <div className="py-16 text-center flex flex-col items-center justify-center gap-2">
+                    <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800/50 flex items-center justify-center mb-2">
+                      <Folder
+                        className="w-5 h-5 text-zinc-400 dark:text-zinc-500"
+                        strokeWidth={1.5}
+                      />
+                    </div>
+                    <p className="font-bold text-md text-zinc-700 dark:text-zinc-300">
+                      Sin proyectos todavía
+                    </p>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
+                      Creá tu primera obra para comenzar el monitoreo
+                    </p>
+                  </div>
+                }
+              >
+                {filtered.map((obra) => (
+                  <TableRow
+                    key={obra.id}
+                    className="group hover:bg-zinc-50 dark:hover:bg-zinc-950/40 transition-colors"
+                  >
+                    {/* Cliente */}
+                    <TableCell className="py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+                          <span className="text-[11px] font-mono font-bold text-amber-600 dark:text-amber-400">
+                            {obra.apellido.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-tight text-xs">
+                            {obra.apellido}
+                          </p>
+                          <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                            {obra.nombre}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+
+                    {/* Ubicación */}
+                    <TableCell className="py-3.5">
+                      <div className="flex items-start gap-1.5">
+                        <MapPin
+                          className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0"
+                          strokeWidth={1.8}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                            {obra.ciudad || "—"}
+                          </p>
+                          <p className="text-[11px] text-zinc-400 dark:text-zinc-500 truncate max-w-xs mt-0.5">
+                            {obra.direccion || "—"}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+
+                    {/* Contacto */}
+                    <TableCell className="py-3.5">
+                      <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
+                        <Phone
+                          className="w-3.5 h-3.5 shrink-0 text-zinc-400"
+                          strokeWidth={1.5}
+                        />
+                        <span className="text-xs font-mono font-medium">
+                          {obra.telefono || "Sin teléfono"}
+                        </span>
+                      </div>
+                    </TableCell>
+
+                    {/* Acciones */}
+                    <TableCell className="py-3.5">
+                      <div
+                        className="flex items-center justify-center gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Tooltip content="Ver expediente" size="sm">
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="flat"
+                            className="w-7 h-7 min-w-7 rounded-lg text-zinc-400 hover:text-amber-500 bg-zinc-50 dark:bg-zinc-950/80 transition-colors"
+                            onPress={() => navigate(`/obras/${obra.id}`)}
+                          >
+                            <Folder className="w-3.5 h-3.5" />
+                          </Button>
+                        </Tooltip>
+                        <Tooltip content="Editar" size="sm">
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="flat"
+                            className="w-7 h-7 min-w-7 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 bg-zinc-50 dark:bg-zinc-950/80 transition-colors"
+                            onPress={() => openEdit(obra)}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                        </Tooltip>
+                        <Tooltip content="Eliminar" size="sm" color="danger">
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="flat"
+                            className="w-7 h-7 min-w-7 rounded-lg text-zinc-400 hover:text-red-500 bg-zinc-50 dark:bg-zinc-950/80 hover:bg-red-500/10 transition-colors"
+                            onPress={() => handleDeleteClick(obra.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </Tooltip>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {filtered.length > 0 && (
+              <div className="px-5 py-3 border-t border-zinc-100 dark:border-zinc-800/60 bg-zinc-50/40 dark:bg-zinc-950/20">
+                <p className="text-[11px] font-mono font-bold text-zinc-400 dark:text-zinc-500">
+                  MÉTRICA: Mostrando {filtered.length} de {obras?.length ?? 0}{" "}
+                  obra
+                  {(obras?.length ?? 0) !== 1 ? "s" : ""}
                 </p>
               </div>
-            }
-          >
-            {filtered.map((obra) => (
-              <TableRow
-                key={obra.id}
-                className="group hover:bg-steel-50 dark:hover:bg-steel-800/40 transition-colors cursor-pointer"
-              >
-                {/* Cliente */}
-                <TableCell className="py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-lebaux-amber/10 flex items-center justify-center shrink-0">
-                      <span className="text-[11px] font-mono font-bold text-lebaux-amber">
-                        {obra.apellido.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-sans font-bold text-steel-800 dark:text-steel-100 uppercase tracking-tight text-sm">
-                        {obra.apellido}
-                      </p>
-                      <p className="text-xs text-steel-400 dark:text-steel-500 font-sans">
-                        {obra.nombre}
-                      </p>
-                    </div>
-                  </div>
-                </TableCell>
-
-                {/* Ubicación */}
-                <TableCell className="py-4">
-                  <div className="flex items-start gap-2">
-                    <MapPin
-                      className="w-3.5 h-3.5 text-lebaux-amber mt-0.5 shrink-0"
-                      strokeWidth={1.5}
-                    />
-                    <div>
-                      <p className="text-sm font-sans font-medium text-steel-700 dark:text-steel-300">
-                        {obra.ciudad || "—"}
-                      </p>
-                      <p className="text-[10px] text-steel-400 dark:text-steel-500 font-sans truncate max-w-44">
-                        {obra.direccion || "—"}
-                      </p>
-                    </div>
-                  </div>
-                </TableCell>
-
-                {/* Contacto */}
-                <TableCell className="py-4">
-                  <div className="flex items-center gap-2 text-steel-500 dark:text-steel-400">
-                    <Phone className="w-3.5 h-3.5 shrink-0" strokeWidth={1.5} />
-                    <span className="text-sm font-sans">
-                      {obra.telefono || "Sin teléfono"}
-                    </span>
-                  </div>
-                </TableCell>
-
-                {/* Acciones */}
-                <TableCell className="py-4">
-                  <div
-                    className="flex items-center justify-center gap-0.5"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Tooltip content="Ver expediente" size="sm">
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        radius="lg"
-                        className="w-8 h-8 min-w-8 text-steel-400 hover:text-lebaux-amber hover:bg-lebaux-amber/10 transition-all"
-                        onPress={() => navigate(`/obras/${obra.id}`)}
-                      >
-                        <Folder className="w-3.5 h-3.5" />
-                      </Button>
-                    </Tooltip>
-                    <Tooltip content="Editar" size="sm">
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        radius="lg"
-                        className="w-8 h-8 min-w-8 text-steel-400 hover:text-steel-700 dark:hover:text-steel-100 hover:bg-steel-100 dark:hover:bg-steel-800 transition-all"
-                        onPress={() => openEdit(obra)}
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                    </Tooltip>
-                    <Tooltip content="Eliminar" size="sm" color="danger">
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        radius="lg"
-                        className="w-8 h-8 min-w-8 text-steel-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
-                        onPress={() => handleDeleteClick(obra.id)}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </Tooltip>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-
-        {/* Footer conteo */}
-        {filtered.length > 0 && (
-          <div className="px-5 py-3 border-t border-steel-100 dark:border-steel-800 bg-steel-50/60 dark:bg-steel-950/40">
-            <p className="text-[11px] font-sans text-steel-400 dark:text-steel-500">
-              Mostrando {filtered.length} de {obras?.length ?? 0} obra
-              {(obras?.length ?? 0) !== 1 ? "s" : ""}
-            </p>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
-      {/* ── Modal crear / editar ────────────────────────────────────────────── */}
+      {/* ── Modal Crear / Editar ────────────────────────────────────────────── */}
       <Modal
         isOpen={isOpen}
         onOpenChange={onOpenChange}
         backdrop="blur"
         size="xl"
         classNames={{
-          base: "bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-800 rounded-2xl",
-          header: "border-b border-steel-100 dark:border-steel-800",
+          base: "bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800 rounded-2xl",
+          header: "border-b border-zinc-100 dark:border-zinc-800/60",
           closeButton:
-            "text-steel-400 hover:text-steel-700 dark:hover:text-steel-200",
+            "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200",
         }}
       >
         <ModalContent>
           {(onClose: () => void) => (
             <>
               <ModalHeader className="flex flex-col gap-0.5 pb-4">
-                <h2 className="font-display text-xl font-bold text-steel-800 dark:text-steel-100">
-                  {editing ? "Editar obra" : "Registrar obra"}
+                <h2 className="text-xl font-extrabold text-zinc-800 dark:text-zinc-100 tracking-tight">
+                  {editing ? "Editar Obra" : "Registrar Nueva Obra"}
                 </h2>
-                <p className="text-xs text-steel-400 dark:text-steel-500 font-sans font-normal">
-                  Completá los campos para el expediente técnico.
+                <p className="text-xs text-zinc-400 dark:text-zinc-500 font-normal">
+                  Completá los campos mandatorios para el expediente técnico.
                 </p>
               </ModalHeader>
 
@@ -474,19 +481,19 @@ export default function ObrasPage() {
                 />
               </ModalBody>
 
-              <ModalFooter className="border-t border-steel-100 dark:border-steel-800 pt-4">
+              <ModalFooter className="border-t border-zinc-100 dark:border-zinc-800/60 pt-4">
                 <Button
                   variant="light"
                   onPress={onClose}
                   isDisabled={isAdding || isUpdating}
-                  className="font-sans text-steel-500 hover:text-steel-700 dark:hover:text-steel-200"
+                  className="text-xs font-semibold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
                 >
                   Cancelar
                 </Button>
                 <Button
                   isLoading={isAdding || isUpdating}
                   onPress={handleSave}
-                  className="font-sans font-bold px-8 bg-lebaux-amber hover:bg-lebaux-amber-hover text-white rounded-full transition-colors"
+                  className="font-bold px-6 bg-amber-500 hover:bg-amber-600 text-white rounded-xl transition-colors text-xs"
                 >
                   {editing ? "Guardar cambios" : "Crear obra"}
                 </Button>
@@ -496,47 +503,47 @@ export default function ObrasPage() {
         </ModalContent>
       </Modal>
 
-      {/* ── Modal confirmar eliminación ─────────────────────────────────────── */}
+      {/* ── Modal Confirmar Eliminación ─────────────────────────────────────── */}
       <Modal
         isOpen={confirmDelete.isOpen}
         onOpenChange={confirmDelete.onOpenChange}
         size="sm"
         classNames={{
-          base: "bg-white dark:bg-steel-900 border border-steel-200 dark:border-steel-800 rounded-2xl",
+          base: "bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800 rounded-2xl",
           closeButton:
-            "text-steel-400 hover:text-steel-700 dark:hover:text-steel-200",
+            "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200",
         }}
       >
         <ModalContent>
           {(onClose: () => void) => (
             <>
               <ModalBody className="pt-8 pb-4 text-center">
-                <div className="mx-auto w-14 h-14 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4">
+                <div className="mx-auto w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center mb-4">
                   <AlertTriangle
-                    className="w-6 h-6 text-red-500"
-                    strokeWidth={1.8}
+                    className="w-5 h-5 text-red-500"
+                    strokeWidth={2}
                   />
                 </div>
-                <h3 className="font-display text-lg font-bold text-steel-800 dark:text-steel-100">
+                <h3 className="text-md font-bold text-zinc-800 dark:text-zinc-100">
                   ¿Eliminar esta obra?
                 </h3>
-                <p className="text-sm text-steel-500 dark:text-steel-400 font-sans mt-1 leading-relaxed">
-                  Esta acción no se puede deshacer y borrará todo el historial
-                  relacionado.
+                <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1.5 leading-relaxed">
+                  Esta acción no se puede deshacer y borrará permanentemente
+                  todo el historial relacionado.
                 </p>
                 {deleteError && (
-                  <p className="text-xs text-red-500 mt-3 font-sans font-medium bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">
-                    No se pudo procesar la eliminación.
+                  <p className="text-[11px] text-red-500 mt-3 font-medium bg-red-500/10 px-3 py-2 rounded-lg">
+                    No se pudo procesar la eliminación en el servidor.
                   </p>
                 )}
               </ModalBody>
 
-              <ModalFooter className="flex-col sm:flex-row gap-2 pb-6 pt-2 border-t border-steel-100 dark:border-steel-800">
+              <ModalFooter className="flex-col sm:flex-row gap-2 pb-6 pt-2 border-t border-zinc-100 dark:border-zinc-800/60">
                 <Button
                   fullWidth
                   variant="light"
                   onPress={onClose}
-                  className="font-sans text-steel-500 hover:text-steel-700 dark:hover:text-steel-200 rounded-full"
+                  className="text-xs font-semibold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
                 >
                   Cancelar
                 </Button>
@@ -544,9 +551,9 @@ export default function ObrasPage() {
                   fullWidth
                   isLoading={isDeleting}
                   onPress={confirmDeletion}
-                  className="font-sans font-bold bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors"
+                  className="font-bold bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors text-xs"
                 >
-                  Eliminar
+                  Confirmar Eliminar
                 </Button>
               </ModalFooter>
             </>

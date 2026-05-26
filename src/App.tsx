@@ -5,16 +5,19 @@ import { useAuthStore } from "@/store/authStore";
 
 // Importaciones de Layout y Rutas
 import AppLayout from "@/components/layout/AppLayout";
-import InicioPge from "@/pages/InicioPge";
+import InicioPge from "@/pages/InicioPage";
 import ObrasPage from "@/pages/ObrasPage";
 import ObraEditorPage from "@/pages/ObraEditorPage";
 import ProductosPage from "@/pages/ProductosPage";
 import CatalogosPage from "@/pages/CatalogosPage";
 import OpcionesPage from "@/pages/OpcionesPage";
 import PresupuestoPage from "@/pages/PresupuestoPage";
-import Login from "@/pages/login/Login"; // 💡 Corregido el @/ por consistencia
+import Login from "@/pages/login/Login";
 import Register from "@/pages/login/Register";
-import ProtectedRoute from "./routes/ProtectedRoute"; // Ajustá si tu carpeta es src/routes/ProtectedRoute
+import ProtectedRoute from "./routes/ProtectedRoute";
+import ImportarPage from "@/pages/ImportarPage";
+import Error404Page from "@/pages/Error404Page";
+import ControlAccesoPage from "./pages/ControlAccesoPage";
 
 export default function App() {
   const setSession = useAuthStore((state) => state.setSession);
@@ -42,6 +45,7 @@ export default function App() {
       {/* ─── RUTAS PÚBLICAS ─── */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="*" element={<Error404Page />} />
 
       {/* ─── RUTAS PROTEGIDAS ─── */}
       <Route element={<ProtectedRoute />}>
@@ -55,6 +59,8 @@ export default function App() {
           <Route path="/obras/:id/presupuesto" element={<PresupuestoPage />} />
           <Route path="/productos" element={<ProductosPage />} />
           <Route path="/catalogos" element={<CatalogosPage />} />
+          <Route path="/importar" element={<ImportarPage />} />
+          <Route path="/usuarios" element={<ControlAccesoPage />} />
           <Route path="/opciones" element={<OpcionesPage />} />
         </Route>
       </Route>

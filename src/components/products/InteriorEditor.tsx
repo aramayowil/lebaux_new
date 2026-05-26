@@ -79,11 +79,6 @@ const IW = {
   inputWrapper:
     "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500 transition-colors shadow-none",
 };
-const IW_F = {
-  label: "text-[10px] font-semibold uppercase tracking-wider text-zinc-400",
-  inputWrapper:
-    "bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-700 font-mono shadow-none",
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -263,7 +258,6 @@ export default function InteriorEditor({ interior }: Props) {
                       updDespInt({ formula_cantidad_interiores: v })
                     }
                     description="ej: 1, hojas"
-                    className={IW_F}
                   />
                   <FormulaInput
                     label="Ancho"
@@ -272,7 +266,6 @@ export default function InteriorEditor({ interior }: Props) {
                       updDespInt({ formula_ancho_interior: v })
                     }
                     description="ej: ancho/hojas - 40"
-                    className={IW_F}
                   />
                   <FormulaInput
                     label="Alto"
@@ -281,7 +274,6 @@ export default function InteriorEditor({ interior }: Props) {
                       updDespInt({ formula_alto_interior: v })
                     }
                     description="ej: alto - 80"
-                    className={IW_F}
                   />
                 </div>
 
@@ -834,7 +826,6 @@ function ContravidrioForm({
                         })
                       }
                       description="ej: hojas*2"
-                      className={IW_F}
                     />
                     <FormulaInput
                       label="Cant. vertical"
@@ -850,7 +841,6 @@ function ContravidrioForm({
                         })
                       }
                       description="ej: hojas*2"
-                      className={IW_F}
                     />
                     <FormulaInput
                       label="Largo horizontal"
@@ -866,7 +856,6 @@ function ContravidrioForm({
                         })
                       }
                       description="ej: ancho - 20"
-                      className={IW_F}
                     />
                     <FormulaInput
                       label="Largo vertical"
@@ -882,7 +871,6 @@ function ContravidrioForm({
                         })
                       }
                       description="ej: alto - 10"
-                      className={IW_F}
                     />
                   </div>
                 </div>
@@ -1045,21 +1033,18 @@ function CrucesForm({
                 value={dc?.formula_cantidad ?? "1"}
                 onChange={(v) => updDC({ formula_cantidad: v })}
                 description="ej: 1"
-                className={IW_F}
               />
               <FormulaInput
                 label="Largo horizontal"
                 value={dc?.formula_ancho_entero ?? ""}
                 onChange={(v) => updDC({ formula_ancho_entero: v })}
                 description="ej: ancho - 20"
-                className={IW_F}
               />
               <FormulaInput
                 label="Largo vertical"
                 value={dc?.formula_alto_entero ?? ""}
                 onChange={(v) => updDC({ formula_alto_entero: v })}
                 description="ej: alto - 20"
-                className={IW_F}
               />
             </div>
           </FieldGroup>
@@ -1267,28 +1252,24 @@ function VidRepartidoForm({
             value={dv.formula_cantidad_contorno_ancho}
             onChange={(v) => updDV({ formula_cantidad_contorno_ancho: v })}
             description="ej: hojas*2"
-            className={IW_F}
           />
           <FormulaInput
             label="Cant. vert."
             value={dv.formula_cantidad_contorno_alto}
             onChange={(v) => updDV({ formula_cantidad_contorno_alto: v })}
             description="ej: hojas*2"
-            className={IW_F}
           />
           <FormulaInput
             label="Largo horiz."
             value={dv.formula_contorno_ancho}
             onChange={(v) => updDV({ formula_contorno_ancho: v })}
             description="ej: ancho - 20"
-            className={IW_F}
           />
           <FormulaInput
             label="Largo vert."
             value={dv.formula_contorno_alto}
             onChange={(v) => updDV({ formula_contorno_alto: v })}
             description="ej: alto - 20"
-            className={IW_F}
           />
         </div>
       </FieldGroup>
@@ -1325,14 +1306,12 @@ function VidRepartidoForm({
             value={dv.formula_cruce_ancho}
             onChange={(v) => updDV({ formula_cruce_ancho: v })}
             description="ej: ancho - 20"
-            className={IW_F}
           />
           <FormulaInput
             label="Largo vert."
             value={dv.formula_cruce_alto}
             onChange={(v) => updDV({ formula_cruce_alto: v })}
             description="ej: alto - 20"
-            className={IW_F}
           />
           <Input
             label="Desc. de vidrio"
@@ -1365,21 +1344,18 @@ function VidRepartidoForm({
             value={dv.formula_cantidad_interiores}
             onChange={(v) => updDV({ formula_cantidad_interiores: v })}
             description="ej: (crucesH+1)*(crucesV+1)"
-            className={IW_F}
           />
           <FormulaInput
             label="Ancho"
             value={dv.formula_ancho_interior}
             onChange={(v) => updDV({ formula_ancho_interior: v })}
             description="ej: (ancho-10)/(crucesV+1)"
-            className={IW_F}
           />
           <FormulaInput
             label="Alto"
             value={dv.formula_alto_interior}
             onChange={(v) => updDV({ formula_alto_interior: v })}
             description="ej: (alto-10)/(crucesH+1)"
-            className={IW_F}
           />
         </div>
         {/* Diagrama de descuentos del VR */}

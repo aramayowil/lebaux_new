@@ -7,6 +7,7 @@ import {
   BookOpen,
   Settings,
   Bell,
+  FolderUp,
   Sun,
   Moon,
   ChevronsUpDown,
@@ -17,6 +18,7 @@ import {
   MessageSquare,
   PanelRightClose,
   PanelRightOpen,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Tooltip,
@@ -37,6 +39,8 @@ const NAV = [
   { to: "/obras", icon: FolderOpen, label: "Obras" },
   { to: "/productos", icon: Layers, label: "Productos" },
   { to: "/catalogos", icon: BookOpen, label: "Catálogos" },
+  { to: "/importar", icon: FolderUp, label: "Importar" },
+  { to: "/usuarios", icon: ShieldCheck, label: "Usuarios y Permisos" },
   { to: "/opciones", icon: Settings, label: "Opciones" },
 ];
 
@@ -83,7 +87,7 @@ export default function AppLayout() {
             alt="Lebaux"
             className={clsx(
               "transition-all duration-300 object-contain select-none pointer-events-none",
-              collapsed ? "h-8 w-8" : "h-9",
+              collapsed ? "h-7" : "h-9",
               "mix-blend-multiply dark:mix-blend-normal",
             )}
           />
@@ -280,6 +284,8 @@ export function PageTitle({ pathname }: { pathname: string }) {
     "/obras": "Obras",
     "/catalogos": "Catálogos",
     "/productos": "Productos",
+    "/importar": "Importar",
+    "/usuarios": "Usuarios y Permisos",
     "/opciones": "Opciones",
   };
 
