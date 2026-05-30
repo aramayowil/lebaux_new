@@ -62,8 +62,6 @@ export default function DespiecePerfilesPanel({
     Record<number, "idle" | "saving" | "saved">
   >({});
 
-  // ✅ CORREGIDO: Escuchamos propiedades primitivas e invariables (idParent y la cantidad de elementos).
-  // Esto evita que referencias de arrays inestables relancen el efecto eternamente.
   useEffect(() => {
     const cantidades: Record<number, string> = {};
     const medidas: Record<number, string> = {};
@@ -75,7 +73,7 @@ export default function DespiecePerfilesPanel({
 
     setLocalCantidades(cantidades);
     setLocalMedidas(medidas);
-  }, [idParent, items.length]); // 👈 Cambiado 'items' por dependencias estables primitivas
+  }, [idParent, items.length]);
 
   if (isError) {
     return (
@@ -155,34 +153,36 @@ export default function DespiecePerfilesPanel({
   }
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       {isLoading ? (
         <DespiecePerfilSkeleton />
       ) : (
         <>
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pb-1">
             <div className="flex items-center gap-2">
-              <Layers className="w-3.5 h-3.5 text-zinc-400" />
-              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+              <div className="p-1.5 bg-zinc-100 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-md">
+                <Layers className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+              </div>
+              <p className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-widest">
                 {label}
               </p>
               {items.length > 0 && (
-                <span className="text-[9px] font-mono text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] font-mono font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-200/50 dark:bg-zinc-800/80 px-2 py-0.5 rounded-full">
                   {items.length}
                 </span>
               )}
             </div>
             <button
               onClick={handleAdd}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-400 hover:bg-amber-500 text-white transition-colors shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold bg-amber-500 hover:bg-amber-600 text-black transition-all shadow-sm active:scale-95"
             >
-              <Plus className="w-3 h-3" /> Agregar
+              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} /> Agregar Fila
             </button>
           </div>
 
           {items.length === 0 ? (
-            <div className="border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl py-6">
+            <div className="border-2 border-dashed border-zinc-200 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/20 rounded-xl py-8 transition-colors hover:border-zinc-300 dark:hover:border-zinc-700">
               <EmptyState
                 icon={Layers}
                 title="Sin perfiles de corte"
@@ -190,14 +190,14 @@ export default function DespiecePerfilesPanel({
               />
             </div>
           ) : (
-            <div className="space-y-1.5">
-              {/* Cabecera de columnas */}
-              <div className="grid grid-cols-[1.2fr_90px_1.2fr_70px_50px] gap-2 px-2">
-                {["Perfil", "Cantidad", "Medida", "Ángulo", "Estado"].map(
+            <div className="space-y-2">
+              {/* Cabecera de columnas optimizada */}
+              <div className="grid grid-cols-[1.5fr_90px_1.5fr_70px_40px] gap-2 px-3 py-1">
+                {["Perfil Base", "Cant.", "Fórmula de Corte", "Ángulo", ""].map(
                   (h, i) => (
                     <span
                       key={i}
-                      className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest"
+                      className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest"
                     >
                       {h}
                     </span>
@@ -206,130 +206,146 @@ export default function DespiecePerfilesPanel({
               </div>
 
               {/* Listado de filas de despiece */}
-              {items.map((item) => {
-                const rowStatus = syncStatuses[item.id] || "idle";
+              <div className="space-y-1.5">
+                {items.map((item) => {
+                  const rowStatus = syncStatuses[item.id] || "idle";
 
-                return (
-                  <div
-                    key={item.id}
-                    className="grid grid-cols-[1.2fr_90px_1.2fr_70px_50px] gap-2 items-center bg-zinc-50 dark:bg-zinc-900/40 rounded-xl p-2 border border-zinc-100 dark:border-zinc-800 hover:border-zinc-200 dark:hover:border-zinc-700 transition-colors"
-                  >
-                    {/* Selector de Perfil del Catálogo */}
-                    <Select
-                      size="sm"
-                      selectedKeys={
-                        item.id_perfil ? [String(item.id_perfil)] : []
-                      }
-                      onSelectionChange={(k: Set<string>) => {
-                        const selectedValue = [...k][0];
-                        if (selectedValue) {
-                          update(item.id, { id_perfil: Number(selectedValue) });
-                        }
-                      }}
-                      aria-label="Perfil"
-                      classNames={{
-                        trigger:
-                          "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 h-8 min-h-unit-8 font-mono text-xs hover:border-zinc-400 transition-colors shadow-none",
-                      }}
+                  return (
+                    <div
+                      key={item.id}
+                      className="grid grid-cols-[1.5fr_90px_1.5fr_70px_40px] gap-2 items-center bg-white dark:bg-zinc-900/40 rounded-xl p-2 border border-zinc-200/80 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm transition-all group"
                     >
-                      {perfiles.map((p) => (
-                        <SelectItem
-                          key={String(p.id)}
-                          textValue={`${p.nro_perfil} - ${p.descri}`}
-                        >
-                          <span className="font-mono text-xs font-bold text-amber-500">
-                            {p.nro_perfil}
-                          </span>
-                          <span className="text-zinc-500 ml-2 text-xs">
-                            {p.descri}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </Select>
-
-                    {/* Input de Fórmula Cantidad */}
-                    <FormulaInput
-                      label=""
-                      value={localCantidades[item.id] ?? ""}
-                      onChange={(v) =>
-                        setLocalCantidades((prev) => ({
-                          ...prev,
-                          [item.id]: v,
-                        }))
-                      }
-                      onBlur={() =>
-                        handleBlurCantidad(item.id, item.formula_cantidad)
-                      }
-                      size="sm"
-                    />
-
-                    {/* Input de Fórmula Medida de Corte */}
-                    <FormulaInput
-                      label=""
-                      value={localMedidas[item.id] ?? ""}
-                      onChange={(v) =>
-                        setLocalMedidas((prev) => ({ ...prev, [item.id]: v }))
-                      }
-                      onBlur={() =>
-                        handleBlurMedida(item.id, item.formula_perfil)
-                      }
-                      size="sm"
-                    />
-
-                    {/* Selector de Ángulo de Corte */}
-                    <Select
-                      size="sm"
-                      selectedKeys={
-                        item.angulo !== undefined ? [item.angulo] : ["45"]
-                      }
-                      onSelectionChange={(k: Set<string>) => {
-                        const selectedValue = [...k][0];
-                        if (selectedValue !== undefined) {
-                          update(item.id, { angulo: selectedValue as string });
+                      {/* Selector de Perfil del Catálogo */}
+                      <Select
+                        size="sm"
+                        selectedKeys={
+                          item.id_perfil ? [String(item.id_perfil)] : []
                         }
-                      }}
-                      aria-label="Ángulo"
-                      classNames={{
-                        trigger:
-                          "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 h-8 min-h-unit-8 font-mono text-xs shadow-none",
-                      }}
-                    >
-                      {ANGULOS.map((a) => (
-                        <SelectItem key={a} textValue={a || "—"}>
-                          {a || "—"}
-                        </SelectItem>
-                      ))}
-                    </Select>
-
-                    {/* Columna Dinámica de Estado y Acción de Borrado */}
-                    <div className="flex items-center justify-center min-w-8 h-8 relative">
-                      {rowStatus === "idle" && (
-                        <button
-                          onClick={() =>
-                            deleteDespiecePerfil({
-                              id: item.id,
-                              nivel,
-                              idParent,
-                            })
+                        onSelectionChange={(k: Set<string>) => {
+                          const selectedValue = [...k][0];
+                          if (selectedValue) {
+                            update(item.id, {
+                              id_perfil: Number(selectedValue),
+                            });
                           }
-                          className="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                          title="Eliminar línea de corte"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                        }}
+                        aria-label="Perfil"
+                        classNames={{
+                          // Aseguramos que el botón cerrado no se expanda y corte el texto interno
+                          trigger:
+                            "bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 h-9 min-h-unit-9 hover:border-amber-500/50 transition-colors shadow-none rounded-lg px-2.5",
+                          value: "truncate block w-full text-xs font-medium",
+                        }}
+                      >
+                        {perfiles.map((p) => (
+                          <SelectItem
+                            key={String(p.id)}
+                            textValue={`${p.nro_perfil} - ${p.descri}`}
+                            className="data-[hover=true]:bg-zinc-100 dark:data-[hover=true]:bg-zinc-800"
+                          >
+                            {/* Flex dinámico para que el código no se aplaste y la descripción se trunque fluida */}
+                            <div className="flex items-center w-full min-w-0 gap-2">
+                              <span className="font-mono text-xs font-black text-amber-500 shrink-0">
+                                {p.nro_perfil}
+                              </span>
+                              <span className="text-zinc-600 dark:text-zinc-400 text-xs truncate flex-1 min-w-0">
+                                {p.descri}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </Select>
 
-                      {rowStatus === "saving" && (
-                        <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
-                      )}
+                      {/* Input de Fórmula Cantidad */}
+                      <FormulaInput
+                        label=""
+                        value={localCantidades[item.id] ?? ""}
+                        onChange={(v) =>
+                          setLocalCantidades((prev) => ({
+                            ...prev,
+                            [item.id]: v,
+                          }))
+                        }
+                        onBlur={() =>
+                          handleBlurCantidad(item.id, item.formula_cantidad)
+                        }
+                        size="sm"
+                      />
 
-                      {rowStatus === "saved" && (
-                        <Check className="w-4 h-4 text-emerald-500" />
-                      )}
+                      {/* Input de Fórmula Medida de Corte */}
+                      <FormulaInput
+                        label=""
+                        value={localMedidas[item.id] ?? ""}
+                        onChange={(v) =>
+                          setLocalMedidas((prev) => ({ ...prev, [item.id]: v }))
+                        }
+                        onBlur={() =>
+                          handleBlurMedida(item.id, item.formula_perfil)
+                        }
+                        size="sm"
+                      />
+
+                      {/* Selector de Ángulo de Corte */}
+                      <Select
+                        size="sm"
+                        selectedKeys={
+                          item.angulo !== undefined ? [item.angulo] : ["45"]
+                        }
+                        onSelectionChange={(k: Set<string>) => {
+                          const selectedValue = [...k][0];
+                          if (selectedValue !== undefined) {
+                            update(item.id, {
+                              angulo: selectedValue as string,
+                            });
+                          }
+                        }}
+                        aria-label="Ángulo"
+                        classNames={{
+                          trigger:
+                            "bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 h-9 min-h-unit-9 font-mono text-xs font-bold text-center shadow-none rounded-lg",
+                          value: "text-center",
+                        }}
+                      >
+                        {ANGULOS.map((a) => (
+                          <SelectItem key={a} textValue={a || "—"}>
+                            {a || "—"}
+                          </SelectItem>
+                        ))}
+                      </Select>
+
+                      {/* Columna Dinámica de Estado y Acción de Borrado */}
+                      <div className="flex items-center justify-center w-full h-full relative">
+                        {rowStatus === "idle" && (
+                          <button
+                            onClick={() =>
+                              deleteDespiecePerfil({
+                                id: item.id,
+                                nivel,
+                                idParent,
+                              })
+                            }
+                            className="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all opacity-50 group-hover:opacity-100"
+                            title="Eliminar línea de corte"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {rowStatus === "saving" && (
+                          <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                        )}
+
+                        {rowStatus === "saved" && (
+                          <Check
+                            className="w-4 h-4 text-emerald-500"
+                            strokeWidth={3}
+                          />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
         </>
