@@ -17,7 +17,7 @@ import {
 } from "@/hooks/catalogo/useOpciones";
 import OpcionesPageSkeleton from "@/components/ui/skeletons/OpcionesPageSkeleton";
 
-const INITIAL_FORM_STATE: Omit<Opciones, "id"> = {
+const INITIAL_FORM_STATE: Partial<Opciones> = {
   nombre: "Bienvenido",
   email: "EMAIL_ADDRESS",
   telefono: "PHONE_NUMBER",
@@ -62,7 +62,7 @@ const inputBase = {
 };
 
 export default function OpcionesPage() {
-  const { data: opciones = [], isLoading } = useOpciones();
+  const { data: opciones, isLoading } = useOpciones();
   const { mutateAsync: createOpcion } = useCreateOpciones();
   const { mutateAsync: updateOpcion } = useUpdateOpciones();
 
@@ -71,8 +71,8 @@ export default function OpcionesPage() {
 
   useEffect(() => {
     if (!isLoading) {
-      if (opciones.length > 0) {
-        setForm(opciones[0]);
+      if (opciones) {
+        setForm(opciones);
       } else {
         createOpcion(INITIAL_FORM_STATE);
       }
@@ -97,7 +97,7 @@ export default function OpcionesPage() {
     if (!form) return;
     setSaved(true);
     try {
-      await updateOpcion(form);
+      await updateOpcion({ id: form.id, data: form });
       setTimeout(() => setSaved(false), 2000);
     } catch (error) {
       console.error("Error al guardar:", error);

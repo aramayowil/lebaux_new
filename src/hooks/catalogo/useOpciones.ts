@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { Opciones } from "@/types/index";
+import type { Opciones } from "@/types/index";
 import { SQUEMA } from "./squemaCatalogo";
 
 const TABLE = "opciones";
 
-// --- 1. LEER ---
+// --- 1. HOOK PARA LEER LAS CONFIGURACIONES GLOBAL ---
 export function useOpciones() {
   return useQuery({
     queryKey: [TABLE],
@@ -13,74 +13,59 @@ export function useOpciones() {
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
-        .select("*");
+        .select("*")
+        .maybeSingle(); // 👈 Trae el único registro como objeto directo, evita manejar arrays [0]
 
       if (error) throw error;
-      return data as Opciones[];
+      return data as Opciones;
     },
   });
 }
 
-// --- 2. EDITAR / ACTUALIZAR ---
+// --- 2. HOOK PARA ACTUALIZAR LAS CONFIGURACIONES ---
 export function useUpdateOpciones() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (updates: Opciones) => {
-      // Usamos cod_parte para identificar la fila y actualizar el resto
-      const { data, error } = await supabase
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<Opciones>;
+    }) => {
+      const { data: updatedData, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
-        .update(updates)
-        .eq("id", updates.id)
+        .update(data)
+        .eq("id", id)
         .select()
         .single();
 
       if (error) throw error;
-      return data as Opciones;
+      return updatedData as Opciones;
     },
+    // Invalidamos la query para que toda la app se entere del cambio (ej. cambio de IVA o Márgenes)
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [TABLE] });
     },
   });
 }
 
-// --- 3. BORRAR ---
-export function useDeleteOpciones() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id: number) => {
-      const { error } = await supabase
-        .schema(SQUEMA)
-        .from(TABLE)
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-      return id;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [TABLE] });
-    },
-  });
-}
-
-// --- 4. CREAR ---
 export function useCreateOpciones() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (newAccesorio: Omit<Opciones, "id">) => {
-      const { data, error } = await supabase
+    mutationFn: async (data: Partial<Opciones>) => {
+      const { data: newOpcion, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
-        .insert([newAccesorio])
+        .insert([data]) // 👈 Insertamos un array con un objeto
         .select()
-        .single();
+        .single(); // 👈 Seleccionamos el registro creado
 
       if (error) throw error;
-      return data as Opciones;
+      return newOpcion as Opciones;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [TABLE] });

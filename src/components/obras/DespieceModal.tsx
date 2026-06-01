@@ -31,7 +31,7 @@ const DespieceModal = ({
     <Modal
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      size="2xl"
+      size="full"
       scrollBehavior="inside"
       backdrop="blur"
       classNames={{
@@ -42,7 +42,7 @@ const DespieceModal = ({
     >
       <ModalContent>
         <>
-          <ModalHeader className="flex items-center gap-3 py-4">
+          <ModalHeader className="flex items-center gap-3 py-2">
             <div className="p-2 bg-lebaux-amber/10 rounded-lg">
               <Calculator className="w-5 h-5 text-lebaux-amber" />
             </div>

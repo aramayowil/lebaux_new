@@ -204,7 +204,7 @@ export interface DespieceAccesorio {
   id: number; // agregado por el interprete
   id_parent: number;
   id_accesorio: number;
-  formula_cantidad: string; 
+  formula_cantidad: string;
 }
 
 // Despiece interior (tabla "Despiece interior"): fórmulas y descuentos del interior
@@ -400,9 +400,35 @@ export interface ObraDespiece {
 
 // ─── Opciones del Sistema ─────────────────────────────────────────────────────
 
+// export interface Opciones {
+//   id: number;
+//   iva: number;
+
+//   costo_hora_taller: number;
+//   tiempo_marco_horas: number;
+//   tiempo_marco_minutos: number;
+//   tiempo_hoja_horas: number;
+//   tiempo_hoja_minutos: number;
+//   tiempo_interior_horas: number;
+//   tiempo_interior_minutos: number;
+//   tiempo_cruce_horas: number;
+//   tiempo_cruce_minutos: number;
+//   tiempo_contravidrio_horas: number;
+//   tiempo_contravidrio_minutos: number;
+//   tiempo_mosquitero_horas: number;
+//   tiempo_mosquitero_minutos: number;
+//   nombre: string;
+//   direccion: string;
+//   telefono: string;
+//   email: string;
+//   encabezado_pto: string;
+//   pie_pto: string;
+//   logo?: string;
+// }
+
 export interface Opciones {
   id: number;
-  iva: number;
+  ultima_obra?: number;
   porcentaje_sobre_perfiles: number;
   porcentaje_sobre_vidrios: number;
   porcentaje_sobre_accesorios: number;
@@ -411,26 +437,105 @@ export interface Opciones {
   porcentaje_sobre_mano: number;
   porcentaje_sobre_mano_colocacion: number;
   porcentaje_sobre_items_manuales: number;
-  costo_hora_taller: number;
+  iva: number;
+
+  // Tiempos de fabricación estándar
   tiempo_marco_horas: number;
-  tiempo_marco_minutos: number;
   tiempo_hoja_horas: number;
-  tiempo_hoja_minutos: number;
   tiempo_interior_horas: number;
-  tiempo_interior_minutos: number;
   tiempo_cruce_horas: number;
-  tiempo_cruce_minutos: number;
   tiempo_contravidrio_horas: number;
-  tiempo_contravidrio_minutos: number;
   tiempo_mosquitero_horas: number;
+  tiempo_marco_minutos: number;
+  tiempo_hoja_minutos: number;
+  tiempo_interior_minutos: number;
+  tiempo_cruce_minutos: number;
+  tiempo_contravidrio_minutos: number;
   tiempo_mosquitero_minutos: number;
+
+  // Tiempos de Vidrio Repartido (VR)
+  tiempo_vidrio_vr_horas: number;
+  tiempo_cruce_vr_horas: number;
+  tiempo_contorno_vr_horas: number;
+  tiempo_vidrio_vr_minutos: number;
+  tiempo_cruce_vr_minutos: number;
+  tiempo_contorno_vr_minutos: number;
+
+  costo_hora_taller: number;
+  logo?: string;
   nombre: string;
   direccion: string;
   telefono: string;
   email: string;
   encabezado_pto: string;
   pie_pto: string;
-  logo?: string;
+  simulaciones?: number;
+  sierra?: number;
+
+  // Parámetros de impresión y comportamiento (Booleans)
+  camara: boolean;
+  pedidos_con_costo: boolean;
+  presupuesto_con_fecha: boolean;
+  presupuesto_encabezado: boolean;
+  imagen?: string | null;
+  vidrios_detalles: boolean;
+  usa_recortes: boolean;
+
+  // Guías y paños fijos
+  tiempo_guias_cajon_horas?: number | null;
+  tiempo_guias_cajon_minutos?: number | null;
+  tiempo_pano_horas?: number | null;
+  tiempo_pano_minutos?: number | null;
+
+  // Opciones de desglose en presupuestos
+  desglosa_interiores: boolean;
+  desglosa_mosquiteros: boolean;
+  desglosa_colocacion: boolean;
+  desglosa_premarcos: boolean;
+  desglosa_tapajuntas: boolean;
+  desglosa_persianas: boolean;
+
+  // Visualización y Gráficos
+  sin_graficos: boolean;
+  ajuste_zoom: boolean;
+  fondo?: number | null;
+  noticias_inicio: boolean;
+  grafico_barras: boolean;
+  color_cortes?: number | null;
+  tamano_letra?: number | null;
+  definicion_imagen?: number | null;
+  zoom_level?: number | null;
+
+  // Valores por defecto del taller
+  extrusora_defecto?: number | null;
+  linea_defecto?: number | null;
+  color_defecto?: number | null;
+  vidrio_defecto?: string | null;
+
+  // Control de órdenes de producción
+  detalles_producto: boolean;
+  orden_con_perfiles: boolean;
+  orden_con_accesorios: boolean;
+  orden_con_interiores: boolean;
+  orden_con_colores: boolean;
+  tipos_vidrios: boolean;
+
+  // Cotas de dibujo técnico
+  cotas_prod?: number | null;
+  cotas_hor_ver?: number | null;
+  texto_interno?: number | null;
+  desglose_tipo: boolean;
+  color_presu?: number | null;
+  cant_decimales?: number | null;
+
+  // Cotas específicas para presupuesto impreso
+  cotas_prod_presu?: number | null;
+  cotas_hor_ver_presu?: number | null;
+  texto_interno_presu?: number | null;
+  resolucion_presu?: number | null;
+  sin_cotas_presu: boolean;
+  tipos_hojas_independientes: boolean;
+  no_considerar_minimos: boolean;
 }
 
 // ─── UI / Estado ──────────────────────────────────────────────────────────────

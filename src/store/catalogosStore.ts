@@ -331,9 +331,10 @@ const MOCK_TRATAMIENTOS: Tratamiento[] = [
   },
 ];
 
-const DEFAULT_OPCIONES: Opciones = {
+const DEFAULT_OPCIONES: Partial<Opciones> = {
   id: 1,
   iva: 21,
+
   porcentaje_sobre_perfiles: 30,
   porcentaje_sobre_vidrios: 20,
   porcentaje_sobre_accesorios: 25,
@@ -374,7 +375,7 @@ interface CatalogosState {
   lineas: Linea[];
   monedas: Moneda[];
   tiposInterior: TipoInterior[];
-  opciones: Opciones;
+  opciones: Partial<Opciones>;
 
   // Acciones
   setPerfil: (p: Perfil) => void;

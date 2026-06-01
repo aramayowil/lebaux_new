@@ -18,6 +18,7 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import ImportarPage from "@/pages/ImportarPage";
 import Error404Page from "@/pages/Error404Page";
 import ControlAccesoPage from "./pages/ControlAccesoPage";
+import CalculadoraPage from "./pages/CalculadoraPage";
 
 export default function App() {
   const setSession = useAuthStore((state) => state.setSession);
@@ -61,6 +62,7 @@ export default function App() {
           <Route path="/catalogos" element={<CatalogosPage />} />
           <Route path="/importar" element={<ImportarPage />} />
           <Route path="/usuarios" element={<ControlAccesoPage />} />
+          <Route path="/calculadora" element={<CalculadoraPage />} />
           <Route path="/opciones" element={<OpcionesPage />} />
         </Route>
       </Route>
