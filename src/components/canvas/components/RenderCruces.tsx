@@ -10,7 +10,7 @@ interface ObraDetalleCanvas extends ObraDetalle {
 interface RenderCrucesProps {
   width: number;
   height: number;
-  config: ObraDetalleCanvas; // 🌟 Usamos la interfaz extendida
+  config: ObraDetalleCanvas;
   espesoPerfilCruce: number;
   contravidrioThick: number;
   colors: {
@@ -49,7 +49,6 @@ const RenderCruces = ({
       (_, i) => (height / (cantH + 1)) * (i + 1),
     );
   } else {
-    // 🌟 Al estar declarado opcional en la interfaz extendida superior, añadimos un fallback '?? []'
     posV = Array.isArray(config.pos_v) ? config.pos_v : [];
     posH = (Array.isArray(config.pos_h) ? config.pos_h : []).map(
       (p) => height - p,

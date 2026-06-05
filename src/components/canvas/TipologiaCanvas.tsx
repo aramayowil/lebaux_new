@@ -10,7 +10,6 @@ import { useVidrios } from "@/hooks/catalogo/useVidrios";
 import { useTipos } from "@/hooks/obra/useTipos";
 import { useHojas } from "@/hooks/productos/useHojas";
 
-// 🌟 Creamos una interfaz que extiende ObraDetalle para incluir las propiedades del Canvas
 interface ObraDetalleCanvas extends ObraDetalle {
   pos_h?: number[];
   pos_v?: number[];
@@ -18,7 +17,7 @@ interface ObraDetalleCanvas extends ObraDetalle {
 
 interface Props {
   tipologia: ObraTipologia;
-  detalles: ObraDetalleCanvas; // 🌟 Usamos el tipo extendido aquí
+  detalles: ObraDetalleCanvas;
   width: number;
   height: number;
   onReady?: (base64: string) => void;
@@ -73,14 +72,33 @@ export default function TipologiaCanvas({
     relativeY: number;
   } | null>(null);
 
+  // ── LAYOUT TÉCNICO AUTORESPONSIVO DINÁMICO ──
   const layout = useMemo(() => {
-    const padding = 200;
+    if (width === 0 || height === 0) {
+      return {
+        scale: 0.1,
+        drawW: 0,
+        drawH: 0,
+        ox: 0,
+        oy: 0,
+        espesoPerfil: 0,
+        innerH: 0,
+        posH: [],
+        posV: [],
+      };
+    }
+
+    // Margen perimetral interno de seguridad dentro de la pantalla para las cotas externas
+    const padding = 100;
     const availableWidth = width - padding;
     const availableHeight = height - padding;
 
-    const scale = Math.min(availableWidth / A, availableHeight / H, 0.8);
+    const scale = Math.min(availableWidth / A, availableHeight / H, 0.55);
+
     const drawW = A * scale;
     const drawH = H * scale;
+
+    // Centrado exacto del dibujo técnico en la pantalla disponible
     const ox = (width - drawW) / 2;
     const oy = (height - drawH) / 2;
 
@@ -88,7 +106,6 @@ export default function TipologiaCanvas({
     const espesoPerfil = realFrameWidth * scale;
     const innerH = drawH - espesoPerfil * 2;
 
-    // ── CONFIGURACIÓN DE CRUCES CENTRADOS O POR POSICIÓN ──
     const cantH = detalles.cant_centrados_horizontal ?? 0;
     const posH =
       cantH > 0
@@ -173,18 +190,7 @@ export default function TipologiaCanvas({
       onContextMenu: handleLeafContextMenu,
     };
 
-    // if (tipo.includes("banderola")) return <BanderolaLayout {...commonProps} />;
-    // if (tipo.includes("projectante"))
-    //   return <ProjectanteLayout {...commonProps} />;
-    // if (tipo.includes("paño fijo")) return <PañoFijoLayout {...commonProps} />;
-    // if (tipo.includes("ventiluz")) return <VentiluzLayout {...commonProps} />;
-    // if (tipo.includes("oscilobatiente"))
-    //   return <OscilobatienteLayout {...commonProps} />;
     if (tipo.includes("corrediza")) return <CorredizaLayout {...commonProps} />;
-    // if (tipo.includes("puerta"))
-    //   return <PuertaRebatibleLayout {...commonProps} />;
-    // if (tipo.includes("ventana de abrir"))
-    //   return <VentanaDeAbrirLayout {...commonProps} />;
     return null;
   };
 
@@ -196,6 +202,7 @@ export default function TipologiaCanvas({
         onContextMenu={handleStageContextMenu}
       >
         <Layer>
+          {/* El offset del grupo asegura el centrado correcto dentro de la caja dimensional */}
           <Group ref={stageRef} x={layout.ox} y={layout.oy}>
             {renderSelectedLayout()}
           </Group>

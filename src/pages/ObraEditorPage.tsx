@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Button,
@@ -76,6 +76,18 @@ export default function ObraEditorPage() {
   const [showNuevoModal, setShowNuevoModal] = useState(false);
   const [showDespieceModal, setShowDespieceModal] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+
+  // Ref callback: se ejecuta en el momento exacto en que el div monta en el DOM,
+  // garantizando que canvasSize se inicializa aunque haya venido de un skeleton.
+  const setCanvasContainerRef = useCallback((node: HTMLDivElement | null) => {
+    canvasContainerRef.current = node;
+    if (node) {
+      const { width, height } = node.getBoundingClientRect();
+      setCanvasSize({ width, height });
+    }
+  }, []);
 
   // ── ESTADOS LOCALES PARA INPUTS DE EDICIÓN RÁPIDA (NUEVO) ─────────────────
   const [localDescripcion, setLocalDescripcion] = useState("");
@@ -114,6 +126,24 @@ export default function ObraEditorPage() {
 
   const isSaving = savingTipologia || savingDetalle;
 
+  // ResizeObserver solo para cambios posteriores (redimensionar ventana, abrir/cerrar paneles).
+  // La medición inicial la hace setCanvasContainerRef (ref callback) al montar el div.
+  useEffect(() => {
+    const node = canvasContainerRef.current;
+    if (!node) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setCanvasSize({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        });
+      }
+    });
+
+    resizeObserver.observe(node);
+    return () => resizeObserver.disconnect();
+  }, [selectedId]);
   // ── EFECTO DE SINCRONIZACIÓN DE INPUTS LOCALES (NUEVO) ────────────────────
   useEffect(() => {
     if (tipSel) {
@@ -144,20 +174,54 @@ export default function ObraEditorPage() {
     }
   };
 
-  const handleSaveAncho = () => {
-    if (tipSel) {
+  const handleSaveAncho = async () => {
+    if (tipSel && detallesObraSelect) {
       const val = parseInt(localAncho, 10) || 600;
-      if (val !== tipSel.ancho) {
-        updateTipologia({ id: tipSel.id, data: { ancho: val } });
+
+      if (val === tipSel.ancho) return;
+
+      try {
+        await updateTipologia({
+          id: tipSel.id,
+          data: { ancho: val },
+        });
+
+        await upsertDetalle({
+          ...detallesObraSelect,
+          id_tipo: detallesObraSelect.id_tipo,
+          ancho: val,
+        });
+      } catch (error) {
+        console.error(
+          "Error al sincronizar las dimensiones de la abertura:",
+          error,
+        );
       }
     }
   };
 
-  const handleSaveAlto = () => {
-    if (tipSel) {
+  const handleSaveAlto = async () => {
+    if (tipSel && detallesObraSelect) {
       const val = parseInt(localAlto, 10) || 600;
-      if (val !== tipSel.alto) {
-        updateTipologia({ id: tipSel.id, data: { alto: val } });
+
+      if (val === tipSel.alto) return;
+
+      try {
+        await updateTipologia({
+          id: tipSel.id,
+          data: { alto: val },
+        });
+
+        await upsertDetalle({
+          ...detallesObraSelect,
+          id_tipo: detallesObraSelect.id_tipo,
+          alto: val,
+        });
+      } catch (error) {
+        console.error(
+          "Error al sincronizar las dimensiones de la abertura:",
+          error,
+        );
       }
     }
   };
@@ -278,8 +342,10 @@ export default function ObraEditorPage() {
     [deleteTipologia, selectedId, idObra],
   );
 
-  // Loading global del layout
-  const isLoadingGlobal = loadObra || loadTipos || loadDetalles;
+  // Loading global del layout: solo carga inicial de obra y tipologías.
+  // loadDetalles se maneja localmente en el canvas para evitar que el skeleton
+  // reaparezca al cambiar de tipología o crear una nueva.
+  const isLoadingGlobal = loadObra || loadTipos;
 
   if (isLoadingGlobal) {
     return <ObraEditorPageSkeleton />;
@@ -476,204 +542,228 @@ export default function ObraEditorPage() {
           </div>
         </aside>
 
-        {/* CONTENEDOR CENTRAL: CANVAS DEL ENTORNO GRÁFICO CON SUB-TOOLBAR */}
-        <main className="flex-1 bg-zinc-50 dark:bg-zinc-950 flex flex-col overflow-hidden relative">
+        {/* CONTENEDOR CENTRAL: INTEGRADO CON CSS GRID PARA MÁXIMO CONTROL */}
+        <main className="flex-1 bg-zinc-50 dark:bg-zinc-950 grid grid-rows-[1fr_auto] overflow-hidden relative">
           {tipSel && detallesObraSelect ? (
             <>
-              {/* CONTENEDOR GRÁFICO DEL CANVAS */}
-              <div className="flex-1 w-full flex items-center justify-center relative p-6 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-100/60 to-zinc-50 dark:from-zinc-900/40 dark:to-zinc-950">
-                {/* CANVAS DIBUJO TÉCNICO */}
-                <TipologiaCanvas
-                  tipologia={tipSel}
-                  detalles={detallesObraSelect}
-                  width={tipSel.ancho ?? 0}
-                  height={tipSel.alto ?? 0}
-                />
+              {/* 1. FILA SUPERIOR: ÁREA DE DIBUJO RESPONSIVA (SIN SCROLLS) */}
+              <div
+                ref={setCanvasContainerRef}
+                className="w-full h-full overflow-hidden flex items-center justify-center bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-100/60 to-zinc-50 dark:from-zinc-900/40 dark:to-zinc-950 select-none"
+              >
+                {/* Solo renderizamos el Canvas si el contenedor ya midió la pantalla */}
+                {canvasSize.width > 0 &&
+                canvasSize.height > 0 &&
+                detallesObraSelect &&
+                !loadDetalles ? (
+                  <TipologiaCanvas
+                    key={`${selectedId}-${obraDetalles.length}`}
+                    tipologia={tipSel}
+                    detalles={detallesObraSelect}
+                    width={canvasSize.width}
+                    height={canvasSize.height}
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center gap-2 text-zinc-400 text-xs font-medium animate-pulse bg-zinc-50/50 dark:bg-zinc-950/50">
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                    Inicializando entorno gráfico...
+                  </div>
+                )}
               </div>
 
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/90 dark:bg-zinc-900/95 backdrop-blur-md shadow-xl border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-2 flex items-center gap-1 z-50">
-                <Tooltip content="Añadir Travesaño Horizontal" delay={400}>
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    variant="light"
-                    className="rounded-xl h-9 w-9 text-zinc-600 dark:text-zinc-300"
-                    onPress={() => console.log("Agregar Travesaño Horizontal")}
-                  >
-                    <SplitSquareHorizontal className="h-5 w-5" />
-                  </Button>
-                </Tooltip>
-
-                <Tooltip content="Añadir Travesaño Vertical" delay={400}>
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    variant="light"
-                    className="rounded-xl h-9 w-9 text-zinc-600 dark:text-zinc-300"
-                    onPress={() => console.log("Agregar Travesaño Vertical")}
-                  >
-                    <SplitSquareVertical className="h-5 w-5" />
-                  </Button>
-                </Tooltip>
-
-                <Divider
-                  orientation="vertical"
-                  className="h-5 bg-zinc-200 dark:bg-zinc-800 mx-1"
-                />
-
-                {/* MENÚ DE EDICIÓN RÁPIDA REACTIVA */}
-                <Popover placement="top" offset={20} showArrow={true}>
-                  <PopoverTrigger>
-                    <Button
-                      isIconOnly
-                      size="sm"
-                      variant="light"
-                      className="rounded-xl h-9 w-9 text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60"
-                      aria-label="Ajuste rápido"
-                    >
-                      <PenLine className="h-5 w-5" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="p-4 w-72 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl rounded-2xl">
-                    <div className="flex flex-col gap-3 w-full">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-md font-bold text-zinc-700 dark:text-zinc-300 w-full text-center">
-                          Ajustes Rápidos
-                        </span>
-                      </div>
-
-                      <Input
-                        label="Descripción"
-                        size="md"
-                        variant="faded"
-                        placeholder="Ej. Ventana Cocina"
-                        value={localDescripcion}
-                        onValueChange={setLocalDescripcion}
-                        onBlur={handleSaveDescripcion}
-                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) =>
-                          e.key === "Enter" && handleSaveDescripcion()
-                        }
-                      />
-
-                      <div className="flex gap-2">
-                        <Input
-                          label="Ancho"
-                          size="md"
-                          variant="faded"
-                          type="number"
-                          min={0}
-                          onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
-                            e.target.select()
-                          }
-                          endContent={
-                            <span className="text-zinc-400 text-md">mm</span>
-                          }
-                          value={localAncho}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            setLocalAncho(e.target.value)
-                          }
-                          onBlur={handleSaveAncho}
-                          onKeyDown={(
-                            e: React.KeyboardEvent<HTMLInputElement>,
-                          ) => e.key === "Enter" && handleSaveAncho()}
-                          classNames={{
-                            input:
-                              "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                          }}
-                        />
-                        <Input
-                          label="Alto"
-                          size="md"
-                          type="number"
-                          variant="faded"
-                          min={0}
-                          onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
-                            e.target.select()
-                          }
-                          endContent={
-                            <span className="text-zinc-400 text-sm">mm</span>
-                          }
-                          value={localAlto}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            setLocalAlto(e.target.value)
-                          }
-                          onBlur={handleSaveAlto}
-                          onKeyDown={(
-                            e: React.KeyboardEvent<HTMLInputElement>,
-                          ) => e.key === "Enter" && handleSaveAlto()}
-                          classNames={{
-                            input:
-                              "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                          }}
-                        />
-                      </div>
-
-                      <Input
-                        label="Cantidad"
-                        size="md"
-                        type="number"
-                        variant="faded"
-                        min={1}
-                        onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
-                          e.target.select()
-                        }
-                        value={localCantidad}
-                        onValueChange={setLocalCantidad}
-                        onBlur={handleSaveCantidad}
-                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) =>
-                          e.key === "Enter" && handleSaveCantidad()
-                        }
-                        classNames={{
-                          input:
-                            "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                        }}
-                      />
-                    </div>
-                  </PopoverContent>
-                </Popover>
-
-                <Divider
-                  orientation="vertical"
-                  className="h-5 bg-zinc-200 dark:bg-zinc-800 mx-1"
-                />
-
-                <Popover placement="top" offset={10}>
-                  <PopoverTrigger>
+              {/* 2. FILA INFERIOR: BARRA DE HERRAMIENTAS Y AJUSTES */}
+              <div className="w-full flex justify-center pb-4 pt-2 bg-gradient-to-t from-zinc-50 via-zinc-50/80 to-transparent dark:from-zinc-950 dark:via-zinc-950/80 pointer-events-none z-50">
+                <div className="bg-white/90 dark:bg-zinc-900/95 backdrop-blur-md shadow-xl border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-2 flex items-center gap-1 pointer-events-auto">
+                  <Tooltip content="Añadir Travesaño Horizontal" delay={400}>
                     <Button
                       isIconOnly
                       size="sm"
                       variant="light"
                       className="rounded-xl h-9 w-9 text-zinc-600 dark:text-zinc-300"
+                      onPress={() =>
+                        console.log("Agregar Travesaño Horizontal")
+                      }
                     >
-                      <Layers className="h-5 w-5" />
+                      <SplitSquareHorizontal className="h-5 w-5" />
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="p-2 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl rounded-xl">
-                    <div className="flex flex-col gap-1 w-44">
-                      <button className="flex items-center gap-2 px-2.5 py-2 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg">
-                        <Square className="h-3.5 w-3.5 text-amber-500" /> Añadir
-                        Premarco
-                      </button>
-                      <button className="flex items-center gap-2 px-2.5 py-2 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg">
-                        <SquaresSubtract className="h-3.5 w-3.5 text-amber-500" />{" "}
-                        Añadir Tapajuntas
-                      </button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                  </Tooltip>
 
-                <Tooltip content="Limpiar Modificaciones" delay={400}>
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    variant="light"
-                    className="rounded-xl h-9 w-9 text-zinc-400 hover:text-red-500"
-                  >
-                    <Eraser className="h-5 w-5" />
-                  </Button>
-                </Tooltip>
+                  <Tooltip content="Añadir Travesaño Vertical" delay={400}>
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      className="rounded-xl h-9 w-9 text-zinc-600 dark:text-zinc-300"
+                      onPress={() => console.log("Agregar Travesaño Vertical")}
+                    >
+                      <SplitSquareVertical className="h-5 w-5" />
+                    </Button>
+                  </Tooltip>
+
+                  <Divider
+                    orientation="vertical"
+                    className="h-5 bg-zinc-200 dark:bg-zinc-800 mx-1"
+                  />
+
+                  {/* MENÚ DE EDICIÓN RÁPIDA REACTIVA */}
+                  <Popover placement="top" offset={20} showArrow={true}>
+                    <PopoverTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-xl h-9 w-9 text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60"
+                        aria-label="Ajuste rápido"
+                      >
+                        <PenLine className="h-5 w-5" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="p-4 w-72 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl rounded-2xl">
+                      <div className="flex flex-col gap-3 w-full">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-md font-bold text-zinc-700 dark:text-zinc-300 w-full text-center">
+                            Ajustes Rápidos
+                          </span>
+                        </div>
+
+                        <Input
+                          label="Descripción"
+                          size="md"
+                          variant="faded"
+                          placeholder="Ej. Ventana Cocina"
+                          value={localDescripcion}
+                          onValueChange={setLocalDescripcion}
+                          onBlur={handleSaveDescripcion}
+                          onKeyDown={(
+                            e: React.KeyboardEvent<HTMLInputElement>,
+                          ) => e.key === "Enter" && handleSaveDescripcion()}
+                        />
+
+                        <div className="flex gap-2">
+                          <Input
+                            label="Ancho"
+                            size="md"
+                            variant="faded"
+                            type="number"
+                            min={0}
+                            onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
+                              e.target.select()
+                            }
+                            endContent={
+                              <span className="text-zinc-400 text-md">mm</span>
+                            }
+                            value={localAncho}
+                            onChange={(
+                              e: React.ChangeEvent<HTMLInputElement>,
+                            ) => setLocalAncho(e.target.value)}
+                            onBlur={handleSaveAncho}
+                            onKeyDown={(
+                              e: React.KeyboardEvent<HTMLInputElement>,
+                            ) => e.key === "Enter" && handleSaveAncho()}
+                            classNames={{
+                              input:
+                                "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                            }}
+                          />
+                          <Input
+                            label="Alto"
+                            size="md"
+                            type="number"
+                            variant="faded"
+                            min={0}
+                            onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
+                              e.target.select()
+                            }
+                            endContent={
+                              <span className="text-zinc-400 text-sm">mm</span>
+                            }
+                            value={localAlto}
+                            onChange={(
+                              e: React.ChangeEvent<HTMLInputElement>,
+                            ) => setLocalAlto(e.target.value)}
+                            onBlur={handleSaveAlto}
+                            onKeyDown={(
+                              e: React.KeyboardEvent<HTMLInputElement>,
+                            ) => e.key === "Enter" && handleSaveAlto()}
+                            classNames={{
+                              input:
+                                "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                            }}
+                          />
+                        </div>
+
+                        <Input
+                          label="Cantidad"
+                          size="md"
+                          type="number"
+                          variant="faded"
+                          min={1}
+                          onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
+                            e.target.select()
+                          }
+                          value={localCantidad}
+                          onValueChange={setLocalCantidad}
+                          onBlur={handleSaveCantidad}
+                          onKeyDown={(
+                            e: React.KeyboardEvent<HTMLInputElement>,
+                          ) => e.key === "Enter" && handleSaveCantidad()}
+                          classNames={{
+                            input:
+                              "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                          }}
+                        />
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  <Divider
+                    orientation="vertical"
+                    className="h-5 bg-zinc-200 dark:bg-zinc-800 mx-1"
+                  />
+
+                  <Popover placement="top" offset={10}>
+                    <PopoverTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-xl h-9 w-9 text-zinc-600 dark:text-zinc-300"
+                      >
+                        <Layers className="h-5 w-5" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="p-2 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl rounded-xl">
+                      <div className="flex flex-col gap-1 w-44">
+                        <button className="flex items-center gap-2 px-2.5 py-2 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg">
+                          <Square className="h-3.5 w-3.5 text-amber-500" />{" "}
+                          Añadir Premarco
+                        </button>
+                        <button className="flex items-center gap-2 px-2.5 py-2 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg">
+                          <SquaresSubtract className="h-3.5 w-3.5 text-amber-500" />{" "}
+                          Añadir Tapajuntas
+                        </button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  <Tooltip content="Limpiar Modificaciones" delay={400}>
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      className="rounded-xl h-9 w-9 text-zinc-400 hover:text-red-500"
+                    >
+                      <Eraser className="h-5 w-5" />
+                    </Button>
+                  </Tooltip>
+                </div>
               </div>
             </>
+          ) : loadDetalles && selectedId ? (
+            <div className="flex items-center justify-center w-full h-full gap-2 text-zinc-400 text-xs font-medium">
+              <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+              Cargando tipología...
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center p-8 text-center max-w-sm mx-auto my-auto">
               <div className="p-4 bg-zinc-100 dark:bg-zinc-900 rounded-full border border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-400 mb-4">

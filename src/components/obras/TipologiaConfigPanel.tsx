@@ -791,7 +791,7 @@ export default function TipologiaConfigPanel({
   const alto = detalle.alto ?? 0;
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-zinc-950 border-l border-zinc-200/80 dark:border-zinc-800/80 select-none">
+    <div className="h-full flex flex-col bg-white dark:bg-zinc-950  border-zinc-200/80 dark:border-zinc-800/80 select-none">
       {/* Encabezado */}
       <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/10">
         <div className="flex items-center gap-2">

@@ -26,9 +26,7 @@ import {
 import { useObraDetallesByObra } from "@/hooks/obra/useObraDetalles";
 import { useProductos } from "@/hooks/productos/useProducto";
 import { useTipos } from "@/hooks/obra/useTipos";
-import { useHojas } from "@/hooks/productos/useHojas";
 import TipologiaCanvas from "@/components/canvas/TipologiaCanvas";
-import { obraDetalleToConfig } from "@/lib/obraDetalleAdapter";
 
 function obtenerFechaHoy() {
   return new Date().toLocaleDateString("es-AR");
@@ -67,7 +65,6 @@ function GeneratorPdf({
   const { data: allDetalles = [] } = useObraDetallesByObra(obra.id);
   const { data: productos } = useProductos();
   const { data: tipos } = useTipos();
-  const { data: hojas } = useHojas();
 
   const [canvasImages, setCanvasImages] = useState<Record<number, string>>({});
 
@@ -94,7 +91,10 @@ function GeneratorPdf({
       return;
     }
 
-    if (Object.keys(canvasImages).length !== tipologias.length && tipologias.length > 0) {
+    if (
+      Object.keys(canvasImages).length !== tipologias.length &&
+      tipologias.length > 0
+    ) {
       addToast({
         title: "Generando esquemas",
         description: "Aguarde un instante mientras se renderizan los dibujos.",
@@ -153,150 +153,159 @@ function GeneratorPdf({
 
   return (
     <>
-      <div style={{ position: "absolute", top: "-9999px", left: "-9999px", opacity: 0, pointerEvents: "none" }}>
-        {isOpen && tipologias.map((tipologia) => {
-          const configSel = allDetalles.find(
-            (d) =>
-              d.id_tipologia === tipologia.id &&
-              (!d.ubicacion_en_tipo || d.ubicacion_en_tipo === "")
-          );
-          const nHojas = configSel?.hoja && hojas
-              ? (hojas.find((h) => h.id === configSel.hoja)?.cantidad ?? 1)
-              : 1;
+      <div
+        style={{
+          position: "absolute",
+          top: "-9999px",
+          left: "-9999px",
+          opacity: 0,
+          pointerEvents: "none",
+        }}
+      >
+        {isOpen &&
+          tipologias.map((tipologia) => {
+            const configSel = allDetalles.find(
+              (d) =>
+                d.id_tipologia === tipologia.id &&
+                (!d.ubicacion_en_tipo || d.ubicacion_en_tipo === ""),
+            );
 
-          const formaTipo = productos && configSel
-              ? productos.find((p) => p.id === configSel.id_producto)?.id_tipo
-              : null;
-          
-          const tipoDeProducto = tipos && formaTipo
-              ? tipos.find((t) => t.id === formaTipo)?.forma_tipo
-              : undefined;
+            const formaTipo =
+              productos && configSel
+                ? productos.find((p) => p.id === configSel.id_producto)?.id_tipo
+                : null;
 
-          // Si no hay config válido (ej: no se seleccionó producto), evitamos fallos
-          if (!configSel || !tipoDeProducto) return null;
+            const tipoDeProducto =
+              tipos && formaTipo
+                ? tipos.find((t) => t.id === formaTipo)?.forma_tipo
+                : undefined;
 
-          return (
-            <TipologiaCanvas
-              key={tipologia.id}
-              tipologia={tipologia}
-              config={obraDetalleToConfig(configSel)}
-              tipoDeProducto={tipoDeProducto}
-              hojas={nHojas}
-              width={400}
-              height={400}
-              onReady={(base64) => {
-                setCanvasImages((prev) => ({ ...prev, [tipologia.id]: base64 }));
-              }}
-            />
-          );
-        })}
+            // Si no hay config válido (ej: no se seleccionó producto), evitamos fallos
+            if (!configSel || !tipoDeProducto) return null;
+
+            return (
+              <TipologiaCanvas
+                key={tipologia.id}
+                tipologia={tipologia}
+                detalles={configSel}
+                width={400}
+                height={400}
+                onReady={(base64) => {
+                  setCanvasImages((prev) => ({
+                    ...prev,
+                    [tipologia.id]: base64,
+                  }));
+                }}
+              />
+            );
+          })}
       </div>
 
       <Modal
-      isOpen={isOpen}
-      onOpenChange={onOpenChange}
-      size="md"
-      backdrop="blur"
-      classNames={{
-        base: "bg-white dark:bg-zinc-950 border border-steel-200 dark:border-white/10 shadow-2xl rounded-[2rem]",
-        closeButton:
-          "hover:bg-steel-100 dark:hover:bg-white/5 transition-colors",
-      }}
-    >
-      <ModalContent>
-        {(onClose: (isOpen: boolean) => void) => (
-          <>
-            <ModalBody className="pt-10 pb-4 px-8">
-              <div className="flex flex-col gap-8">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
-                    <FileText className="text-amber-500" size={24} />
+        isOpen={isOpen}
+        onOpenChange={onOpenChange}
+        size="md"
+        backdrop="blur"
+        classNames={{
+          base: "bg-white dark:bg-zinc-950 border border-steel-200 dark:border-white/10 shadow-2xl rounded-[2rem]",
+          closeButton:
+            "hover:bg-steel-100 dark:hover:bg-white/5 transition-colors",
+        }}
+      >
+        <ModalContent>
+          {(onClose: (isOpen: boolean) => void) => (
+            <>
+              <ModalBody className="pt-10 pb-4 px-8">
+                <div className="flex flex-col gap-8">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
+                      <FileText className="text-amber-500" size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-steel-900 dark:text-white uppercase tracking-tight">
+                        Confirmar Cotización
+                      </h3>
+                      <p className="text-xs text-steel-500 dark:text-zinc-500 font-medium">
+                        Obra de {obra.nombre} {obra.apellido}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-steel-900 dark:text-white uppercase tracking-tight">
-                      Confirmar Cotización
-                    </h3>
-                    <p className="text-xs text-steel-500 dark:text-zinc-500 font-medium">
-                      Obra de {obra.nombre} {obra.apellido}
-                    </p>
+
+                  <div className="flex flex-col gap-6">
+                    <Input
+                      label="NOMBRE DEL CLIENTE"
+                      placeholder="Ej: Juan Pérez"
+                      labelPlacement="outside"
+                      variant="bordered"
+                      isRequired
+                      value={nameCliente}
+                      onValueChange={setNameCliente}
+                      startContent={
+                        <UserRound
+                          className="text-steel-400 dark:text-zinc-500"
+                          size={18}
+                        />
+                      }
+                      classNames={{
+                        label:
+                          "text-[10px] font-black tracking-[0.2em] text-steel-500 dark:text-zinc-500 ml-1",
+                        inputWrapper:
+                          "border-steel-200 dark:border-white/10 hover:border-[#db924b]/50 focus-within:!border-[#db924b] h-14 bg-steel-50 dark:bg-white/5 transition-all rounded-xl",
+                        input:
+                          "text-steel-900 dark:text-zinc-100 text-sm font-semibold",
+                      }}
+                    />
+
+                    <Textarea
+                      label="NOTAS ADICIONALES"
+                      placeholder="Detalles de obra, entrega o colores..."
+                      labelPlacement="outside"
+                      variant="bordered"
+                      minRows={3}
+                      value={observaciones}
+                      onValueChange={setObservaciones}
+                      startContent={
+                        <MessageSquareText
+                          className="text-steel-400 dark:text-zinc-500 mt-1"
+                          size={18}
+                        />
+                      }
+                      classNames={{
+                        label:
+                          "text-[10px] font-black tracking-[0.2em] text-steel-500 dark:text-zinc-500 ml-1",
+                        inputWrapper:
+                          "border-steel-200 dark:border-white/10 hover:border-[#db924b]/50 focus-within:!border-[#db924b] bg-steel-50 dark:bg-white/5 transition-all rounded-xl",
+                        input: "text-steel-900 dark:text-zinc-100 text-sm",
+                      }}
+                    />
                   </div>
                 </div>
+              </ModalBody>
 
-                <div className="flex flex-col gap-6">
-                  <Input
-                    label="NOMBRE DEL CLIENTE"
-                    placeholder="Ej: Juan Pérez"
-                    labelPlacement="outside"
-                    variant="bordered"
-                    isRequired
-                    value={nameCliente}
-                    onValueChange={setNameCliente}
-                    startContent={
-                      <UserRound
-                        className="text-steel-400 dark:text-zinc-500"
-                        size={18}
-                      />
-                    }
-                    classNames={{
-                      label:
-                        "text-[10px] font-black tracking-[0.2em] text-steel-500 dark:text-zinc-500 ml-1",
-                      inputWrapper:
-                        "border-steel-200 dark:border-white/10 hover:border-[#db924b]/50 focus-within:!border-[#db924b] h-14 bg-steel-50 dark:bg-white/5 transition-all rounded-xl",
-                      input:
-                        "text-steel-900 dark:text-zinc-100 text-sm font-semibold",
-                    }}
-                  />
-
-                  <Textarea
-                    label="NOTAS ADICIONALES"
-                    placeholder="Detalles de obra, entrega o colores..."
-                    labelPlacement="outside"
-                    variant="bordered"
-                    minRows={3}
-                    value={observaciones}
-                    onValueChange={setObservaciones}
-                    startContent={
-                      <MessageSquareText
-                        className="text-steel-400 dark:text-zinc-500 mt-1"
-                        size={18}
-                      />
-                    }
-                    classNames={{
-                      label:
-                        "text-[10px] font-black tracking-[0.2em] text-steel-500 dark:text-zinc-500 ml-1",
-                      inputWrapper:
-                        "border-steel-200 dark:border-white/10 hover:border-[#db924b]/50 focus-within:!border-[#db924b] bg-steel-50 dark:bg-white/5 transition-all rounded-xl",
-                      input: "text-steel-900 dark:text-zinc-100 text-sm",
-                    }}
-                  />
+              <ModalFooter className="px-8 pb-8 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3 w-full">
+                  <Button
+                    variant="flat"
+                    onPress={onClose}
+                    className="flex-1 font-bold text-steel-600 dark:text-zinc-400 hover:text-steel-900 dark:hover:text-white transition-colors bg-steel-100 dark:bg-white/5 rounded-xl"
+                  >
+                    VOLVER
+                  </Button>
+                  <Button
+                    color="warning"
+                    isLoading={isLoading}
+                    onPress={generarPDF}
+                    className="flex-2 bg-[#db924b] text-white font-black uppercase tracking-wider rounded-xl shadow-[0_8px_20px_rgba(219,146,75,0.3)]"
+                    startContent={!isLoading && <CloudDownload size={20} />}
+                  >
+                    {isLoading ? "PROCESANDO..." : "FINALIZAR Y DESCARGAR"}
+                  </Button>
                 </div>
-              </div>
-            </ModalBody>
-
-            <ModalFooter className="px-8 pb-8 pt-4">
-              <div className="flex flex-col sm:flex-row gap-3 w-full">
-                <Button
-                  variant="flat"
-                  onPress={onClose}
-                  className="flex-1 font-bold text-steel-600 dark:text-zinc-400 hover:text-steel-900 dark:hover:text-white transition-colors bg-steel-100 dark:bg-white/5 rounded-xl"
-                >
-                  VOLVER
-                </Button>
-                <Button
-                  color="warning"
-                  isLoading={isLoading}
-                  onPress={generarPDF}
-                  className="flex-2 bg-[#db924b] text-white font-black uppercase tracking-wider rounded-xl shadow-[0_8px_20px_rgba(219,146,75,0.3)]"
-                  startContent={!isLoading && <CloudDownload size={20} />}
-                >
-                  {isLoading ? "PROCESANDO..." : "FINALIZAR Y DESCARGAR"}
-                </Button>
-              </div>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </>
   );
 }
