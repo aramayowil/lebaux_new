@@ -197,12 +197,12 @@ export default function ExtrusorasTab() {
                       />
                       <div className="flex-1 min-w-0">
                         <EditableCell
-                          value={e.extrusora}
+                          value={e.extrusora ?? ""}
                           isEditing={extEdit.isEditing(e.id, "extrusora")}
                           draft={extEdit.draft}
                           onDraftChange={extEdit.setDraft}
                           onStartEdit={() =>
-                            extEdit.startEdit(e.id, "extrusora", e.extrusora)
+                            extEdit.startEdit(e.id, "extrusora", e.extrusora ?? "")
                           }
                           onCommit={(v) => commitExt(e, "extrusora", v)}
                           onCancel={extEdit.cancelEdit}
@@ -308,12 +308,12 @@ export default function ExtrusorasTab() {
                     />
                     <div className="flex-1">
                       <EditableCell
-                        value={l.linea}
+                        value={l.linea ?? ""}
                         isEditing={lineEdit.isEditing(l.id, "linea")}
                         draft={lineEdit.draft}
                         onDraftChange={lineEdit.setDraft}
                         onStartEdit={() =>
-                          lineEdit.startEdit(l.id, "linea", l.linea)
+                          lineEdit.startEdit(l.id, "linea", l.linea ?? "")
                         }
                         onCommit={(v) => commitLin(l, "linea", v)}
                         onCancel={lineEdit.cancelEdit}

@@ -8,7 +8,7 @@ import {
   Package,
 } from "lucide-react";
 import { useObra } from "@/hooks/obra/useObras";
-import { useTipologiasByObra } from "@/hooks/obra/useTipologias";
+import { useTipologiasByObra } from "@/hooks/obra/useObrasTipologias";
 import Checkout from "@/components/presupuesto/Checkout";
 
 export default function PresupuestoPage() {
@@ -140,9 +140,10 @@ export default function PresupuestoPage() {
                       {/* Cálculo Mock del Precio Unitario y Subtotal */}
                       {(() => {
                         const areaM2 =
-                          (tipologia.ancho / 1000) * (tipologia.alto / 1000);
+                          ((tipologia.ancho ?? 0) / 1000) *
+                          ((tipologia.alto ?? 0) / 1000);
                         const unitario = areaM2 * 100000;
-                        const subtotal = unitario * tipologia.cantidad;
+                        const subtotal = unitario * (tipologia.cantidad ?? 0);
 
                         return (
                           <>

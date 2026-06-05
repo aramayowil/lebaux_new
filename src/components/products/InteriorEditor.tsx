@@ -12,7 +12,7 @@ import type {
   Cruces,
   VidRepartido,
   DespieceCruces,
-  DespieceVR,
+  DespiecePerfilVidrioRepartido,
 } from "@/types";
 import clsx from "clsx";
 import {
@@ -41,21 +41,21 @@ import {
   useUpdateContravidrioExt,
 } from "@/hooks/productos/useContravidriosExt";
 import {
-  useAddDespieceCruces,
-  useDespieceCrucesByCruces,
-  useUpdateDespieceCruces,
+  useAddDespieceCruce,
+  useDespieceCruceByCruces,
+  useUpdateDespieceCruce,
 } from "@/hooks/productos/despieces/useDespieceCruces";
 import {
-  useAddVidRepartido,
-  useDeleteVidRepartido,
-  useUpdateVidRepartido,
-  useVidRepartidosByInterior,
+  useAddVidrioRepartido,
+  useDeleteVidrioRepartido,
+  useUpdateVidrioRepartido,
+  useVidrioRepartidosByInterior,
 } from "@/hooks/productos/useVidRepartidos";
 import {
-  useAddCruces,
+  useAddCruce,
   useCrucesByInterior,
-  useDeleteCruces,
-  useUpdateCruces,
+  useDeleteCruce,
+  useUpdateCruce,
 } from "@/hooks/productos/useCruces";
 import {
   useAddDespieceVR,
@@ -117,9 +117,9 @@ export default function InteriorEditor({ interior }: Props) {
   } = useContravidriosExtByInterior(interior.id);
 
   //--- HOOKS CRUCES ---
-  const { mutateAsync: addCruces } = useAddCruces();
-  const { mutateAsync: updateCruces } = useUpdateCruces();
-  const { mutateAsync: deleteCruces } = useDeleteCruces();
+  const { mutateAsync: addCruces } = useAddCruce();
+  const { mutateAsync: updateCruces } = useUpdateCruce();
+  const { mutateAsync: deleteCruces } = useDeleteCruce();
   const {
     data: crcs = [],
     isLoading: isLoadingCrcs,
@@ -127,14 +127,14 @@ export default function InteriorEditor({ interior }: Props) {
   } = useCrucesByInterior(interior.id);
 
   //--- HOOKS VIDREPARTIDOS ---
-  const { mutateAsync: addVidRepartido } = useAddVidRepartido();
-  const { mutateAsync: updateVidRepartido } = useUpdateVidRepartido();
-  const { mutateAsync: deleteVidRepartido } = useDeleteVidRepartido();
+  const { mutateAsync: addVidRepartido } = useAddVidrioRepartido();
+  const { mutateAsync: updateVidRepartido } = useUpdateVidrioRepartido();
+  const { mutateAsync: deleteVidRepartido } = useDeleteVidrioRepartido();
   const {
     data: vrs = [],
     isLoading: isLoadingVrs,
     error: errorVrs,
-  } = useVidRepartidosByInterior(interior.id);
+  } = useVidrioRepartidosByInterior(interior.id);
 
   const isLoading =
     isLoadingDespInt ||
@@ -335,6 +335,7 @@ export default function InteriorEditor({ interior }: Props) {
                       id_interior: interior.id,
                       descripcion: `CV Int. ${cvs.length + 1}`,
                       predeterminado: cvs.length === 0,
+                      no_verificado: false,
                     })
                   }
                   renderEditor={(cv: Contravidrio) => (
@@ -364,6 +365,7 @@ export default function InteriorEditor({ interior }: Props) {
                       id_interior: interior.id,
                       descripcion: `CV Ext. ${cves.length + 1}`,
                       predeterminado: cves.length === 0,
+                      no_verificado: false,
                     })
                   }
                   renderEditor={(cv: ContravidrioExterior) => (
@@ -393,6 +395,7 @@ export default function InteriorEditor({ interior }: Props) {
                       id_interior: interior.id,
                       descripcion: `Cruces ${crcs.length + 1}`,
                       predeterminado: crcs.length === 0,
+                      no_verificado: false,
                     })
                   }
                   renderEditor={(c: Cruces) => (
@@ -414,6 +417,7 @@ export default function InteriorEditor({ interior }: Props) {
                       id_interior: interior.id,
                       descripcion: `VR ${vrs.length + 1}`,
                       predeterminado: vrs.length === 0,
+                      no_verificado: false,
                     })
                   }
                   renderEditor={(vr: VidRepartido) => (
@@ -425,7 +429,7 @@ export default function InteriorEditor({ interior }: Props) {
                       onDelete={() =>
                         deleteVidRepartido({
                           id: vr.id,
-                          id_interior: vr.id_interior,
+                          id_interior: vr.id_interior ?? 0,
                         })
                       }
                     />
@@ -759,7 +763,7 @@ function ContravidrioForm({
                 >
                   <div className="flex items-center gap-2">
                     <select
-                      value={item.id_perfil}
+                      value={item.id_perfil ?? ""}
                       onChange={(e) =>
                         updateDespiecePerfil({
                           nivel: nivel,
@@ -779,7 +783,7 @@ function ContravidrioForm({
                       ))}
                     </select>
                     <select
-                      value={item.angulo}
+                      value={item.angulo ?? ""}
                       onChange={(e) =>
                         updateDespiecePerfil({
                           nivel: nivel,
@@ -814,7 +818,7 @@ function ContravidrioForm({
                   <div className="grid grid-cols-2 gap-2">
                     <FormulaInput
                       label="Cant. horizontal"
-                      value={item.formula_cantidad_contravidrios_ancho}
+                      value={item.formula_cantidad_contravidrios_ancho ?? ""}
                       onChange={(v) =>
                         updateDespiecePerfil({
                           nivel: nivel,
@@ -829,7 +833,7 @@ function ContravidrioForm({
                     />
                     <FormulaInput
                       label="Cant. vertical"
-                      value={item.formula_cantidad_contravidrios_alto}
+                      value={item.formula_cantidad_contravidrios_alto ?? ""}
                       onChange={(v) =>
                         updateDespiecePerfil({
                           nivel: nivel,
@@ -844,7 +848,7 @@ function ContravidrioForm({
                     />
                     <FormulaInput
                       label="Largo horizontal"
-                      value={item.formula_contravidrio_ancho}
+                      value={item.formula_contravidrio_ancho ?? ""}
                       onChange={(v) =>
                         updateDespiecePerfil({
                           nivel: nivel,
@@ -859,7 +863,7 @@ function ContravidrioForm({
                     />
                     <FormulaInput
                       label="Largo vertical"
-                      value={item.formula_contravidrio_alto}
+                      value={item.formula_contravidrio_alto ?? ""}
                       onChange={(v) =>
                         updateDespiecePerfil({
                           nivel: nivel,
@@ -924,14 +928,14 @@ function CrucesForm({
   onDelete: () => void;
 }) {
   // --- HOOKS DE DESPIECE CRUCES ---
-  const { mutateAsync: addDespieceCruces } = useAddDespieceCruces();
-  const { mutateAsync: updateDespieceCruces } = useUpdateDespieceCruces();
+  const { mutateAsync: addDespieceCruces } = useAddDespieceCruce();
+  const { mutateAsync: updateDespieceCruces } = useUpdateDespieceCruce();
   // const { mutateAsync: deleteDespieceCruces } = useDeleteDespieceCruces();
   const {
     data: dc,
     isLoading: isLoadingDespieceCruces,
     isError: isErrorDespieceCruces,
-  } = useDespieceCrucesByCruces(cruces.id);
+  } = useDespieceCruceByCruces(cruces.id);
 
   // --- HOOKS DE PERFILES ---
   const {
@@ -1008,7 +1012,7 @@ function CrucesForm({
                 className="flex-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400"
               >
                 {perfiles.map((p) => (
-                  <option key={p.nro_perfil} value={p.nro_perfil}>
+                  <option key={p.nro_perfil} value={p.nro_perfil ?? ""}>
                     {p.nro_perfil} — {p.descri}
                   </option>
                 ))}
@@ -1125,7 +1129,7 @@ function VidRepartidoForm({
   const isLoading = isLoadingPerfiles || isLoadingDespVR;
   const isError = isErrorPerfiles || isErrorDespVR;
 
-  async function updDV(data: Partial<DespieceVR>) {
+  async function updDV(data: Partial<DespiecePerfilVidrioRepartido>) {
     if (!perfiles || perfiles.length === 0) {
       console.warn("Intentando actualizar sin perfiles cargados");
       return;
@@ -1222,20 +1226,20 @@ function VidRepartidoForm({
       <FieldGroup title="Perfil de contorno">
         <div className="flex gap-2 mb-2">
           <select
-            value={dv.id_perfil_contorno}
+            value={dv.id_perfil_contorno ?? ""}
             onChange={(e) =>
               updDV({ id_perfil_contorno: parseInt(e.target.value) })
             }
             className="flex-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400"
           >
             {perfiles.map((p) => (
-              <option key={p.id} value={p.nro_perfil}>
+              <option key={p.id} value={p.nro_perfil ?? ""}>
                 {p.nro_perfil} — {p.descri}
               </option>
             ))}
           </select>
           <select
-            value={dv.angulo}
+            value={dv.angulo ?? ""}
             onChange={(e) => updDV({ angulo: e.target.value })}
             className="w-16 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-400"
           >
@@ -1249,25 +1253,25 @@ function VidRepartidoForm({
         <div className="grid grid-cols-2 gap-2">
           <FormulaInput
             label="Cant. horiz."
-            value={dv.formula_cantidad_contorno_ancho}
+            value={dv.formula_cantidad_contorno_ancho ?? ""}
             onChange={(v) => updDV({ formula_cantidad_contorno_ancho: v })}
             description="ej: hojas*2"
           />
           <FormulaInput
             label="Cant. vert."
-            value={dv.formula_cantidad_contorno_alto}
+            value={dv.formula_cantidad_contorno_alto ?? ""}
             onChange={(v) => updDV({ formula_cantidad_contorno_alto: v })}
             description="ej: hojas*2"
           />
           <FormulaInput
             label="Largo horiz."
-            value={dv.formula_contorno_ancho}
+            value={dv.formula_contorno_ancho ?? ""}
             onChange={(v) => updDV({ formula_contorno_ancho: v })}
             description="ej: ancho - 20"
           />
           <FormulaInput
             label="Largo vert."
-            value={dv.formula_contorno_alto}
+            value={dv.formula_contorno_alto ?? ""}
             onChange={(v) => updDV({ formula_contorno_alto: v })}
             description="ej: alto - 20"
           />
@@ -1276,7 +1280,7 @@ function VidRepartidoForm({
       <FieldGroup title="Perfil de cruceta">
         <div className="flex gap-2 mb-2">
           <select
-            value={dv.id_perfil_cruce}
+            value={dv.id_perfil_cruce ?? ""}
             onChange={(e) =>
               updDV({ id_perfil_cruce: parseInt(e.target.value) })
             }
@@ -1289,7 +1293,7 @@ function VidRepartidoForm({
             ))}
           </select>
           <select
-            value={dv.angulo_cruce}
+            value={dv.angulo_cruce ?? ""}
             onChange={(e) => updDV({ angulo_cruce: e.target.value })}
             className="w-16 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-400"
           >
@@ -1303,13 +1307,13 @@ function VidRepartidoForm({
         <div className="grid grid-cols-2 gap-2">
           <FormulaInput
             label="Largo horiz."
-            value={dv.formula_cruce_ancho}
+            value={dv.formula_cruce_ancho ?? ""}
             onChange={(v) => updDV({ formula_cruce_ancho: v })}
             description="ej: ancho - 20"
           />
           <FormulaInput
             label="Largo vert."
-            value={dv.formula_cruce_alto}
+            value={dv.formula_cruce_alto ?? ""}
             onChange={(v) => updDV({ formula_cruce_alto: v })}
             description="ej: alto - 20"
           />
@@ -1341,19 +1345,19 @@ function VidRepartidoForm({
         <div className="grid grid-cols-3 gap-3 mb-3">
           <FormulaInput
             label="Cantidad"
-            value={dv.formula_cantidad_interiores}
+            value={dv.formula_cantidad_interiores ?? ""}
             onChange={(v) => updDV({ formula_cantidad_interiores: v })}
             description="ej: (crucesH+1)*(crucesV+1)"
           />
           <FormulaInput
             label="Ancho"
-            value={dv.formula_ancho_interior}
+            value={dv.formula_ancho_interior ?? ""}
             onChange={(v) => updDV({ formula_ancho_interior: v })}
             description="ej: (ancho-10)/(crucesV+1)"
           />
           <FormulaInput
             label="Alto"
-            value={dv.formula_alto_interior}
+            value={dv.formula_alto_interior ?? ""}
             onChange={(v) => updDV({ formula_alto_interior: v })}
             description="ej: (alto-10)/(crucesH+1)"
           />
@@ -1376,10 +1380,10 @@ function VidRepartidoForm({
                 ["descuento_abajo", "bottom", "Abj."],
                 ["descuento_izquierda", "left", "Izq."],
                 ["descuento_derecha", "right", "Der."],
-              ] as [keyof DespieceVR, string, string][]
+              ] as [keyof DespiecePerfilVidrioRepartido, string, string][]
             ).map(([field, side, label]) => (
               <div
-                key={field}
+                key={String(field)}
                 className={clsx("absolute", {
                   "top-0 left-1/2 -translate-x-1/2 -translate-y-1/2":
                     side === "top",
@@ -1392,9 +1396,9 @@ function VidRepartidoForm({
                 })}
               >
                 <DescInput
-                  value={dv[field] as number}
+                  value={(dv as any)[field] as number}
                   label={label}
-                  onChange={(v) => updDV({ [field]: v } as Partial<DespieceVR>)}
+                  onChange={(v) => updDV({ [field]: v } as Partial<DespiecePerfilVidrioRepartido>)}
                 />
               </div>
             ))}

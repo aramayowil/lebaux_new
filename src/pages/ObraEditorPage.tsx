@@ -4,25 +4,17 @@ import {
   Button,
   Chip,
   Tooltip,
-  Input,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Divider,
   Popover,
   PopoverTrigger,
   PopoverContent,
+  Input, // <- Agregado para los inputs de edición rápida
 } from "@heroui/react";
 import {
   ArrowLeft,
   Plus,
   Trash2,
   Copy,
-  LayoutGrid,
-  CheckCircle,
-  Circle,
   SplitSquareHorizontal,
   SplitSquareVertical,
   Calculator,
@@ -30,106 +22,105 @@ import {
   Square,
   SquaresSubtract,
   Eraser,
-  Palette,
-  ChartPie,
   Loader2,
-  SlidersHorizontal,
+  PanelRightClose,
+  PanelRightOpen,
+  Settings2,
+  PenLine,
+  CircleCheckBig,
 } from "lucide-react";
-
-import { useObrasStore } from "@/store/obrasStore";
+import clsx from "clsx";
 import TipologiaCanvas from "@/components/canvas/TipologiaCanvas";
 import TipologiaConfigPanel from "@/components/obras/TipologiaConfigPanel";
-import TravesanoModal from "@/components/obras/TravesanoModal";
 import NuevaTipologiaModal from "@/components/obras/NuevaTipologiaModal";
-import type { TipologiaConfig } from "@/store/obrasStore";
-import { useDespiece } from "@/hooks/useDespiece";
 import DespieceModal from "@/components/obras/DespieceModal";
 
-import { useHojas } from "@/hooks/productos/useHojas";
 import { useObra } from "@/hooks/obra/useObras";
 import {
   useAddTipologia,
   useDeleteTipologia,
-  useDuplicateTipologia,
   useTipologiasByObra,
-  useUpdateTipologia,
-} from "@/hooks/obra/useTipologias";
+  useUpdateTipologia, // <- Agregado
+  useDuplicateTipologia, // <- Agregado
+} from "@/hooks/obra/useObrasTipologias";
+import {
+  useUpsertObraDetalle,
+  useObraDetallesByTipologia,
+} from "@/hooks/obra/useObraDetalles";
 import { useProductos } from "@/hooks/productos/useProducto";
-import { useTipos } from "@/hooks/obra/useTipos";
-import { NumberInput } from "@heroui/react";
-
-interface CruceModal {
-  tipo: "H" | "V";
-  valor: number;
-}
+import type { ObraDetalle, ObraTipologia } from "@/types";
+import ObraEditorPageSkeleton from "@/components/obras/skeletons/ObrasEditorPageSkeleton";
 
 export default function ObraEditorPage() {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams();
+  const { id } = params;
+  const idObra = id ? parseInt(id, 10) : null;
+
+  if (idObra === null || isNaN(idObra)) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <div className="p-4 bg-red-50 text-red-600 rounded-xl border border-red-200">
+          <p className="font-bold">Error: ID de obra no encontrado</p>
+        </div>
+        <Button onPress={() => window.history.back()}>
+          Volver a mis obras
+        </Button>
+      </div>
+    );
+  }
+
   const navigate = useNavigate();
-  const idObra = Number(id);
 
-  const { getConfig, patchConfig } = useObrasStore();
-
-  // ── HOOKS PRODUCTOS Y TIPOS ──
-  const {
-    data: productos = [],
-    isLoading: isLoadingProductos,
-    isError: isErrorProductos,
-  } = useProductos();
-  const {
-    data: tipos = [],
-    isLoading: isLoadingTipos,
-    isError: isErrorTipos,
-  } = useTipos();
-  const {
-    data: hojas = [],
-    isLoading: isLoadingHojas,
-    isError: isErrorHojas,
-  } = useHojas();
-  const {
-    data: obra,
-    isLoading: isLoadingObra,
-    isError: isErrorObra,
-  } = useObra(idObra);
-  const {
-    data: tipologias = [],
-    isLoading: isLoadingTipologias,
-    isError: isErrorTipologias,
-  } = useTipologiasByObra(idObra);
-
-  const { mutateAsync: addTipologia } = useAddTipologia();
-  const { mutateAsync: updateTipologia } = useUpdateTipologia();
-  const { mutateAsync: deleteTipologia } = useDeleteTipologia();
-  const { mutateAsync: duplicateTipologia } = useDuplicateTipologia();
-
-  // ── ESTADOS DE UI ──
+  // ── ESTADOS DE SELECCIÓN Y UI ─────────────────────────────────────────────
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [showConfig, setShowConfig] = useState(true);
-  const [showDespiece, setShowDespiece] = useState(false);
-  const [cruceModal, setCruceModal] = useState<CruceModal | null>(null);
   const [showNuevoModal, setShowNuevoModal] = useState(false);
-  const [travesanoOpen, setTravesanoOpen] = useState(false);
   const [showDespieceModal, setShowDespieceModal] = useState(false);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
 
-  // ── ESTADOS LOCALES DE EDICIÓN BUFFER ──
+  // ── ESTADOS LOCALES PARA INPUTS DE EDICIÓN RÁPIDA (NUEVO) ─────────────────
   const [localDescripcion, setLocalDescripcion] = useState("");
   const [localAncho, setLocalAncho] = useState("");
   const [localAlto, setLocalAlto] = useState("");
   const [localCantidad, setLocalCantidad] = useState("");
 
-  const onCloseDespieceModal = () => setShowDespieceModal(false);
+  // ── HOOKS DE CARGA DE DATOS ───────────────────────────────────────────────
+  const { data: obra, isLoading: loadObra } = useObra(idObra);
+  const { data: tipologias = [], isLoading: loadTipos } =
+    useTipologiasByObra(idObra);
+  const { data: obraDetalles = [], isLoading: loadDetalles } =
+    useObraDetallesByTipologia(selectedId ?? undefined);
+  const { data: productos = [] } = useProductos();
 
-  // EVALUACIÓN DE SELECCIÓN ACTIVA
-  const tipSel = tipologias.find((t) => t.id === selectedId) ?? null;
-  const configSel = tipSel ? getConfig(tipSel.id) : null;
+  // ── MUTACIONES (HOOKS DE ACCIÓN) ──────────────────────────────────────────
+  const { mutateAsync: addTipologia } = useAddTipologia();
+  const { mutateAsync: updateTipologia, isPending: savingTipologia } =
+    useUpdateTipologia(); // <- Agregado
+  const { mutateAsync: duplicateTipologia } = useDuplicateTipologia(); // <- Agregado
+  const { mutateAsync: deleteTipologia } = useDeleteTipologia();
+  const { mutateAsync: upsertDetalle, isPending: savingDetalle } =
+    useUpsertObraDetalle();
 
-  // Sincronización del buffer local cuando cambia la tipología activa
+  // ── EFECTOS DE AUTOSELECCIÓN ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!selectedId && tipologias.length > 0 && tipologias[0]?.id) {
+      setSelectedId(tipologias[0].id);
+    }
+  }, [tipologias, selectedId]);
+
+  const tipSel =
+    tipologias.find((t: ObraTipologia) => t.id === selectedId) ?? null;
+  const detallesObraSelect =
+    obraDetalles.find((d) => d.id_tipologia === selectedId) ?? null;
+
+  const isSaving = savingTipologia || savingDetalle;
+
+  // ── EFECTO DE SINCRONIZACIÓN DE INPUTS LOCALES (NUEVO) ────────────────────
   useEffect(() => {
     if (tipSel) {
       setLocalDescripcion(tipSel.descripcion || "");
-      setLocalAncho(String(tipSel.ancho));
-      setLocalAlto(String(tipSel.alto));
-      setLocalCantidad(String(tipSel.cantidad));
+      setLocalAncho(String(tipSel.ancho ?? ""));
+      setLocalAlto(String(tipSel.alto ?? ""));
+      setLocalCantidad(String(tipSel.cantidad ?? "1"));
     }
   }, [
     selectedId,
@@ -139,27 +130,7 @@ export default function ObraEditorPage() {
     tipSel?.cantidad,
   ]);
 
-  const nHojas =
-    configSel?.id_hoja && hojas
-      ? (hojas.find((h) => h.id === configSel.id_hoja)?.cantidad ?? 1)
-      : 1;
-
-  const formaTipo =
-    productos && configSel
-      ? productos.find((p) => p.id === configSel.id_producto)?.id_tipo
-      : null;
-  const tipoDeProducto =
-    tipos && formaTipo
-      ? tipos.find((t) => t.id === formaTipo)?.forma_tipo
-      : undefined;
-
-  const {
-    resultado: despieceResult,
-    error: despieceError,
-    configurado,
-  } = useDespiece(tipSel);
-
-  // ── HANDLERS PERSISTENCIA CON DB ──
+  // ── MANEJADORES DE ACTUALIZACIÓN ATÓMICA AL SALIR O ENTER (NUEVO) ─────────
   const handleSaveDescripcion = () => {
     if (
       tipSel &&
@@ -175,57 +146,32 @@ export default function ObraEditorPage() {
 
   const handleSaveAncho = () => {
     if (tipSel) {
-      const val = parseInt(localAncho) || 600;
-      if (val !== tipSel.ancho)
+      const val = parseInt(localAncho, 10) || 600;
+      if (val !== tipSel.ancho) {
         updateTipologia({ id: tipSel.id, data: { ancho: val } });
+      }
     }
   };
 
   const handleSaveAlto = () => {
     if (tipSel) {
-      const val = parseInt(localAlto) || 600;
-      if (val !== tipSel.alto)
+      const val = parseInt(localAlto, 10) || 600;
+      if (val !== tipSel.alto) {
         updateTipologia({ id: tipSel.id, data: { alto: val } });
+      }
     }
   };
 
   const handleSaveCantidad = () => {
     if (tipSel) {
-      const val = parseInt(localCantidad) || 1;
-      if (val !== tipSel.cantidad)
+      const val = parseInt(localCantidad, 10) || 1;
+      if (val !== tipSel.cantidad) {
         updateTipologia({ id: tipSel.id, data: { cantidad: val } });
+      }
     }
   };
 
-  // Cruces
-  function addCruceH(mm?: number) {
-    if (!selectedId || !tipSel) return;
-    const cfg = getConfig(selectedId);
-    const pos = mm ?? Math.round(tipSel.alto / 2);
-    const posH = [...(cfg.pos_h ?? []), pos].sort((a, b) => a - b);
-    patchConfig(selectedId, {
-      tipo_cruce: 2,
-      pos_h: posH,
-      cruces_h: posH.length,
-    });
-  }
-
-  function addCruceV(mm?: number) {
-    if (!selectedId || !tipSel) return;
-    const cfg = getConfig(selectedId);
-    const pos = mm ?? Math.round(tipSel.ancho / 2);
-    const posV = [...(cfg.pos_v ?? []), pos].sort((a, b) => a - b);
-    patchConfig(selectedId, {
-      tipo_cruce: 2,
-      pos_v: posV,
-      cruces_v: posV.length,
-    });
-  }
-
-  const selectTipologia = useCallback((id: number) => {
-    setSelectedId(id);
-    setShowConfig(true);
-  }, []);
+  // ── MANEJADORES DE ENTRADA Y FLUJOS PRINCIPALES ───────────────────────────
 
   async function handleCrearTipologia(
     datos: {
@@ -234,710 +180,560 @@ export default function ObraEditorPage() {
       alto: number;
       cantidad: number;
     },
-    config: Partial<TipologiaConfig>,
+    config: {
+      id_producto?: number | null;
+      id_marco?: number | null;
+      id_hoja?: number | null;
+      id_interior?: number | null;
+      id_tipo?: number | null;
+    },
   ) {
-    const t = await addTipologia({ ...datos, id_obra: idObra });
-    if (config.id_producto) {
-      patchConfig(t.id, config);
+    try {
+      const t = await addTipologia({ ...datos, id_obra: idObra });
+
+      const productoSeleccionado = productos.find(
+        (p) => p.id === config.id_producto,
+      );
+
+      const nuevoDetalle: Omit<ObraDetalle, "id"> = {
+        id_obra: idObra,
+        id_tipologia: t.id,
+        ubicacion_en_tipo: null,
+
+        ancho: datos.ancho,
+        alto: datos.alto,
+
+        difiere_en_ancho: false,
+        difiere_en_alto: false,
+        ligado_ancho_tipologia: false,
+        ligado_alto_tipologia: false,
+        llega_al_final_ancho: false,
+        llega_al_final_alto: false,
+
+        id_extrusora: productoSeleccionado?.id_extrusora ?? null,
+        id_linea: productoSeleccionado?.id_linea ?? null,
+        id_tipo: productoSeleccionado?.id_tipo ?? null,
+        id_producto: config.id_producto ?? null,
+
+        color: null,
+        marco: config.id_marco ?? null,
+        hoja: config.id_hoja ?? null,
+        mano: null,
+        interior: config.id_interior ?? null,
+        contravidrios: null,
+        contravidrios_ext: null,
+        cruce: null,
+        mosquitero: null,
+        tela: null,
+
+        tipo_cruce: 0,
+        cant_centrados_horizontal: 0,
+        cant_centrados_vertical: 0,
+
+        activo_vr_1: false,
+        activo_vr_2: false,
+        activo_vr_3: false,
+        activo_vr_4: false,
+
+        colocacion: false,
+        acople_desde: null,
+        acople_hasta: null,
+        perfil_acople: null,
+        descri_item_manual: null,
+        costo_item_manual: null,
+        moneda_item_manual: null,
+      };
+
+      await upsertDetalle(nuevoDetalle);
+      setSelectedId(t.id);
+    } catch (error) {
+      console.error("Error al crear tipología:", error);
     }
-    setSelectedId(t.id);
   }
 
-  const globalLoading =
-    isLoadingProductos ||
-    isLoadingTipos ||
-    isLoadingHojas ||
-    isLoadingObra ||
-    isLoadingTipologias;
-  const globalError =
-    isErrorProductos ||
-    isErrorTipos ||
-    isErrorHojas ||
-    isErrorObra ||
-    isErrorTipologias;
+  // Ahora llama efectivamente a la mutación en lugar del console.log anterior
+  const handleDuplicar = useCallback(
+    async (id: number) => {
+      try {
+        await duplicateTipologia(id);
+      } catch (err) {
+        console.error("Error al duplicar tipología:", err);
+      }
+    },
+    [duplicateTipologia],
+  );
 
-  if (globalLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-56px)] gap-3 bg-zinc-50 dark:bg-zinc-950">
-        <Loader2 className="w-8 h-8 animate-spin text-amber-500 stroke-[1.5]" />
-        <p className="text-xs font-sans font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-          Cargando datos del editor...
-        </p>
-      </div>
-    );
-  }
+  const handleBorrar = useCallback(
+    async (id: number) => {
+      try {
+        await deleteTipologia({ id, id_obra: idObra });
 
-  if (globalError || !obra) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-56px)] gap-4 bg-zinc-50 dark:bg-zinc-950">
-        <p className="text-sm font-semibold text-red-500 dark:text-red-400">
-          No se pudo cargar la información de la obra
-        </p>
-        <Button
-          variant="flat"
-          size="sm"
-          className="bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border border-transparent dark:border-zinc-800"
-          onPress={() => navigate("/obras")}
-        >
-          ← Volver a Obras
-        </Button>
-      </div>
-    );
+        if (selectedId === id) {
+          setSelectedId(null);
+        }
+      } catch (err) {
+        console.error("Error al borrar tipología:", err);
+      }
+    },
+    [deleteTipologia, selectedId, idObra],
+  );
+
+  // Loading global del layout
+  const isLoadingGlobal = loadObra || loadTipos || loadDetalles;
+
+  if (isLoadingGlobal) {
+    return <ObraEditorPageSkeleton />;
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-56px)] -m-6 animate-in fade-in duration-300 text-zinc-900 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-950">
-      {/* ── TOP BAR MAESTRO (Diseño Unificado de Header) ── */}
-      <div className="flex items-center gap-4 px-6 py-3 border-b border-zinc-200/60 dark:border-zinc-800/50 bg-gradient-to-r from-zinc-50 to-zinc-100/50 dark:from-zinc-900/40 dark:to-transparent shrink-0 z-10">
-        <Button
-          variant="light"
-          isIconOnly
-          size="sm"
-          onPress={() => navigate("/obras")}
-          className="text-zinc-400 hover:text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-200"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
+    <div className="flex flex-col w-full h-full bg-zinc-50 dark:bg-zinc-950 select-none overflow-hidden text-zinc-900 dark:text-zinc-100">
+      {/* HEADER DE CONTROL */}
+      <header className="flex h-14 items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 shrink-0">
+        <div className="flex items-center gap-3">
+          <Button
+            isIconOnly
+            variant="light"
+            size="sm"
+            className="rounded-lg text-zinc-500 dark:text-zinc-400"
+            onPress={() => navigate(-1)}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex items-baseline gap-1.5">
+            <h1 className="text-sm font-bold text-zinc-800 dark:text-zinc-100 capitalize">
+              {obra?.nombre}
+            </h1>
+            {obra?.apellido && (
+              <span className="text-sm font-bold text-zinc-800 dark:text-zinc-100 capitalize">
+                {obra.apellido}
+              </span>
+            )}
+          </div>
+        </div>
 
-        <div className="flex flex-col flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h2 className="font-sans font-extrabold text-zinc-800 dark:text-zinc-100 text-base tracking-tight">
-              {obra.apellido}, {obra.nombre}
-            </h2>
+        <div className="flex items-center gap-2">
+          <Button
+            className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold text-xs h-8 rounded-lg px-3"
+            startContent={<Calculator className="h-3.5 w-3.5" />}
+            onPress={() => setShowDespieceModal(true)}
+            isDisabled={!selectedId}
+          >
+            Ver Despiece Técnico
+          </Button>
+          <Button
+            isIconOnly
+            variant="bordered"
+            size="sm"
+            className="h-8 w-8 rounded-lg border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400"
+            onPress={() => setIsRightPanelOpen(!isRightPanelOpen)}
+          >
+            {isRightPanelOpen ? (
+              <PanelRightClose className="h-4 w-4" />
+            ) : (
+              <PanelRightOpen className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </header>
 
-            {configurado && (
-              <div className="flex items-center gap-2 ml-2 animate-in fade-in duration-200">
-                <Divider
-                  orientation="vertical"
-                  className="h-5 mx-1 bg-zinc-200 dark:bg-zinc-800"
+      {/* CUERPO PRINCIPAL */}
+      <div className="flex flex-1 w-full overflow-hidden relative">
+        {/* PANEL IZQUIERDO: LISTA DE TIPOLOGÍAS */}
+        <aside className="w-64 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col shrink-0 overflow-hidden">
+          <div className="p-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between shrink-0">
+            <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+              Tipologías en Obra
+            </span>
+            <Button
+              size="sm"
+              variant="bordered"
+              className="h-7 px-2.5 text-[11px] font-semibold tracking-wide text-amber-600 dark:text-amber-500 border-amber-600 dark:border-amber-500/70 bg-transparent rounded-lg"
+              startContent={<Plus className="h-3 w-3" />}
+              onPress={() => setShowNuevoModal(true)}
+            >
+              Nueva
+            </Button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {tipologias.map((t: ObraTipologia) => {
+              const isActive = t.id === selectedId;
+              const showSaving = isActive && isSaving;
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => setSelectedId(t.id)}
+                  className={clsx(
+                    "group flex flex-col p-2.5 rounded-xl cursor-pointer border transition-all",
+                    isActive
+                      ? "bg-amber-50/60 dark:bg-amber-950/20 border-amber-500/40 dark:border-amber-500/30"
+                      : "bg-zinc-50 dark:bg-zinc-800/25 border-transparent hover:bg-zinc-100/70 dark:hover:bg-zinc-800/60",
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    {/* Icono de estado: spinner si guardando, check si seleccionado */}
+                    {(isActive || showSaving) && (
+                      <div className="shrink-0 mt-0.5">
+                        {showSaving ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />
+                        ) : (
+                          <CircleCheckBig className="w-3.5 h-3.5 text-amber-500" />
+                        )}
+                      </div>
+                    )}
+
+                    <span
+                      className={clsx(
+                        "text-xs font-bold truncate flex-1",
+                        isActive
+                          ? "text-amber-700 dark:text-amber-400/80"
+                          : "text-zinc-700 dark:text-zinc-300",
+                      )}
+                    >
+                      {t.descripcion}
+                    </span>
+
+                    {/* Botones siempre visibles, no solo en hover */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Popover placement="right" offset={10} showArrow>
+                        <PopoverTrigger>
+                          <button
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1 rounded text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-3 w-52 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl rounded-xl">
+                          <div className="flex flex-col gap-2">
+                            <p className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
+                              Duplicar tipología
+                            </p>
+                            <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                              Se creará una copia exacta de{" "}
+                              <span className="font-semibold">
+                                {t.descripcion}
+                              </span>
+                              .
+                            </p>
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs font-bold bg-zinc-800 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg mt-1"
+                              onPress={() => handleDuplicar(t.id)}
+                            >
+                              Confirmar copia
+                            </Button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                      <Popover placement="right" offset={10} showArrow>
+                        <PopoverTrigger>
+                          <button
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1 rounded text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-3 w-52 dark:bg-zinc-900 border border-red-200 dark:border-red-900/50 shadow-xl rounded-xl">
+                          <div className="flex flex-col gap-2">
+                            <p className="text-xs text-center font-bold text-zinc-700 dark:text-zinc-200">
+                              ¿Eliminar tipología?
+                            </p>
+                            <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                              Esta acción no se puede deshacer.
+                            </p>
+                            <div className="flex gap-2 mt-1">
+                              <Button
+                                size="sm"
+                                className="flex-1 h-7 text-xs font-bold bg-red-500 hover:bg-red-600 text-white rounded-lg"
+                                onPress={() => handleBorrar(t.id)}
+                              >
+                                Eliminar
+                              </Button>
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+
+                  <div className="mt-1.5 flex items-center justify-between text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
+                    <span>
+                      {t.ancho} × {t.alto} mm
+                    </span>
+                    <Chip
+                      size="sm"
+                      variant="flat"
+                      className="h-4 text-[9px] px-1 font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                    >
+                      Cant: {t.cantidad || 1}
+                    </Chip>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </aside>
+
+        {/* CONTENEDOR CENTRAL: CANVAS DEL ENTORNO GRÁFICO CON SUB-TOOLBAR */}
+        <main className="flex-1 bg-zinc-50 dark:bg-zinc-950 flex flex-col overflow-hidden relative">
+          {tipSel && detallesObraSelect ? (
+            <>
+              {/* CONTENEDOR GRÁFICO DEL CANVAS */}
+              <div className="flex-1 w-full flex items-center justify-center relative p-6 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-100/60 to-zinc-50 dark:from-zinc-900/40 dark:to-zinc-950">
+                {/* CANVAS DIBUJO TÉCNICO */}
+                <TipologiaCanvas
+                  tipologia={tipSel}
+                  detalles={detallesObraSelect}
+                  width={tipSel.ancho ?? 0}
+                  height={tipSel.alto ?? 0}
                 />
+              </div>
 
-                <Tooltip content="Despiece del producto" size="sm">
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/90 dark:bg-zinc-900/95 backdrop-blur-md shadow-xl border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-2 flex items-center gap-1 z-50">
+                <Tooltip content="Añadir Travesaño Horizontal" delay={400}>
                   <Button
                     isIconOnly
                     size="sm"
-                    variant="bordered"
-                    onPress={() => {
-                      setShowDespiece(true);
-                      setShowDespieceModal(true);
-                    }}
-                    className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 text-zinc-600 dark:text-zinc-400 hover:text-amber-500 rounded-xl"
+                    variant="light"
+                    className="rounded-xl h-9 w-9 text-zinc-600 dark:text-zinc-300"
+                    onPress={() => console.log("Agregar Travesaño Horizontal")}
                   >
-                    <ChartPie size={16} />
+                    <SplitSquareHorizontal className="h-5 w-5" />
                   </Button>
                 </Tooltip>
 
-                <Popover showArrow offset={10} placement="bottom">
+                <Tooltip content="Añadir Travesaño Vertical" delay={400}>
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="light"
+                    className="rounded-xl h-9 w-9 text-zinc-600 dark:text-zinc-300"
+                    onPress={() => console.log("Agregar Travesaño Vertical")}
+                  >
+                    <SplitSquareVertical className="h-5 w-5" />
+                  </Button>
+                </Tooltip>
+
+                <Divider
+                  orientation="vertical"
+                  className="h-5 bg-zinc-200 dark:bg-zinc-800 mx-1"
+                />
+
+                {/* MENÚ DE EDICIÓN RÁPIDA REACTIVA */}
+                <Popover placement="top" offset={20} showArrow={true}>
                   <PopoverTrigger>
                     <Button
                       isIconOnly
                       size="sm"
-                      variant="bordered"
-                      className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 text-zinc-600 dark:text-zinc-400 hover:text-amber-500 rounded-xl"
+                      variant="light"
+                      className="rounded-xl h-9 w-9 text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60"
+                      aria-label="Ajuste rápido"
                     >
-                      <Tooltip
-                        content="Acciones globales"
-                        offset={17}
-                        size="sm"
-                      >
-                        <Layers size={16} />
-                      </Tooltip>
+                      <PenLine className="h-5 w-5" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent
-                    className="w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl text-zinc-700 dark:text-zinc-300 rounded-xl"
-                    placement="bottom"
-                  >
-                    <div className="px-1 py-2 w-full">
-                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-2 mb-2">
-                        Acciones Estructura
-                      </p>
-                      <div className="flex flex-col gap-0.5">
-                        <Button
-                          size="sm"
-                          variant="light"
-                          className="justify-start px-2 text-xs text-zinc-700 dark:text-zinc-300"
-                          startContent={<Square size={15} />}
-                        >
-                          Agregar premarcos
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="light"
-                          className="justify-start px-2 text-xs text-zinc-700 dark:text-zinc-300"
-                          startContent={<SquaresSubtract size={15} />}
-                        >
-                          Agregar tapajuntas
-                        </Button>
-                        <Divider className="my-1.5 border-zinc-100 dark:border-zinc-800" />
-                        <Button
-                          size="sm"
-                          variant="light"
-                          className="justify-start px-2 text-xs text-red-500 dark:text-red-400"
-                          startContent={<Eraser size={15} />}
-                        >
-                          Borrar premarcos
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="light"
-                          className="justify-start px-2 text-xs text-red-500 dark:text-red-400"
-                          startContent={<Eraser size={15} />}
-                        >
-                          Borrar tapajuntas
-                        </Button>
-                        <Divider className="my-1.5 border-zinc-100 dark:border-zinc-800" />
-                        <Button
-                          size="sm"
-                          variant="light"
-                          className="justify-start px-2 text-xs text-zinc-700 dark:text-zinc-300"
-                          startContent={<Palette size={15} />}
-                        >
-                          Cambiar color
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="light"
-                          className="justify-start px-2 text-xs text-zinc-700 dark:text-zinc-300"
-                          startContent={<Copy size={15} />}
-                        >
-                          Cambiar interiores
-                        </Button>
+                  <PopoverContent className="p-4 w-72 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl rounded-2xl">
+                    <div className="flex flex-col gap-3 w-full">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-md font-bold text-zinc-700 dark:text-zinc-300 w-full text-center">
+                          Ajustes Rápidos
+                        </span>
                       </div>
+
+                      <Input
+                        label="Descripción"
+                        size="md"
+                        variant="faded"
+                        placeholder="Ej. Ventana Cocina"
+                        value={localDescripcion}
+                        onValueChange={setLocalDescripcion}
+                        onBlur={handleSaveDescripcion}
+                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) =>
+                          e.key === "Enter" && handleSaveDescripcion()
+                        }
+                      />
+
+                      <div className="flex gap-2">
+                        <Input
+                          label="Ancho"
+                          size="md"
+                          variant="faded"
+                          type="number"
+                          min={0}
+                          onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
+                            e.target.select()
+                          }
+                          endContent={
+                            <span className="text-zinc-400 text-md">mm</span>
+                          }
+                          value={localAncho}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setLocalAncho(e.target.value)
+                          }
+                          onBlur={handleSaveAncho}
+                          onKeyDown={(
+                            e: React.KeyboardEvent<HTMLInputElement>,
+                          ) => e.key === "Enter" && handleSaveAncho()}
+                          classNames={{
+                            input:
+                              "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                          }}
+                        />
+                        <Input
+                          label="Alto"
+                          size="md"
+                          type="number"
+                          variant="faded"
+                          min={0}
+                          onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
+                            e.target.select()
+                          }
+                          endContent={
+                            <span className="text-zinc-400 text-sm">mm</span>
+                          }
+                          value={localAlto}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setLocalAlto(e.target.value)
+                          }
+                          onBlur={handleSaveAlto}
+                          onKeyDown={(
+                            e: React.KeyboardEvent<HTMLInputElement>,
+                          ) => e.key === "Enter" && handleSaveAlto()}
+                          classNames={{
+                            input:
+                              "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                          }}
+                        />
+                      </div>
+
+                      <Input
+                        label="Cantidad"
+                        size="md"
+                        type="number"
+                        variant="faded"
+                        min={1}
+                        onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
+                          e.target.select()
+                        }
+                        value={localCantidad}
+                        onValueChange={setLocalCantidad}
+                        onBlur={handleSaveCantidad}
+                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) =>
+                          e.key === "Enter" && handleSaveCantidad()
+                        }
+                        classNames={{
+                          input:
+                            "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                        }}
+                      />
                     </div>
                   </PopoverContent>
                 </Popover>
-              </div>
-            )}
-          </div>
-        </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
-          <Tooltip content="Ver Presupuesto de Obra" size="sm">
-            <Button
-              isIconOnly
-              variant="bordered"
-              size="sm"
-              onPress={() => navigate(`/obras/${idObra}/presupuesto`)}
-              className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 text-zinc-600 dark:text-zinc-400 hover:text-amber-500 h-9 w-9 rounded-xl shadow-none"
-            >
-              <Calculator size={17} />
-            </Button>
-          </Tooltip>
-        </div>
-      </div>
+                <Divider
+                  orientation="vertical"
+                  className="h-5 bg-zinc-200 dark:bg-zinc-800 mx-1"
+                />
 
-      {/* ── BODY PRINCIPAL DE TRABAJO ── */}
-      <div className="flex flex-1 min-h-0 bg-zinc-50 dark:bg-zinc-950">
-        {/* ── SIDEBAR TIPOLOGÍAS (Estilo Card Dark/Transparente) ── */}
-        <aside className="w-64 shrink-0 border-r border-zinc-200/60 dark:border-zinc-800/60 bg-white dark:bg-zinc-900/50 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-4 border-b border-zinc-100 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-950/20">
-            <span className="text-[11px] font-sans font-bold text-zinc-400 dark:text-zinc-300 uppercase tracking-widest">
-              Tipologías
-            </span>
-            <Tooltip content="Nueva tipología" size="sm">
-              <Button
-                isIconOnly
-                size="sm"
-                variant="flat"
-                className="w-6 h-6 min-w-6 bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500 hover:text-white rounded-md transition-all"
-                onPress={() => setShowNuevoModal(true)}
-              >
-                <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-              </Button>
-            </Tooltip>
-          </div>
-
-          <ul className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin">
-            {tipologias.length === 0 && (
-              <li className="py-12 px-4 text-center text-xs text-zinc-400 dark:text-zinc-500 leading-relaxed flex flex-col items-center gap-2">
-                Sin tipologías cargadas.
-                <button
-                  className="text-amber-500 underline hover:text-amber-600 font-semibold text-[11px]"
-                  onClick={() => setShowNuevoModal(true)}
-                >
-                  Crear una ahora
-                </button>
-              </li>
-            )}
-            {tipologias.map((t) => {
-              const cfg = getConfig(t.id);
-              const isSel = selectedId === t.id;
-              const assigned =
-                cfg?.id_producto !== null && cfg?.id_producto !== undefined;
-              return (
-                <li
-                  key={t.id}
-                  className={`group cursor-pointer rounded-xl transition-all ${
-                    isSel
-                      ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200/60 dark:border-zinc-700/50"
-                      : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50/80 dark:hover:bg-zinc-900/40 border border-transparent"
-                  }`}
-                  onClick={() => selectTipologia(t.id)}
-                >
-                  <div className="px-3 py-2.5">
-                    <div className="flex items-start gap-2.5">
-                      <div className="mt-0.5 shrink-0">
-                        {assigned ? (
-                          <CheckCircle
-                            className="w-3.5 h-3.5 text-emerald-500"
-                            strokeWidth={2.5}
-                          />
-                        ) : (
-                          <Circle
-                            className="w-3.5 h-3.5 text-zinc-300 dark:text-zinc-700"
-                            strokeWidth={2}
-                          />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className={`text-xs font-bold truncate ${isSel ? "text-zinc-900 dark:text-zinc-50" : "text-zinc-700 dark:text-zinc-300"}`}
-                        >
-                          {t.descripcion}
-                        </p>
-                        <p className="text-[10px] font-mono font-semibold text-zinc-400 dark:text-zinc-500 mt-0.5 tabular-nums">
-                          {t.ancho} × {t.alto} mm
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                          <Chip
-                            size="sm"
-                            variant="flat"
-                            className="h-4 bg-zinc-200/60 dark:bg-zinc-700/80 font-bold text-[10px] px-1 text-zinc-600 dark:text-zinc-300"
-                          >
-                            ×{t.cantidad}
-                          </Chip>
-                          {cfg?.tipo_cruce === 1 &&
-                            (cfg.cruces_h > 0 || cfg.cruces_v > 0) && (
-                              <Chip
-                                size="sm"
-                                variant="flat"
-                                className="h-4 font-bold text-[10px] px-1 text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/10"
-                              >
-                                {cfg.cruces_h}H {cfg.cruces_v}V
-                              </Chip>
-                            )}
-                          {cfg?.tipo_cruce === 2 &&
-                            ((cfg.pos_h?.length ?? 0) > 0 ||
-                              (cfg.pos_v?.length ?? 0) > 0) && (
-                              <Chip
-                                size="sm"
-                                variant="flat"
-                                className="h-4 font-bold text-[10px] px-1 text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/10"
-                              >
-                                {cfg.pos_h?.length ?? 0}H{" "}
-                                {cfg.pos_v?.length ?? 0}V var.
-                              </Chip>
-                            )}
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="light"
-                          className="w-5 h-5 min-w-5 text-zinc-400 hover:text-zinc-600"
-                          onClick={(e: any) => {
-                            e.stopPropagation();
-                            duplicateTipologia(t.id);
-                          }}
-                        >
-                          <Copy className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="light"
-                          className="w-5 h-5 min-w-5 text-red-400 hover:text-red-500"
-                          onClick={(e: any) => {
-                            e.stopPropagation();
-                            deleteTipologia({ id: t.id, id_obra: obra.id });
-                            if (selectedId === t.id) setSelectedId(null);
-                          }}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
+                <Popover placement="top" offset={10}>
+                  <PopoverTrigger>
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      className="rounded-xl h-9 w-9 text-zinc-600 dark:text-zinc-300"
+                    >
+                      <Layers className="h-5 w-5" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-2 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl rounded-xl">
+                    <div className="flex flex-col gap-1 w-44">
+                      <button className="flex items-center gap-2 px-2.5 py-2 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg">
+                        <Square className="h-3.5 w-3.5 text-amber-500" /> Añadir
+                        Premarco
+                      </button>
+                      <button className="flex items-center gap-2 px-2.5 py-2 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg">
+                        <SquaresSubtract className="h-3.5 w-3.5 text-amber-500" />{" "}
+                        Añadir Tapajuntas
+                      </button>
                     </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </aside>
+                  </PopoverContent>
+                </Popover>
 
-        {/* ── VISTA CENTRAL CENTRAL DEFAULT ASIMÉTRICA ── */}
-        {!tipSel || !configSel ? (
-          <div className="flex-1 flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950 gap-6">
-            <div className="relative flex items-center justify-center w-20 h-20 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/60 shadow-sm animate-in zoom-in-95 duration-500">
-              <LayoutGrid
-                className="w-9 h-9 text-zinc-400 dark:text-zinc-600"
-                strokeWidth={1.5}
-              />
-            </div>
-
-            <div className="text-center space-y-2 max-w-sm px-4">
-              <h3 className="font-sans text-lg font-extrabold text-zinc-800 dark:text-zinc-100 tracking-tight">
-                {tipologias.length === 0
-                  ? "No hay tipologías"
-                  : "Configurador Técnico de Obra"}
+                <Tooltip content="Limpiar Modificaciones" delay={400}>
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="light"
+                    className="rounded-xl h-9 w-9 text-zinc-400 hover:text-red-500"
+                  >
+                    <Eraser className="h-5 w-5" />
+                  </Button>
+                </Tooltip>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center p-8 text-center max-w-sm mx-auto my-auto">
+              <div className="p-4 bg-zinc-100 dark:bg-zinc-900 rounded-full border border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-400 mb-4">
+                <Settings2 className="h-6 w-6" />
+              </div>
+              <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-1">
+                Ninguna tipología seleccionada
               </h3>
-              <p className="font-sans text-xs leading-relaxed text-zinc-500 dark:text-zinc-400 font-medium">
-                {tipologias.length === 0
-                  ? "Creá una tipología desde el panel maestro izquierdo para inicializar el cálculo de perfiles, marcos e interiores."
-                  : "Seleccioná un elemento de la lista izquierda para desplegar el lienzo técnico y su respectivo desglose de corte."}
+              <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-4">
+                Por favor, elija una tipología del panel de la izquierda o cree
+                una nueva para inicializar el entorno técnico.
               </p>
-            </div>
-
-            {tipologias.length === 0 && (
               <Button
                 size="sm"
-                className="bg-amber-500 font-bold text-white shadow-md rounded-xl px-5 hover:bg-amber-600 text-xs h-10"
+                className="bg-amber-500 hover:bg-amber-600 font-bold text-white text-xs rounded-lg px-4 h-8"
                 onPress={() => setShowNuevoModal(true)}
               >
-                Crear Primera Tipología
+                Crear primera tipología
               </Button>
-            )}
-
-            <Chip
-              size="sm"
-              variant="flat"
-              avatar={<SlidersHorizontal className="w-3 h-3 text-amber-500" />}
-              className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/10 text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider px-2.5 h-6"
-            >
-              Módulo de Despiece Listo
-            </Chip>
-          </div>
-        ) : (
-          <div className="flex flex-1 min-w-0 min-h-0 animate-in fade-in duration-200">
-            <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-zinc-50 dark:bg-zinc-950">
-              {/* BARRA INTERNA DE EDICIÓN (Sub-Header con estilo de tarjeta) */}
-              <div className="flex items-center gap-3 px-4 py-2.5 bg-white dark:bg-zinc-900/50 border-b border-zinc-200/60 dark:border-zinc-800/60 shrink-0">
-                <Input
-                  value={localDescripcion}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setLocalDescripcion(e.target.value)
-                  }
-                  onBlur={handleSaveDescripcion}
-                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) =>
-                    e.key === "Enter" && handleSaveDescripcion()
-                  }
-                  size="sm"
-                  className="max-w-48"
-                  aria-label="Descripción de la tipología"
-                  variant="bordered"
-                  classNames={{
-                    trigger:
-                      "h-9 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 rounded-xl",
-                    inputWrapper:
-                      "h-9 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 rounded-xl shadow-none px-2.5",
-                    input:
-                      "text-xs font-semibold text-zinc-800 dark:text-zinc-200",
-                  }}
-                />
-
-                <div className="flex items-center gap-1.5 text-xs font-mono text-zinc-400 dark:text-zinc-500">
-                  <NumberInput
-                    value={localAncho}
-                    onValueChange={(val: string) => setLocalAncho(val)}
-                    onBlur={handleSaveAncho}
-                    onKeyDown={(e: any) =>
-                      e.key === "Enter" && handleSaveAncho()
-                    }
-                    size="sm"
-                    className="w-24"
-                    classNames={{
-                      inputWrapper:
-                        "h-9 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 rounded-xl shadow-none",
-                      input:
-                        "font-mono text-xs font-bold text-zinc-800 dark:text-zinc-200",
-                    }}
-                    endContent={
-                      <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-sans font-bold">
-                        W
-                      </span>
-                    }
-                    aria-label="Ancho en milímetros"
-                  />
-                  <span className="text-zinc-400 dark:text-zinc-600 font-sans font-medium">
-                    ×
-                  </span>
-                  <NumberInput
-                    value={localAlto}
-                    onValueChange={(val: string) => setLocalAlto(val)}
-                    onBlur={handleSaveAlto}
-                    onKeyDown={(e: any) =>
-                      e.key === "Enter" && handleSaveAlto()
-                    }
-                    size="sm"
-                    className="w-24"
-                    classNames={{
-                      inputWrapper:
-                        "h-9 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 rounded-xl shadow-none",
-                      input:
-                        "font-mono text-xs font-bold text-zinc-800 dark:text-zinc-200",
-                    }}
-                    endContent={
-                      <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-sans font-bold">
-                        H
-                      </span>
-                    }
-                    aria-label="Alto en milímetros"
-                  />
-                  <span className="text-zinc-400 dark:text-zinc-600 mx-0.5">
-                    ·
-                  </span>
-                  <NumberInput
-                    value={localCantidad}
-                    onValueChange={(val: string) => setLocalCantidad(val)}
-                    onBlur={handleSaveCantidad}
-                    onKeyDown={(e: any) =>
-                      e.key === "Enter" && handleSaveCantidad()
-                    }
-                    size="sm"
-                    className="w-16"
-                    classNames={{
-                      inputWrapper:
-                        "h-9 bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 rounded-xl shadow-none",
-                      input:
-                        "font-mono text-xs font-bold text-zinc-800 dark:text-zinc-200",
-                    }}
-                    startContent={
-                      <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-sans font-bold">
-                        ×
-                      </span>
-                    }
-                    aria-label="Cantidad de estructuras"
-                  />
-                </div>
-
-                <div className="flex-1" />
-
-                {/* BOTONES CRUCES RÁPIDOS */}
-                <div className="flex items-center gap-1.5">
-                  <Tooltip content="Insertar travesaño horizontal" size="sm">
-                    <Button
-                      size="sm"
-                      variant="bordered"
-                      isIconOnly
-                      className="h-9 w-9 min-w-9 rounded-xl bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-amber-500 shadow-none"
-                      onPress={() =>
-                        setCruceModal({
-                          tipo: "H",
-                          valor: Math.round(tipSel.alto / 2),
-                        })
-                      }
-                    >
-                      <SplitSquareVertical className="w-4 h-4" />
-                    </Button>
-                  </Tooltip>
-                  <Tooltip content="Insertar travesaño vertical" size="sm">
-                    <Button
-                      size="sm"
-                      variant="bordered"
-                      isIconOnly
-                      className="h-9 w-9 min-w-9 rounded-xl bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-amber-500 shadow-none"
-                      onPress={() =>
-                        setCruceModal({
-                          tipo: "V",
-                          valor: Math.round(tipSel.ancho / 2),
-                        })
-                      }
-                    >
-                      <SplitSquareHorizontal className="w-4 h-4" />
-                    </Button>
-                  </Tooltip>
-                </div>
-              </div>
-
-              {/* CANVAS CONTENEDOR (Fondo puro estructurado) */}
-              <div className="flex-1 flex items-center justify-center overflow-hidden relative p-6 bg-zinc-50 dark:bg-zinc-950">
-                <TipologiaCanvas
-                  tipologia={tipSel}
-                  config={configSel}
-                  tipoDeProducto={tipoDeProducto}
-                  hojas={nHojas}
-                  width={Math.max(
-                    360,
-                    (showConfig
-                      ? window.innerWidth - 256 - 288
-                      : window.innerWidth - 256) - 64,
-                  )}
-                  height={Math.max(280, window.innerHeight - 220)}
-                />
-              </div>
             </div>
+          )}
+        </main>
 
-            {/* PANEL CONFIGURACIÓN LATERAL */}
-            {showConfig && (
-              <aside className="w-72 shrink-0 border-l border-zinc-200/60 dark:border-zinc-800/60 bg-white dark:bg-zinc-900/50 overflow-y-auto scrollbar-thin flex flex-col">
-                <div className="px-4 py-3.5 border-b border-zinc-100 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-950/20">
-                  <p className="font-sans text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
-                    Especificaciones Técnicas
-                  </p>
-                </div>
-                <div className="p-4 flex-1">
-                  <TipologiaConfigPanel
-                    key={tipSel.id}
-                    id_tipologia={tipSel.id}
-                    ancho={tipSel.ancho}
-                    alto={tipSel.alto}
-                  />
-                </div>
-              </aside>
-            )}
-
-            {/* MODAL DESPIECE */}
-            {showDespiece && (
-              <DespieceModal
-                isOpen={showDespieceModal}
-                onOpenChange={onCloseDespieceModal}
-                tipSel={tipSel}
-                despieceError={despieceError}
-                despieceResult={despieceResult}
-              />
-            )}
-          </div>
+        {/* PANEL DERECHO: ESPECIFICACIONES TÉCNICAS */}
+        {isRightPanelOpen && tipSel && detallesObraSelect && (
+          <aside className="w-80 border-l border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0 overflow-y-auto">
+            <TipologiaConfigPanel
+              detalle={detallesObraSelect}
+              upsertDetalle={async (fields) => {
+                try {
+                  await upsertDetalle({
+                    ...detallesObraSelect,
+                    ...fields,
+                  });
+                } catch (error) {
+                  console.error("Error al guardar la especificación:", error);
+                }
+              }}
+            />
+          </aside>
         )}
       </div>
 
-      {/* MODALES GLOBALES */}
+      {/* ── SECCIÓN DE MODALS FLOTANTES DE LA COMPAÑÍA ──────────────────────── */}
+
+      {/* MODAL CREAR TIPOLOGÍA (PASO A PASO INTEGRADO) */}
       <NuevaTipologiaModal
         isOpen={showNuevoModal}
         onOpenChange={() => setShowNuevoModal(false)}
         onCrear={handleCrearTipologia}
       />
 
-      {cruceModal && tipSel && (
-        <CrucePositionModal
-          tipo={cruceModal.tipo}
-          valorInicial={cruceModal.valor}
-          alto={tipSel.alto}
-          ancho={tipSel.ancho}
-          onClose={() => setCruceModal(null)}
-          onConfirm={(val) => {
-            cruceModal.tipo === "H" ? addCruceH(val) : addCruceV(val);
-            setCruceModal(null);
-          }}
+      {/* MODAL DE DESPIECE TÉCNICO COMPLETO */}
+      {selectedId && (
+        <DespieceModal
+          idTipologia={selectedId}
+          isOpen={showDespieceModal}
+          onClose={() => setShowDespieceModal(false)}
         />
       )}
-
-      <TravesanoModal
-        isOpen={travesanoOpen}
-        onOpenChange={() => setTravesanoOpen(false)}
-        onAccept={(data) => {
-          if (!selectedId || !tipSel) return;
-          const cfg = getConfig(selectedId);
-          const nuevosH = Array.from({ length: data.cantidad }, (_, i) =>
-            Math.round((tipSel.alto / (data.cantidad + 1)) * (i + 1)),
-          );
-          const posH = [...(cfg.pos_h ?? []), ...nuevosH].sort((a, b) => a - b);
-          patchConfig(selectedId, {
-            tipo_cruce: 2,
-            pos_h: posH,
-            cruces_h: posH.length,
-          });
-        }}
-      />
     </div>
-  );
-}
-
-// ── CrucePositionModal (Mejoras estéticas y estructurales) ──────────────────────────────────
-function CrucePositionModal({
-  tipo,
-  valorInicial,
-  alto,
-  ancho,
-  onClose,
-  onConfirm,
-}: {
-  tipo: "H" | "V";
-  valorInicial: number;
-  alto: number;
-  ancho: number;
-  onClose: () => void;
-  onConfirm: (val: number) => void;
-}) {
-  const [valor, setValor] = useState(valorInicial);
-  const max = tipo === "H" ? alto - 1 : ancho - 1;
-  const total = tipo === "H" ? alto : ancho;
-
-  return (
-    <Modal
-      isOpen
-      onOpenChange={onClose}
-      size="xs"
-      classNames={{ backdrop: "bg-zinc-950/50 backdrop-blur-xs" }}
-    >
-      <ModalContent className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
-        {(onClose2: any) => (
-          <>
-            <ModalHeader className="font-sans font-bold text-sm text-zinc-800 dark:text-zinc-100 px-5 pt-5 pb-2">
-              {tipo === "H" ? "Cruce Horizontal" : "Cruce Vertical"}
-            </ModalHeader>
-            <ModalBody className="gap-3 px-5 pb-4">
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                {tipo === "H"
-                  ? `Posición en milímetros calculada desde la base (1 – ${alto - 1} mm):`
-                  : `Posición en milímetros calculada desde la izquierda (1 – ${ancho - 1} mm):`}
-              </p>
-              <Input
-                label="Ubicación"
-                type="number"
-                autoFocus
-                value={String(valor)}
-                min={1}
-                max={max}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setValor(parseInt(e.target.value) || 0)
-                }
-                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                  if (e.key === "Enter") {
-                    onConfirm(valor);
-                    onClose2();
-                  }
-                }}
-                size="sm"
-                variant="bordered"
-                endContent={
-                  <span className="text-xs font-mono text-zinc-400 dark:text-zinc-500">
-                    mm
-                  </span>
-                }
-                description={`${((valor / total) * 100).toFixed(0)}% respecto al total.`}
-                classNames={{
-                  inputWrapper:
-                    "bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 rounded-xl shadow-none h-11",
-                  input: "text-zinc-800 dark:text-zinc-100 font-medium",
-                  description:
-                    "text-[10px] font-semibold text-amber-600 dark:text-amber-400 mt-1",
-                }}
-              />
-            </ModalBody>
-            <ModalFooter className="border-t border-zinc-100 dark:border-zinc-800/60 py-3 px-5 justify-end gap-2">
-              <Button
-                variant="light"
-                size="sm"
-                className="font-bold text-xs text-zinc-500 dark:text-zinc-400 h-9 rounded-xl"
-                onPress={onClose2}
-              >
-                Cancelar
-              </Button>
-              <Button
-                className="bg-amber-500 hover:bg-amber-600 font-bold text-white text-xs rounded-xl h-9 px-4 shadow-none"
-                size="sm"
-                onPress={() => {
-                  onConfirm(valor);
-                  onClose2();
-                }}
-              >
-                Insertar
-              </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
   );
 }

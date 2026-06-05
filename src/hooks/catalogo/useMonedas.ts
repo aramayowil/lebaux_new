@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { Moneda } from "@/types/index";
 import { SQUEMA } from "./squemaCatalogo";
 
-const TABLE = "moneda";
+const TABLE = "monedas";
 
 // --- 1. OBTENER MONEDAS (READ) ---
 export function useMonedas() {

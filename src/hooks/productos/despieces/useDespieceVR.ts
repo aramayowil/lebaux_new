@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import type { DespieceVR } from "@/types";
+import type { DespiecePerfilVidrioRepartido } from "@/types";
 
 const TABLE = "despiece_perfiles_vidrio_repartido";
 const SQUEMA = "opendata";
@@ -20,7 +20,7 @@ export function useDespieceVRByVR(idVR: number | undefined) {
 
       if (error) throw error;
 
-      return (data as DespieceVR) ?? null;
+      return (data as DespiecePerfilVidrioRepartido) ?? null;
     },
     enabled: !!idVR && idVR > 0,
   });
@@ -30,7 +30,7 @@ export function useAddDespieceVR() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (newDespiece: Omit<DespieceVR, "id">) => {
+    mutationFn: async (newDespiece: Omit<DespiecePerfilVidrioRepartido, "id">) => {
       const { id, ...dataToInsert } = newDespiece as any;
 
       const { data, error } = await supabase
@@ -41,7 +41,7 @@ export function useAddDespieceVR() {
         .single();
 
       if (error) throw error;
-      return data as DespieceVR;
+      return data as DespiecePerfilVidrioRepartido;
     },
     onSuccess: (newItem) => {
       queryClient.invalidateQueries({
@@ -60,7 +60,7 @@ export function useUpdateDespieceVR() {
       data,
     }: {
       id: number;
-      data: Partial<DespieceVR>;
+      data: Partial<DespiecePerfilVidrioRepartido>;
     }) => {
       // Limpiamos el objeto para no intentar actualizar la PK o FK accidentalmente
       const { id: _, id_vr: __, ...updateData } = data as any;
@@ -74,7 +74,7 @@ export function useUpdateDespieceVR() {
         .maybeSingle();
 
       if (error) throw error;
-      return updated as DespieceVR | null;
+      return updated as DespiecePerfilVidrioRepartido | null;
     },
     onSuccess: (updatedItem) => {
       if (updatedItem) {

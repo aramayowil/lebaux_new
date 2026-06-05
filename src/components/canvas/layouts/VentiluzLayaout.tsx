@@ -1,6 +1,6 @@
 import { Group, Rect, Line } from "react-konva";
 import { ObraTipologia } from "@/types";
-import { TipologiaConfig } from "@/store/obrasStore";
+import { TipologiaConfig } from "@/types/canvasTypes";
 import { RenderContravidrio } from "../components/RenderContravidrios";
 import RenderCruces from "../components/RenderCruces";
 import { RenderFoco } from "../components/FocoRender";

@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { VidRepartido } from "@/types";
+import { VidrioRepartido } from "@/types";
 
 const TABLE = "vidrio_repartido";
 const SQUEMA = "opendata";
 
-export function useVidRepartidosByInterior(idInterior: number | undefined) {
+export function useVidrioRepartidosByInterior(idInterior: number | undefined) {
   return useQuery({
     queryKey: [TABLE, "by_interior", idInterior],
     queryFn: async () => {
@@ -19,17 +19,17 @@ export function useVidRepartidosByInterior(idInterior: number | undefined) {
         .order("id", { ascending: true });
 
       if (error) throw error;
-      return data as VidRepartido[];
+      return data as VidrioRepartido[];
     },
     enabled: !!idInterior && idInterior > 0,
   });
 }
 
-export function useAddVidRepartido() {
+export function useAddVidrioRepartido() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (newVid: Omit<VidRepartido, "id">) => {
+    mutationFn: async (newVid: Omit<VidrioRepartido, "id">) => {
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
@@ -38,7 +38,7 @@ export function useAddVidRepartido() {
         .single();
 
       if (error) throw error;
-      return data as VidRepartido;
+      return data as VidrioRepartido;
     },
     onSuccess: (newItem) => {
       queryClient.invalidateQueries({
@@ -48,7 +48,7 @@ export function useAddVidRepartido() {
   });
 }
 
-export function useUpdateVidRepartido() {
+export function useUpdateVidrioRepartido() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -57,7 +57,7 @@ export function useUpdateVidRepartido() {
       data,
     }: {
       id: number;
-      data: Partial<VidRepartido>;
+      data: Partial<VidrioRepartido>;
     }) => {
       const { data: updated, error } = await supabase
         .schema(SQUEMA)
@@ -68,7 +68,7 @@ export function useUpdateVidRepartido() {
         .maybeSingle(); // <--- Cambiado de .single() a .maybeSingle()
 
       if (error) throw error;
-      return updated as VidRepartido;
+      return updated as VidrioRepartido;
     },
     onSuccess: (updatedItem) => {
       if (updatedItem) {
@@ -80,7 +80,7 @@ export function useUpdateVidRepartido() {
   });
 }
 
-export function useDeleteVidRepartido() {
+export function useDeleteVidrioRepartido() {
   const queryClient = useQueryClient();
 
   return useMutation({

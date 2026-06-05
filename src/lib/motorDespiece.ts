@@ -11,8 +11,8 @@ import type {
   Interior,
   Contravidrio,
   ContravidrioExterior,
-  Cruces,
-  VidRepartido,
+  Cruce,
+  VidrioRepartido,
   DespiecePerfil,
   DespieceAccesorio,
   Perfil,
@@ -22,7 +22,7 @@ import type {
   DespieceInterior,
   DespiecePerfilContravidrio,
 } from "@/types";
-import type { ModuloConfig } from "@/store/obrasStore";
+import type { ModuloConfig } from "@/types/canvasTypes";
 
 // ─── Entrada ──────────────────────────────────────────────────────────────────
 
@@ -55,8 +55,8 @@ export interface DatosProducto {
   all_interiores: Interior[];
   all_contravidrios: Contravidrio[];
   all_contravidrios_ext: ContravidrioExterior[];
-  all_cruces: Cruces[];
-  all_vid_repartidos: VidRepartido[];
+  all_cruces: Cruce[];
+  all_vid_repartidos: VidrioRepartido[];
 
   despiece_perfiles_marco: DespiecePerfil[];
   despiece_perfiles_hoja: DespiecePerfil[];
@@ -223,24 +223,24 @@ export function calcularDespiece(
     ctx: ContextoCalculo,
     mult = 1,
   ) {
-    const cant = calcularCantidad(dp.formula_cantidad, ctx) * mult;
-    const medida = calcularMedida(dp.formula_perfil, ctx);
+    const cant = calcularCantidad((dp as any).formula_cantidad ?? "0", ctx) * mult;
+    const medida = calcularMedida((dp as any).formula_perfil ?? "0", ctx);
     if (cant <= 0 || medida <= 0) return;
-    const perfil = lkPerfil(dp.id_perfil);
-    const kg = perfil ? (perfil.peso_metro / 1000) * medida * cant : 0;
-    const precio = perfil ? perfil.precio_kg * kg : 0;
+    const perfil = lkPerfil((dp as any).id_perfil ?? 0);
+    const kg = perfil ? ((perfil.peso_metro ?? 0) / 1000) * medida * cant : 0;
+    const precio = perfil ? (perfil.precio_kg ?? 0) * kg : 0;
     cortes.push({
       id: cortId++,
       nivel,
-      nro_perfil: perfil?.nro_perfil.toString() ?? "desconocido",
+      nro_perfil: perfil?.nro_perfil?.toString() ?? "desconocido",
       descripcion_perfil: perfil?.descri ?? "desconocido",
-      angulo: dp.angulo,
+      angulo: (dp as any).angulo ?? "90°/90°",
       cantidad: cant,
       medida_mm: medida,
       total_mm: medida * cant,
       kg,
       precio_unitario: perfil
-        ? perfil.precio_kg * (perfil.peso_metro / 1000) * medida
+        ? (perfil.precio_kg ?? 0) * ((perfil.peso_metro ?? 0) / 1000) * medida
         : 0,
       precio_total: precio,
     });
@@ -252,17 +252,17 @@ export function calcularDespiece(
     ctx: ContextoCalculo,
     mult = 1,
   ) {
-    const cant = calcularCantidad(da.formula_cantidad, ctx) * mult;
+    const cant = calcularCantidad((da as any).formula_cantidad ?? "0", ctx) * mult;
     if (cant <= 0) return;
-    const acc = lkAcc(da.id_accesorio);
+    const acc = lkAcc(da.id_accesorio ?? 0);
     const pu = acc?.precio ?? 0;
     accesorios.push({
       id: accId++,
       nivel,
-      cod_parte: da.id_accesorio,
+      cod_parte: da.id_accesorio ?? 0,
       descripcion: acc?.descri ?? "desconocido",
       cantidad: cant,
-      unidad: acc?.unidad ?? 0,
+      unidad: (acc?.unidad as 0 | 1) ?? 0,
       precio_unit: pu,
       precio_total: pu * cant,
     });
@@ -307,11 +307,11 @@ export function calcularDespiece(
       };
 
       const cantInt = calcularCantidad(
-        interior.formula_cantidad_interiores,
+        interior.formula_cantidad_interiores ?? "0",
         ctxMod,
       );
-      const anchoInt = calcularMedida(interior.formula_ancho_interior, ctxMod);
-      const altoInt = calcularMedida(interior.formula_alto_interior, ctxMod);
+      const anchoInt = calcularMedida(interior.formula_ancho_interior ?? "0", ctxMod);
+      const altoInt = calcularMedida(interior.formula_alto_interior ?? "0", ctxMod);
       const ctxInt: ContextoCalculo = {
         ...ctxMod,
         ancho: anchoInt,
@@ -338,7 +338,7 @@ export function calcularDespiece(
             ancho: anchoInt,
             alto: altoInt,
             area,
-            precio: vid.precio * area * cantInt,
+            precio: (vid.precio ?? 0) * area * cantInt,
             modulo: moduloLabel,
           });
         }
@@ -349,11 +349,11 @@ export function calcularDespiece(
       const cv = cvId ? datos.get_despiece_contravidrio(cvId) : null;
       if (cv) {
         const cantCV = calcularCantidad(
-          cv.formula_cantidad_contravidrios_ancho,
+          cv.formula_cantidad_contravidrios_ancho ?? "0",
           ctxInt,
         );
-        const anchCV = calcularMedida(cv.formula_contravidrio_ancho, ctxInt);
-        const altoCV = calcularMedida(cv.formula_contravidrio_alto, ctxInt);
+        const anchCV = calcularMedida(cv.formula_contravidrio_ancho ?? "0", ctxInt);
+        const altoCV = calcularMedida(cv.formula_contravidrio_alto ?? "0", ctxInt);
         const ctxCV: ContextoCalculo = {
           ...ctxInt,
           ancho: anchCV,
@@ -379,11 +379,11 @@ export function calcularDespiece(
       const cve = cveId ? datos.get_despiece_contravidrio(cveId) : null;
       if (cve) {
         const cantCVE = calcularCantidad(
-          cve.formula_cantidad_contravidrios_ancho,
+          cve.formula_cantidad_contravidrios_ancho ?? "0",
           ctxInt,
         );
-        const anchCVE = calcularMedida(cve.formula_contravidrio_ancho, ctxInt);
-        const altoCVE = calcularMedida(cve.formula_contravidrio_alto, ctxInt);
+        const anchCVE = calcularMedida(cve.formula_contravidrio_ancho ?? "0", ctxInt);
+        const altoCVE = calcularMedida(cve.formula_contravidrio_alto ?? "0", ctxInt);
         const ctxCVE: ContextoCalculo = {
           ...ctxInt,
           ancho: anchCVE,
@@ -414,8 +414,8 @@ export function calcularDespiece(
       : null;
 
     if (interior) {
-      const anchoInt = calcularMedida(interior.formula_ancho_interior, ctxBase);
-      const altoInt = calcularMedida(interior.formula_alto_interior, ctxBase);
+      const anchoInt = calcularMedida(interior.formula_ancho_interior ?? "0", ctxBase);
+      const altoInt = calcularMedida(interior.formula_alto_interior ?? "0", ctxBase);
       const ctxInt: ContextoCalculo = {
         ...ctxBase,
         ancho: anchoInt,
@@ -481,7 +481,7 @@ export function calcularDespiece(
     );
     const opt = optimizarCortes(allCuts, longTira);
     const totalMm = allCuts.reduce((s, m) => s + m, 0);
-    const kg = perfil ? (perfil.peso_metro / 1000) * totalMm : 0;
+    const kg = perfil ? ((perfil.peso_metro ?? 0) / 1000) * totalMm : 0;
     const precioKg = perfil?.precio_kg ?? 0;
     resumenes.push({
       nro_perfil: nro,

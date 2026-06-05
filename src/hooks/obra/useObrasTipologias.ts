@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  UseQueryOptions,
+} from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import type { ObraTipologia } from "@/types";
 
@@ -8,7 +13,13 @@ const SCHEMA = "obras";
 /**
  * 1. Obtener tipologías por Obra (getTipologiasByObra)
  */
-export function useTipologiasByObra(idObra: number | undefined) {
+export function useTipologiasByObra(
+  idObra: number | undefined,
+  options?: Omit<
+    UseQueryOptions<ObraTipologia[], Error>,
+    "queryKey" | "queryFn"
+  >,
+) {
   return useQuery({
     queryKey: [TABLE, "by_obra", idObra],
     queryFn: async () => {
@@ -23,7 +34,9 @@ export function useTipologiasByObra(idObra: number | undefined) {
       if (error) throw error;
       return data as ObraTipologia[];
     },
-    enabled: !!idObra,
+
+    ...options,
+    enabled: !!idObra && (options?.enabled ?? true),
   });
 }
 

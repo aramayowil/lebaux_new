@@ -8,16 +8,16 @@ import {
   Package2,
   Loader2,
 } from "lucide-react";
-import { useProductosStore } from "@/store/productosStore";
-import DespiecePerfilesPanel from "./DespiecePerfilesPanel";
-import DespieceAccesoriosPanel from "./DespieceAccesoriosPanel";
-import type { Hoja } from "@/types";
-import type { TreeSelection } from "./ProductTree";
-import clsx from "clsx";
 import { useMarcos } from "@/hooks/productos/useMarco";
 import { useProductos } from "@/hooks/productos/useProducto";
 import { useUpdateHoja } from "@/hooks/productos/useHojas";
+import { useInterioresByHoja } from "@/hooks/productos/useInteriores";
 import HojaPanelSkeleton from "./skeletons/HojaPanelSkeleton";
+import DespiecePerfilesPanel from "./DespiecePerfilesPanel";
+import DespieceAccesoriosPanel from "./DespieceAccesoriosPanel";
+import clsx from "clsx";
+import type { Hoja, Interior } from "@/types";
+import type { TreeSelection } from "./ProductTree";
 
 interface Props {
   hoja: Hoja;
@@ -32,8 +32,6 @@ export default function HojaPanel({
   id_producto,
   onSelect,
 }: Props) {
-  const { getInterioresByHoja } = useProductosStore();
-
   // --- 1. HOOKS DE PETICIONES Y MUTACIONES ---
   const {
     data: productos = [],
@@ -45,10 +43,15 @@ export default function HojaPanel({
     isLoading: isLoadingMarcos,
     error: errorMarcos,
   } = useMarcos();
+  const {
+    data: interiores = [],
+    isLoading: isLoadingInteriores,
+    error: errorInteriores,
+  } = useInterioresByHoja(hoja.id);
   const { mutateAsync: updateHoja, isPending: isUpdating } = useUpdateHoja();
 
-  const isLoading = isLoadingProductos || isLoadingMarcos;
-  const isError = errorProductos || errorMarcos;
+  const isLoading = isLoadingProductos || isLoadingMarcos || isLoadingInteriores;
+  const isError = errorProductos || errorMarcos || errorInteriores;
 
   // --- 2. ESTADOS LOCALES INTERMEDIOS ---
   const [localDescripcion, setLocalDescripcion] = useState(
@@ -80,7 +83,6 @@ export default function HojaPanel({
 
   const producto = productos.find((p) => p.id === id_producto);
   const marco = marcos.find((m) => m.id === id_marco);
-  const interiores = getInterioresByHoja(hoja.id);
 
   // --- 3. MANEJADORES DE PERSISTENCIA BAJO DEMANDA ---
   const persistUpdate = async (data: Partial<Hoja>) => {
@@ -225,7 +227,7 @@ export default function HojaPanel({
                   Interiores Asignados
                 </p>
                 <div className="flex flex-wrap gap-1.5">
-                  {interiores.map((i) => (
+                  {interiores.map((i: Interior) => (
                     <button
                       key={i.id}
                       onClick={() =>

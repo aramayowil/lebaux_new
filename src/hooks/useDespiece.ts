@@ -1,7 +1,18 @@
+/**
+ * useDespiece.ts — REFACTORIZADO
+ *
+ * Cambios respecto a la versión anterior:
+ * - Eliminada la dependencia de useObrasStore.
+ * - Acepta `config: TipologiaConfig | null` como segundo parámetro,
+ *   construido externamente con obraDetalleToConfig() desde los datos de DB.
+ * - La firma del hook es retrocompatible: el segundo parámetro es opcional
+ *   para no romper usos existentes que todavía no hayan migrado.
+ * - Todos los campos de cfg se leen del parámetro recibido, no del store.
+ */
+
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { useObrasStore } from "@/store/obrasStore";
 import {
   calcularDespiece,
   type ResultadoDespiece,
@@ -9,6 +20,7 @@ import {
   type DatosProducto,
 } from "@/lib/motorDespiece";
 import type { ObraTipologia } from "@/types";
+import type { TipologiaConfig } from "@/types/canvasTypes";
 
 // Catálogos
 import { usePerfiles } from "./catalogo/usePerfiles";
@@ -16,61 +28,71 @@ import { useAccesorios } from "./catalogo/useAccesorios";
 import { useVidrios } from "./catalogo/useVidrios";
 import { useTratamientos } from "./catalogo/useTratamientos";
 
-// Productos (Los que no dependen de tipología)
+// Productos globales
 import { useMarcos } from "./productos/useMarco";
 import { useHojas } from "./productos/useHojas";
 import { useInteriores } from "./productos/useInteriores";
 
-interface UseDespieceResult {
+export interface UseDespieceResult {
   resultado: ResultadoDespiece | null;
   error: string | null;
+  /** true cuando hay suficiente config para calcular (aunque el resultado sea null por error) */
   configurado: boolean;
 }
 
+/**
+ * Calcula el despiece de una tipología dado:
+ * @param tipologia  — datos dimensionales (ancho, alto, cantidad)
+ * @param config     — configuración del producto (producto, marco, hoja, cruces…)
+ *                    obtenida con obraDetalleToConfig() desde DB.
+ *
+ * Todos los hooks de catálogo y productos se invocan incondicionalmente
+ * (regla de hooks de React) y los datos se usan solo dentro del useMemo.
+ */
 export function useDespiece(
   tipologia: ObraTipologia | null,
+  config: TipologiaConfig | null = null,
 ): UseDespieceResult {
-  // 1. OBTENER CONFIG DE OBRA (siempre al inicio, sin returns previos)
-  const { getConfig } = useObrasStore();
-  const cfg = tipologia ? getConfig(tipologia.id) : null;
+  // El alias `cfg` se mantiene del código original para facilitar la lectura
+  const cfg = config;
 
-  // 2. OBTENER CATÁLOGOS BASE
+  // ── 1. Catálogos base ──────────────────────────────────────────────────────
   const { data: perfiles = [] } = usePerfiles();
   const { data: accesorios = [] } = useAccesorios();
   const { data: vidrios = [] } = useVidrios();
   const { data: tratamientos = [] } = useTratamientos();
 
-  // 3. OBTENER PRODUCTOS GLOBALES
+  // ── 2. Productos globales ──────────────────────────────────────────────────
   const { data: marcos = [] } = useMarcos();
   const { data: hojas = [] } = useHojas();
   const { data: interiores = [] } = useInteriores();
 
-  // 4. PREPARAR IDs PARA LAS REGLAS DE DESPIECE
+  // ── 3. IDs para las queries de reglas de despiece ─────────────────────────
   const idMarco = cfg?.id_marco;
   const idHoja = cfg?.id_hoja;
+
   const interioresIds = Array.from(
     new Set([
       cfg?.id_interior,
-      ...(cfg?.modulosConfig?.map((m) => m.id_interior) || []),
+      ...(cfg?.modulosConfig?.map((m) => m.id_interior) ?? []),
     ]),
-  ).filter(Boolean) as number[];
+  ).filter((v): v is number => typeof v === "number" && v > 0);
 
   const contravidriosIds = Array.from(
     new Set([
       cfg?.id_contravidrio,
-      ...(cfg?.modulosConfig?.map((m) => m.id_contravidrio) || []),
+      ...(cfg?.modulosConfig?.map((m) => m.id_contravidrio) ?? []),
     ]),
-  ).filter(Boolean) as number[];
+  ).filter((v): v is number => typeof v === "number" && v > 0);
 
   const contravidriosExtIds = Array.from(
     new Set([
       cfg?.id_contravidrio_ext,
-      ...(cfg?.modulosConfig?.map((m) => m.id_contravidrio_ext) || []),
+      ...(cfg?.modulosConfig?.map((m) => m.id_contravidrio_ext) ?? []),
     ]),
-  ).filter(Boolean) as number[];
+  ).filter((v): v is number => typeof v === "number" && v > 0);
 
-  // 5. QUERY PARA REGLAS DE DESPIECE DEPENDIENTES DE ESTA TIPOLOGÍA
-  // Obtenemos en paralelo los productos (cruces, etc) y las fórmulas de despiece
+  // ── 4. Query de reglas de despiece (fórmulas, perfiles, accesorios) ────────
   const { data: despieceRules } = useQuery({
     queryKey: [
       "despiece_rules_tipologia",
@@ -82,6 +104,7 @@ export function useDespiece(
     ],
     queryFn: async () => {
       const SQUEMA = "opendata";
+
       const fetchEq = async (
         table: string,
         col: string,
@@ -93,8 +116,9 @@ export function useDespiece(
           .from(table)
           .select("*")
           .eq(col, val);
-        return data || [];
+        return data ?? [];
       };
+
       const fetchIn = async (table: string, col: string, vals: number[]) => {
         if (!vals.length) return [];
         const { data } = await supabase
@@ -102,10 +126,10 @@ export function useDespiece(
           .from(table)
           .select("*")
           .in(col, vals);
-        return data || [];
+        return data ?? [];
       };
 
-      // 5.1. Traer productos dependientes de los interiores activos
+      // 4.1 Productos dependientes de los interiores activos
       const [cruces, allContravidrios, allContravidriosExt, vidRepartidos] =
         await Promise.all([
           fetchIn("cruces", "id_interior", interioresIds),
@@ -114,9 +138,9 @@ export function useDespiece(
           fetchIn("vidrio_repartido", "id_interior", interioresIds),
         ]);
 
-      const crucesIds = cruces.map((c: any) => c.id);
+      const crucesIds = (cruces as any[]).map((c) => c.id);
 
-      // 5.2. Traer perfiles y accesorios asociados
+      // 4.2 Perfiles y accesorios asociados
       const [
         dpMarco,
         dpHoja,
@@ -130,7 +154,6 @@ export function useDespiece(
         daCruces,
         dInt,
       ] = await Promise.all([
-        // Perfiles
         fetchEq("despiece_perfiles_marco", "id_marco", idMarco),
         fetchEq("despiece_perfiles_hoja", "id_hoja", idHoja),
         fetchIn(
@@ -144,8 +167,6 @@ export function useDespiece(
           contravidriosExtIds,
         ),
         fetchIn("despiece_cruces", "id_cruces", crucesIds),
-
-        // Accesorios
         fetchEq("despiece_accesorios_marco", "id_marco", idMarco),
         fetchEq("despiece_accesorios_hoja", "id_hoja", idHoja),
         fetchIn("despiece_accesorios_interior", "id_interior", interioresIds),
@@ -155,8 +176,6 @@ export function useDespiece(
           contravidriosIds,
         ),
         fetchIn("despiece_accesorios_cruces", "id_cruces", crucesIds),
-
-        // Interior formulas
         fetchIn("despiece_interior", "id_interior", interioresIds),
       ]);
 
@@ -178,10 +197,11 @@ export function useDespiece(
         dInt,
       };
     },
-    enabled: !!cfg,
+    // Solo ejecutar si hay al menos marco o hoja configurados
+    enabled: !!cfg?.id_marco || !!cfg?.id_hoja,
   });
 
-  // 6. VALIDACIONES Y RETURN MEMOIZADO
+  // ── 5. Cálculo memoizado ───────────────────────────────────────────────────
   return useMemo(() => {
     if (!tipologia || !cfg?.id_marco || !despieceRules) {
       return { resultado: null, error: null, configurado: false };
@@ -200,8 +220,8 @@ export function useDespiece(
       const hoja = hojas.find((h) => h.id === cfg.id_hoja);
 
       const entrada: EntradaCalculo = {
-        ancho: tipologia.ancho,
-        alto: tipologia.alto,
+        ancho: tipologia.ancho ?? 0,
+        alto: tipologia.alto ?? 0,
         cantidad_tipologias: tipologia.cantidad ?? 1,
         id_marco: cfg.id_marco,
         id_hoja: cfg.id_hoja,
@@ -236,16 +256,16 @@ export function useDespiece(
           if (nivel === "hoja" && idParent === cfg.id_hoja)
             return despieceRules.dpHoja;
           if (nivel === "contravidrio")
-            return despieceRules.dpCV.filter(
-              (x: any) => x.id_contravidrio === idParent,
+            return (despieceRules.dpCV as any[]).filter(
+              (x) => x.id_contravidrio === idParent,
             );
           if (nivel === "contravidrioExt")
-            return despieceRules.dpCVE.filter(
-              (x: any) => x.id_contravidrio === idParent,
+            return (despieceRules.dpCVE as any[]).filter(
+              (x) => x.id_contravidrio === idParent,
             );
           if (nivel === "cruces")
-            return despieceRules.dpCruces.filter(
-              (x: any) => x.id_cruces === idParent,
+            return (despieceRules.dpCruces as any[]).filter(
+              (x) => x.id_cruces === idParent,
             );
           return [];
         },
@@ -256,23 +276,23 @@ export function useDespiece(
           if (nivel === "hoja" && idParent === cfg.id_hoja)
             return despieceRules.daHoja;
           if (nivel === "interior")
-            return despieceRules.daInt.filter(
-              (x: any) => x.id_interior === idParent,
+            return (despieceRules.daInt as any[]).filter(
+              (x) => x.id_interior === idParent,
             );
           if (nivel === "contravidrio")
-            return despieceRules.daCV.filter(
-              (x: any) => x.id_contravidrio === idParent,
+            return (despieceRules.daCV as any[]).filter(
+              (x) => x.id_contravidrio === idParent,
             );
           if (nivel === "cruces")
-            return despieceRules.daCruces.filter(
-              (x: any) => x.id_cruces === idParent,
+            return (despieceRules.daCruces as any[]).filter(
+              (x) => x.id_cruces === idParent,
             );
           return [];
         },
 
         get_despiece_interior: (idInterior) => {
-          const di = despieceRules.dInt.find(
-            (x: any) => x.id_interior === idInterior,
+          const di = (despieceRules.dInt as any[]).find(
+            (x) => x.id_interior === idInterior,
           );
           if (!di)
             throw new Error(
@@ -282,17 +302,18 @@ export function useDespiece(
         },
 
         get_despiece_contravidrio: (idContravidrio) => {
-          let cv = despieceRules.dpCV.find(
-            (x: any) => x.id_contravidrio === idContravidrio,
-          );
-          if (cv) return cv;
-          cv = despieceRules.dpCVE.find(
-            (x: any) => x.id_contravidrio === idContravidrio,
-          );
-          if (cv) return cv;
-          throw new Error(
-            `DespiecePerfilContravidrio no encontrado para id=${idContravidrio}`,
-          );
+          const cv =
+            (despieceRules.dpCV as any[]).find(
+              (x) => x.id_contravidrio === idContravidrio,
+            ) ??
+            (despieceRules.dpCVE as any[]).find(
+              (x) => x.id_contravidrio === idContravidrio,
+            );
+          if (!cv)
+            throw new Error(
+              `DespiecePerfilContravidrio no encontrado para id=${idContravidrio}`,
+            );
+          return cv;
         },
 
         catalog_perfiles: perfiles,
@@ -312,7 +333,7 @@ export function useDespiece(
     tipologia?.ancho,
     tipologia?.alto,
     tipologia?.cantidad,
-    // Config
+    // Config (ahora viene del parámetro, no del store)
     cfg?.tipo_cruce,
     cfg?.cruces_h,
     cfg?.cruces_v,
@@ -325,7 +346,7 @@ export function useDespiece(
     cfg?.id_contravidrio_ext,
     cfg?.id_vidrio,
     cfg?.modulosConfig?.length,
-    // Dependency changes (DB loads)
+    // Datos de catálogo y productos
     marcos.length,
     hojas.length,
     interiores.length,

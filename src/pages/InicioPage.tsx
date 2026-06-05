@@ -81,7 +81,7 @@ export default function InicioPage() {
     useAccesorios();
   const { data: tratamientos = [], isLoading: loadingTratamientos } =
     useTratamientos();
-  const { data: opciones = [], isLoading: loadingOpciones } = useOpciones();
+  const { data: opciones, isLoading: loadingOpciones } = useOpciones();
   const { data: lineas = [], isLoading: loadingLineas } = useLineas();
 
   // ── 2. UNIFICACIÓN DE ESTADOS DE CARGA ASÍNCRONOS ────────────────────────
@@ -92,7 +92,7 @@ export default function InicioPage() {
     loadingOpciones ||
     loadingLineas;
 
-  const nombre = opciones[0]?.nombre ?? "Usuario";
+  const nombre = opciones?.nombre ?? "Usuario";
 
   // Mapear distribución real agregada de perfiles por línea
   const dataLineas = lineas
@@ -209,7 +209,7 @@ export default function InicioPage() {
         itemStyle: { borderRadius: 6 },
         data: dataLineas.map((l, i) => ({
           value: l.value,
-          name: l.name,
+          name: l.name ?? "Desconocido",
           itemStyle: { color: LINEA_COLORS[i % LINEA_COLORS.length] },
         })),
         label: { show: false },
@@ -388,7 +388,7 @@ export default function InicioPage() {
                         <div className="flex items-center gap-3 min-w-0">
                           <Avatar
                             size="sm"
-                            name={`${obra.nombre[0]}${obra.apellido[0]}`}
+                            name={`${obra.nombre?.[0] ?? ''}${obra.apellido?.[0] ?? ''}`}
                             classNames={{
                               base: "bg-zinc-100 dark:bg-zinc-800 font-bold text-zinc-700 dark:text-zinc-300 text-xs shrink-0",
                             }}

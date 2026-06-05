@@ -165,9 +165,9 @@ function PDF({
         <View>
           {tipologias.map((tipologia, index) => {
             // Mantenemos tus cálculos de negocio para precio en el código nuevo
-            const areaM2 = (tipologia.ancho / 1000) * (tipologia.alto / 1000);
+            const areaM2 = ((tipologia.ancho ?? 0) / 1000) * ((tipologia.alto ?? 0) / 1000);
             const precioUnitario = areaM2 * 100000;
-            const precioTotal = precioUnitario * tipologia.cantidad;
+            const precioTotal = precioUnitario * (tipologia.cantidad ?? 0);
 
             // Algoritmo original de escalado y renderizado proporcional de imágenes
             const AREA_MAX_W = 230;
@@ -176,14 +176,14 @@ function PDF({
             const escalaBase = 0.25;
 
             let widthCalculado: number;
-            if (tipologia.ancho <= umbral) {
-              widthCalculado = tipologia.ancho * escalaBase;
+            if ((tipologia.ancho ?? 0) <= umbral) {
+              widthCalculado = (tipologia.ancho ?? 0) * escalaBase;
             } else {
-              const excedente = tipologia.ancho - umbral;
+              const excedente = (tipologia.ancho ?? 0) - umbral;
               widthCalculado = umbral * escalaBase + excedente * 0.03;
             }
 
-            const aspect = tipologia.alto / tipologia.ancho;
+            const aspect = (tipologia.alto ?? 0) / (tipologia.ancho ?? 1);
             let finalWidth = widthCalculado;
             let finalHeight = widthCalculado * aspect;
 
@@ -270,13 +270,13 @@ function PDF({
                         {tipologia.ancho} x {tipologia.alto} mm
                       </Text>
                     </Text>
-                    {tipologia.hor1 && tipologia.hor1 > 0 ? (
+                    {tipologia.hor_1 && tipologia.hor_1 > 0 ? (
                       <Text style={{ fontSize: 10, color: "#555" }}>
-                        Cruce Horizontal: {tipologia.hor1} mm
+                        Cruce Horizontal: {tipologia.hor_1} mm
                       </Text>
                     ) : null}
                     <Text style={{ fontSize: 10 }}>
-                      Cantidad: {tipologia.cantidad}
+                      Cantidad: {tipologia.cantidad ?? 0}
                     </Text>
                   </View>
 

@@ -423,6 +423,7 @@ export default function ProductTree({ selection, onSelect }: ProductTreeProps) {
                         descripcion: newMarco.descripcion,
                         id_producto: selectedProdId!,
                         predeterminado: false, // 👈 Agregado para cumplir con el tipo Omit<Marco, "id">
+                        no_verificado: false,
                       });
                       setNewMarco({ descripcion: "" });
                       onClose();
@@ -475,6 +476,7 @@ export default function ProductTree({ selection, onSelect }: ProductTreeProps) {
                         id_marco: selectedMarcoId!,
                         cantidad: 1, // 👈 Agregado: cantidad inicial por defecto
                         predeterminado: false, // 👈 Agregado: flag obligatorio para TS
+                        no_verificado: false,
                       });
                       setNewHoja({ descripcion: "" });
                       onClose();
@@ -582,7 +584,7 @@ function ProductoNode({
   return (
     <div>
       <TreeItem
-        label={producto.descripcion}
+        label={producto.descripcion ?? "Sin descripción"}
         icon={Box}
         depth={0}
         accentColor="amber"

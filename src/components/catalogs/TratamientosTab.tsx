@@ -12,7 +12,6 @@ import {
   Input,
 } from "@heroui/react";
 import { Trash2, Palette } from "lucide-react";
-import { useCatalogosStore } from "@/store/catalogosStore";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
 import EditableCell from "@/components/ui/EditableCell";
 import CatalogToolbar from "@/components/ui/CatalogToolbar";
@@ -43,7 +42,10 @@ export default function TratamientosTab() {
   const { mutateAsync: deleteTratamiento } = useDeleteTratamiento();
   const { mutateAsync: updateTratamiento } = useUpdateTratamiento();
 
-  const { toPesos } = useCatalogosStore();
+  const toPesos = (precio: number, monedaId: number) => {
+    const m = monedas.find((x) => x.id === monedaId);
+    return precio * (m?.cotizacion ?? 1);
+  };
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
   // Usamos el ID numérico para rastrear la edición
@@ -53,7 +55,7 @@ export default function TratamientosTab() {
   const [newForm, setNewForm] = useState<Omit<Tratamiento, "id">>(BLANK);
 
   const filtered = tratamientos.filter((t) =>
-    t.descripcion.toLowerCase().includes(search.toLowerCase()),
+    (t.descripcion ?? "").toLowerCase().includes(search.toLowerCase()),
   );
 
   const commit = useCallback(
@@ -92,7 +94,7 @@ export default function TratamientosTab() {
   );
 
   function handleNew(close: () => void) {
-    if (!newForm.descripcion.trim()) return;
+    if (!(newForm.descripcion ?? "").trim()) return;
     createTratamiento(newForm);
     setNewForm(BLANK);
     close();
@@ -150,12 +152,12 @@ export default function TratamientosTab() {
                 <td className="px-3 py-1.5">
                   <label
                     className="cursor-pointer block w-8 h-8 rounded-lg border-2 border-steel-200 dark:border-steel-600 shadow-sm hover:scale-110 transition-transform"
-                    style={{ background: t.color }}
-                    title={t.color}
+                    style={{ background: t.color ?? "#9fb3c8" }}
+                    title={t.color ?? ""}
                   >
                     <input
                       type="color"
-                      value={t.color}
+                      value={t.color ?? "#9fb3c8"}
                       // CAMBIO: Al cambiar el color, disparamos la mutación directamente
                       onChange={(e) =>
                         updateTratamiento({ ...t, color: e.target.value })
@@ -177,7 +179,7 @@ export default function TratamientosTab() {
                 <td className="px-3 py-1.5 text-right">
                   {/* Asegúrate de que el campo en el objeto sea t.id_moneda o t.moneda según tu tipo */}
                   <span className="currency-badge">
-                    {formatPesos(toPesos(t.precio_por_kilo, t.id_moneda))}
+                    {formatPesos(toPesos(t.precio_por_kilo ?? 0, t.id_moneda ?? 1))}
                     /kg
                   </span>
                 </td>
@@ -256,11 +258,11 @@ export default function TratamientosTab() {
                     </p>
                     <label
                       className="cursor-pointer block w-10 h-10 rounded-xl border-2 border-steel-200 shadow-sm"
-                      style={{ background: newForm.color }}
+                      style={{ background: newForm.color ?? "#9fb3c8" }}
                     >
                       <input
                         type="color"
-                        value={newForm.color}
+                        value={newForm.color ?? "#9fb3c8"}
                         onChange={(e) =>
                           setNewForm((f) => ({ ...f, color: e.target.value }))
                         }
@@ -271,7 +273,7 @@ export default function TratamientosTab() {
                   <div className="flex-1">
                     <Input
                       label="Hex"
-                      value={newForm.color}
+                      value={newForm.color ?? ""}
                       onValueChange={(v: string) =>
                         setNewForm((f) => ({ ...f, color: v }))
                       }
@@ -288,7 +290,7 @@ export default function TratamientosTab() {
                 <Button
                   color="primary"
                   onPress={() => handleNew(onClose)}
-                  isDisabled={!newForm.descripcion.trim()}
+                  isDisabled={!(newForm.descripcion ?? "").trim()}
                 >
                   Crear
                 </Button>

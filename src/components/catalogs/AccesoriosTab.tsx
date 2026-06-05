@@ -13,7 +13,6 @@ import {
   Input,
 } from "@heroui/react";
 import { Trash2, Wrench } from "lucide-react";
-import { useCatalogosStore } from "@/store/catalogosStore";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
 import EditableCell from "@/components/ui/EditableCell";
 import CatalogToolbar from "@/components/ui/CatalogToolbar";
@@ -40,7 +39,10 @@ export default function AccesoriosTab() {
   const { mutateAsync: updateAccesorio } = useUpdateAccesorio();
   const { mutateAsync: deleteAccesorio } = useDeleteAccesorio();
 
-  const toPesos = useCatalogosStore((s) => s.toPesos);
+  const toPesos = (precio: number, monedaId: number) => {
+    const m = monedas.find((x) => x.id === monedaId);
+    return precio * (m?.cotizacion ?? 1);
+  };
 
   const BLANK: Omit<Accesorio, "id"> = {
     cod_parte: "",
@@ -48,6 +50,7 @@ export default function AccesoriosTab() {
     precio: 0,
     unidad: 0,
     id_moneda: monedas[0]?.id ?? 1,
+    bloqueado: false,
   };
 
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -117,7 +120,7 @@ export default function AccesoriosTab() {
 
   // 4. Lógica de Creación
   async function handleNew(close: () => void) {
-    if (!newForm.cod_parte.trim() || !newForm.descri.trim()) return;
+    if (!(newForm.cod_parte ?? "").trim() || !(newForm.descri ?? "").trim()) return;
     try {
       await createAccesorio(newForm);
       setNewForm(BLANK);
@@ -236,7 +239,7 @@ export default function AccesoriosTab() {
                 </td>
                 <td className="px-3 py-1 min-w-[200px]">{cell(a, "descri")}</td>
                 <td className="px-3 py-1.5 text-center">
-                  {unidadBadge(a.unidad)}
+                  {unidadBadge(a.unidad ?? 0)}
                 </td>
                 <td className="px-3 py-1">
                   {cell(a, "precio", {
@@ -247,7 +250,7 @@ export default function AccesoriosTab() {
                 </td>
                 <td className="px-3 py-1.5 text-right">
                   <span className="currency-badge">
-                    {formatPesos(toPesos(a.precio, a.id_moneda))}
+                    {formatPesos(toPesos(a.precio ?? 0, a.id_moneda ?? 1))}
                   </span>
                 </td>
                 <td className="px-2 py-1">

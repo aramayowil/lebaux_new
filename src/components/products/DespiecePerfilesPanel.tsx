@@ -67,8 +67,8 @@ export default function DespiecePerfilesPanel({
     const medidas: Record<number, string> = {};
 
     items.forEach((item) => {
-      cantidades[item.id] = item.formula_cantidad || "";
-      medidas[item.id] = item.formula_perfil || "";
+      cantidades[item.id] = (item as any).formula_cantidad || "";
+      medidas[item.id] = (item as any).formula_perfil || "";
     });
 
     setLocalCantidades(cantidades);
@@ -145,7 +145,7 @@ export default function DespiecePerfilesPanel({
           formula_cantidad: "1",
           formula_perfil: "ancho",
           angulo: "45",
-        },
+        } as any,
       });
     } catch (error) {
       console.error("Error al intentar agregar el perfil:", error);
@@ -219,7 +219,7 @@ export default function DespiecePerfilesPanel({
                       <Select
                         size="sm"
                         selectedKeys={
-                          item.id_perfil ? [String(item.id_perfil)] : []
+                          (item as any).id_perfil ? [String((item as any).id_perfil)] : []
                         }
                         onSelectionChange={(k: Set<string>) => {
                           const selectedValue = [...k][0];
@@ -267,7 +267,7 @@ export default function DespiecePerfilesPanel({
                           }))
                         }
                         onBlur={() =>
-                          handleBlurCantidad(item.id, item.formula_cantidad)
+                          handleBlurCantidad(item.id, (item as any).formula_cantidad)
                         }
                         size="sm"
                       />
@@ -280,7 +280,7 @@ export default function DespiecePerfilesPanel({
                           setLocalMedidas((prev) => ({ ...prev, [item.id]: v }))
                         }
                         onBlur={() =>
-                          handleBlurMedida(item.id, item.formula_perfil)
+                          handleBlurMedida(item.id, (item as any).formula_perfil)
                         }
                         size="sm"
                       />

@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { DespieceCruces } from "@/types";
+import { DespieceCruce } from "@/types";
 
 const TABLE = "despiece_cruces";
 const SQUEMA = "opendata";
 
-export function useDespieceCrucesByCruces(idCruces: number | undefined) {
+export function useDespieceCruceByCruces(idCruces: number | undefined) {
   return useQuery({
     queryKey: [TABLE, "detail_by_cruce", idCruces],
 
@@ -31,11 +31,11 @@ export function useDespieceCrucesByCruces(idCruces: number | undefined) {
   });
 }
 
-export function useAddDespieceCruces() {
+export function useAddDespieceCruce() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (newDespiece: Omit<DespieceCruces, "id">) => {
+    mutationFn: async (newDespiece: Omit<DespieceCruce, "id">) => {
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
@@ -44,7 +44,7 @@ export function useAddDespieceCruces() {
         .single();
 
       if (error) throw error;
-      return data as DespieceCruces;
+      return data as DespieceCruce;
     },
     onSuccess: (newItem) => {
       queryClient.invalidateQueries({
@@ -54,7 +54,7 @@ export function useAddDespieceCruces() {
   });
 }
 
-export function useUpdateDespieceCruces() {
+export function useUpdateDespieceCruce() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -63,7 +63,7 @@ export function useUpdateDespieceCruces() {
       data,
     }: {
       id: number;
-      data: Partial<DespieceCruces>;
+      data: Partial<DespieceCruce>;
     }) => {
       const { data: updated, error } = await supabase
         .schema(SQUEMA)
@@ -74,7 +74,7 @@ export function useUpdateDespieceCruces() {
         .single();
 
       if (error) throw error;
-      return updated as DespieceCruces;
+      return updated as DespieceCruce;
     },
     onSuccess: (updatedItem) => {
       queryClient.invalidateQueries({
@@ -84,7 +84,7 @@ export function useUpdateDespieceCruces() {
   });
 }
 
-export function useDeleteDespieceCruces() {
+export function useDeleteDespieceCruce() {
   const queryClient = useQueryClient();
 
   return useMutation({

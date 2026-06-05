@@ -10,7 +10,6 @@ import {
   ListTree,
   Loader2,
 } from "lucide-react";
-import { useCatalogosStore } from "@/store/catalogosStore";
 import { formatMm, formatPesos, formatKg } from "@/lib/calculoDespiece";
 import type { ResultadoDespiece, NivelCorte } from "@/lib/motorDespiece";
 import clsx from "clsx";
@@ -188,12 +187,10 @@ export default function DespieceView({ resultado }: DespieceViewProps) {
   } = resultado;
 
   console.log(opciones);
-  const {
-    iva,
-    porcentaje_sobre_perfiles: pctPf,
-    porcentaje_sobre_accesorios: pctAc,
-    porcentaje_sobre_vidrios: pctVi,
-  } = opciones;
+  const iva = opciones?.iva ?? 0;
+  const pctPf = opciones?.porcentaje_sobre_perfiles ?? 0;
+  const pctAc = opciones?.porcentaje_sobre_accesorios ?? 0;
+  const pctVi = opciones?.porcentaje_sobre_vidrios ?? 0;
 
   const subtotalPf = costo_perfiles * (1 + pctPf / 100);
   const subtotalAc = costo_accesorios * (1 + pctAc / 100);

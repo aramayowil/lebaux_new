@@ -1,1130 +1,1219 @@
-import { Select, SelectItem, Input, Divider, Button } from "@heroui/react";
-import { Box, Grid2X2, Palette, Plus, Proportions, Trash2 } from "lucide-react";
-import { useProductosStore } from "@/store/productosStore";
-import { useCatalogosStore } from "@/store/catalogosStore";
-import { useObrasStore, type TipologiaConfig } from "@/store/obrasStore";
+import { useState, useEffect } from "react";
+import { Select, SelectItem, Input, Chip, Switch, Button } from "@heroui/react";
+import {
+  ChevronDown,
+  CheckCircle2,
+  Palette,
+  Layers,
+  Grid2X2,
+  AlignCenter,
+  LayoutGrid,
+  Minus,
+  Plus,
+  Waves,
+  ArrowUpDown,
+  ArrowLeftRight,
+} from "lucide-react";
 import clsx from "clsx";
-import { NumberInput } from "@heroui/react";
 
-const TW = {
+import { useTratamientos } from "@/hooks/catalogo/useTratamientos";
+import { useVidrios } from "@/hooks/catalogo/useVidrios";
+import { usePerfiles } from "@/hooks/catalogo/usePerfiles";
+import { useInterioresByHoja } from "@/hooks/productos/useInteriores";
+import { useContravidriosByInterior } from "@/hooks/productos/useContravidrios";
+import { useContravidriosExtByInterior } from "@/hooks/productos/useContravidriosExt";
+import { useVidrioRepartidosByInterior } from "@/hooks/productos/useVidRepartidos";
+import { useTiposInteriores } from "@/hooks/catalogo/useTiposInteriores";
+import { useMosquiterosByHoja } from "@/hooks/productos/useMosquiteros";
+import type { ObraDetalle, Vidrio, Perfil } from "@/types";
+import TipologiaConfigPanelSkeleton from "./skeletons/TipologiaConfigPanelSkeleton";
+
+// ── Estilos ───────────────────────────────────────────────────────────────────
+const SEL = {
   trigger:
-    "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700",
+    "h-8 min-h-8 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-700/60 rounded-lg text-xs",
+  value: "text-xs text-zinc-700 dark:text-zinc-300 font-medium",
 };
-const IW = {
-  inputWrapper:
-    "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700",
-};
+
+const OPCIONES_CAMARA = ["6", "9", "12", "15", "18"];
+type ModoRelleno = "simple" | "dvh" | "revestimiento";
 
 interface Props {
-  id_tipologia: number;
-  ancho: number;
-  alto: number;
+  detalle: ObraDetalle | undefined;
+  upsertDetalle: (fields: Partial<ObraDetalle>) => void;
 }
 
-export default function TipologiaConfigPanel({
-  id_tipologia,
-  ancho,
-  alto,
-}: Props) {
-  const { getConfig, patchConfig, patchModulo, getModulo } = useObrasStore();
-  const {
-    interiores,
-    contravidrios,
-    contravidriosExt,
-    vidRepartidos,
-    getDespieceVRByVR,
-  } = useProductosStore();
-  const { tratamientos, vidrios, tiposInterior } = useCatalogosStore();
+// ── Subcomponentes ────────────────────────────────────────────────────────────
 
-  const cfg = getConfig(id_tipologia);
-  const upd = (data: Partial<TipologiaConfig>) =>
-    patchConfig(id_tipologia, data);
-
-  const interioresDeHoja = interiores.filter((i) => i.id_hoja === cfg.id_hoja);
-  const cvDeInterior = contravidrios.filter(
-    (c) => c.id_interior === cfg.id_interior,
-  );
-  const cveDeInterior = contravidriosExt.filter(
-    (c) => c.id_interior === cfg.id_interior,
-  );
-  const vrDeInterior = vidRepartidos.filter(
-    (v) => v.id_interior === cfg.id_interior,
-  );
-  const tratamiento = tratamientos.find((t) => t.id === cfg.id_tratamiento);
-
-  // Posiciones de cruces variables
-  const posH = cfg.pos_h ?? [];
-  const posV = cfg.pos_v ?? [];
-
-  // Paños resultantes de cruces variables
-  function segmentos(total: number, pos: number[]) {
-    const sorted = [...pos].sort((a, b) => a - b);
-    const pts = [0, ...sorted, total];
-    return pts.slice(1).map((v, i) => v - pts[i]!);
-  }
-
-  const filasAltos = posH.length > 0 ? segmentos(alto, posH) : [alto];
-  const colsAnchos = posV.length > 0 ? segmentos(ancho, posV) : [ancho];
-  const nFilas = filasAltos.length;
-  const nCols = colsAnchos.length;
-  const tieneModulos =
-    cfg.tipo_cruce === 2 && (posH.length > 0 || posV.length > 0);
-
-  function addPosH() {
-    const sugerido =
-      posH.length === 0
-        ? Math.round(alto / 2)
-        : Math.min(
-            posH[posH.length - 1]! + Math.round(alto / (posH.length + 2)),
-            alto - 50,
-          );
-    const next = [...posH, sugerido].sort((a, b) => a - b);
-    upd({ pos_h: next, cruces_h: next.length });
-  }
-  function addPosV() {
-    const sugerido =
-      posV.length === 0
-        ? Math.round(ancho / 2)
-        : Math.min(
-            posV[posV.length - 1]! + Math.round(ancho / (posV.length + 2)),
-            ancho - 50,
-          );
-    const next = [...posV, sugerido].sort((a, b) => a - b);
-    upd({ pos_v: next, cruces_v: next.length });
-  }
-  function setPosH(i: number, val: number) {
-    const next = [...posH];
-    next[i] = val;
-    upd({ pos_h: next, cruces_h: next.length });
-  }
-  function setPosV(i: number, val: number) {
-    const next = [...posV];
-    next[i] = val;
-    upd({ pos_v: next, cruces_v: next.length });
-  }
-  function delPosH(i: number) {
-    const next = posH.filter((_, idx) => idx !== i);
-    upd({
-      pos_h: next,
-      cruces_h: next.length,
-      tipo_cruce: next.length + posV.length > 0 ? 2 : 0,
-    });
-  }
-  function delPosV(i: number) {
-    const next = posV.filter((_, idx) => idx !== i);
-    upd({
-      pos_v: next,
-      cruces_v: next.length,
-      tipo_cruce: posH.length + next.length > 0 ? 2 : 0,
-    });
-  }
-
+function SectionHeader({
+  icon: Icon,
+  label,
+  isOpen,
+  isComplete,
+  badge,
+  onClick,
+}: {
+  icon: any;
+  label: string;
+  isOpen: boolean;
+  isComplete?: boolean;
+  badge?: string;
+  onClick: () => void;
+}) {
   return (
-    <div className="space-y-4 py-1">
-      {/* ── ACABADO ── */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-zinc-400 mb-2">
-          <Palette className="w-4.5 h-4.5" />
-          <p className="font-sans uppercase tracking-widest text-xs font-bold text-zinc-500 dark:text-zinc-400">
-            Acabado del Perfil
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {tratamiento && (
-            <div
-              className="w-8 h-8 rounded-lg border border-zinc-200 dark:border-zinc-600 shrink-0"
-              style={{ background: tratamiento.color }}
-            />
+    <div
+      onClick={onClick}
+      className={clsx(
+        "px-3 py-2.5 flex items-center justify-between cursor-pointer transition-colors select-none",
+        isOpen
+          ? "bg-zinc-50/80 dark:bg-zinc-900/40"
+          : "bg-white hover:bg-zinc-50/40 dark:bg-zinc-950 dark:hover:bg-zinc-900/20",
+      )}
+    >
+      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+        <Icon
+          className={clsx(
+            "w-4 h-4 transition-colors shrink-0",
+            isOpen
+              ? "text-amber-500"
+              : isComplete
+                ? "text-emerald-500 dark:text-emerald-400"
+                : "text-zinc-400",
           )}
-          <Select
-            label="Tratamiento"
-            size="sm"
-            selectedKeys={[String(cfg.id_tratamiento)]}
-            onSelectionChange={(k: any) =>
-              upd({ id_tratamiento: parseInt([...k][0] as string) || 1 })
-            }
-            classNames={TW}
-          >
-            {tratamientos.map((t) => (
-              <SelectItem key={String(t.id)} textValue={t.descripcion}>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-3.5 h-3.5 rounded-full border border-zinc-200 shrink-0"
-                    style={{ background: t.color }}
-                  />
-                  {t.descripcion}
-                </div>
-              </SelectItem>
-            ))}
-          </Select>
-        </div>
-      </div>
-
-      <Divider />
-
-      {/* ── VIDRIO Y REVESTIMIENTOS ── */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-zinc-400 mb-2">
-          <Box className="w-4.5 h-4.5" />
-          <p className="font-sans uppercase tracking-widest text-xs font-bold text-zinc-500 dark:text-zinc-400">
-            Vidrio y Rellenos
-          </p>
-        </div>
-
-        {/* Sin cruces: configuración global */}
-        {cfg.tipo_cruce === 0 && (
-          <div className="space-y-3">
-            {/* Separar vidrios por tipo para mostrar agrupados */}
-            {(() => {
-              const vidrosCrudos = vidrios.filter((v) => {
-                const t = tiposInterior.find((x) => x.id === v.tipo_rev);
-                return !t || t.descripcion.toLowerCase().includes("vidrio");
-              });
-              const revestimientos = vidrios.filter((v) => {
-                const t = tiposInterior.find((x) => x.id === v.tipo_rev);
-                return (
-                  t &&
-                  !t.descripcion.toLowerCase().includes("vidrio") &&
-                  !t.descripcion.toLowerCase().includes("mosquit")
-                );
-              });
-              const telas = vidrios.filter((v) => {
-                const t = tiposInterior.find((x) => x.id === v.tipo_rev);
-                return t && t.descripcion.toLowerCase().includes("mosquit");
-              });
-              return (
-                <>
-                  {/* Vidrio principal */}
-                  <Select
-                    label="Vidrio / material de relleno"
-                    placeholder="Sin asignar"
-                    size="sm"
-                    selectedKeys={cfg.id_vidrio ? [cfg.id_vidrio] : []}
-                    onSelectionChange={(k: any) =>
-                      upd({ id_vidrio: ([...k][0] as string) || null })
-                    }
-                    classNames={TW}
-                  >
-                    {vidrosCrudos.length > 0 && (
-                      <SelectItem
-                        key="__grp_vidrios"
-                        isReadOnly
-                        textValue="Vidrios"
-                      >
-                        <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">
-                          Vidrios
-                        </span>
-                      </SelectItem>
-                    )}
-                    {vidrosCrudos.map((v) => (
-                      <SelectItem
-                        key={v.codigo}
-                        textValue={`${v.descri} ${v.espesor}mm`}
-                      >
-                        <span>{v.descri}</span>
-                        <span className="text-xs text-zinc-400 ml-2">
-                          {v.espesor}mm
-                        </span>
-                      </SelectItem>
-                    ))}
-                    {revestimientos.length > 0 && (
-                      <SelectItem
-                        key="__grp_rev"
-                        isReadOnly
-                        textValue="Revestimientos"
-                      >
-                        <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">
-                          Revestimientos
-                        </span>
-                      </SelectItem>
-                    )}
-                    {revestimientos.map((v) => {
-                      const tipo = tiposInterior.find(
-                        (t) => t.id === v.tipo_rev,
-                      );
-                      return (
-                        <SelectItem
-                          key={v.codigo}
-                          textValue={`${v.descri} ${tipo?.descripcion ?? ""}`}
-                        >
-                          <span>{v.descri}</span>
-                          <span className="text-xs text-zinc-400 ml-2">
-                            {tipo?.descripcion ?? ""}
-                          </span>
-                        </SelectItem>
-                      );
-                    })}
-                    {telas.length > 0 && (
-                      <SelectItem
-                        key="__grp_tela"
-                        isReadOnly
-                        textValue="Telas / Mosquitero"
-                      >
-                        <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">
-                          Telas / Mosquitero
-                        </span>
-                      </SelectItem>
-                    )}
-                    {telas.map((v) => (
-                      <SelectItem key={v.codigo} textValue={v.descri}>
-                        <span>{v.descri}</span>
-                      </SelectItem>
-                    ))}
-                  </Select>
-
-                  {/* Revestimiento interior (vidrio secundario por tipo) */}
-                  {revestimientos.length > 0 && (
-                    <Select
-                      label="Revestimiento interior"
-                      placeholder="Sin revestimiento"
-                      size="sm"
-                      selectedKeys={
-                        cfg.id_revestimiento ? [cfg.id_revestimiento] : []
-                      }
-                      onSelectionChange={(k: any) =>
-                        upd({
-                          id_revestimiento: ([...k][0] as string) || null,
-                        })
-                      }
-                      classNames={TW}
-                    >
-                      <SelectItem key="" textValue="Sin revestimiento">
-                        <span className="text-zinc-400 italic text-xs">
-                          Sin revestimiento
-                        </span>
-                      </SelectItem>
-                      {revestimientos.map((v) => {
-                        const tipo = tiposInterior.find(
-                          (t) => t.id === v.tipo_rev,
-                        );
-                        return (
-                          <SelectItem
-                            key={v.codigo}
-                            textValue={`${v.descri} ${tipo?.descripcion ?? ""}`}
-                          >
-                            <span>{v.descri}</span>
-                            <span className="text-xs text-zinc-400 ml-2">
-                              {tipo?.descripcion ?? ""}
-                            </span>
-                          </SelectItem>
-                        );
-                      })}
-                    </Select>
-                  )}
-                </>
-              );
-            })()}
-
-            {/* Contravidrio interior */}
-            {cfg.id_interior && cvDeInterior.length > 0 && (
-              <Select
-                label="Contravidrio interior"
-                placeholder="Sin asignar"
-                size="sm"
-                selectedKeys={
-                  cfg.id_contravidrio ? [String(cfg.id_contravidrio)] : []
-                }
-                onSelectionChange={(k: any) =>
-                  upd({
-                    id_contravidrio: parseInt([...k][0] as string) || null,
-                  })
-                }
-                classNames={TW}
-              >
-                {cvDeInterior.map((cv) => (
-                  <SelectItem key={String(cv.id)} textValue={cv.descripcion}>
-                    {cv.descripcion}
-                    {cv.predeterminado && (
-                      <span className="text-xs text-zinc-400 ml-1">
-                        (pred.)
-                      </span>
-                    )}
-                  </SelectItem>
-                ))}
-              </Select>
-            )}
-
-            {/* Contravidrio exterior */}
-            {cfg.id_interior && cveDeInterior.length > 0 && (
-              <Select
-                label="Contravidrio exterior"
-                placeholder="Sin asignar"
-                size="sm"
-                selectedKeys={
-                  cfg.id_contravidrio_ext
-                    ? [String(cfg.id_contravidrio_ext)]
-                    : []
-                }
-                onSelectionChange={(k: any) =>
-                  upd({
-                    id_contravidrio_ext: parseInt([...k][0] as string) || null,
-                  })
-                }
-                classNames={TW}
-              >
-                {cveDeInterior.map((cv) => (
-                  <SelectItem key={String(cv.id)} textValue={cv.descripcion}>
-                    {cv.descripcion}
-                    {cv.predeterminado && (
-                      <span className="text-xs text-zinc-400 ml-1">
-                        (pred.)
-                      </span>
-                    )}
-                  </SelectItem>
-                ))}
-              </Select>
-            )}
-
-            {/* Vidrio repartido */}
-            {cfg.id_interior && vrDeInterior.length > 0 && (
-              <Select
-                label="Vidrio repartido"
-                placeholder="Sin vidrio repartido"
-                size="sm"
-                selectedKeys={
-                  cfg.id_vid_repartido ? [String(cfg.id_vid_repartido)] : []
-                }
-                onSelectionChange={(k: any) =>
-                  upd({
-                    id_vid_repartido: parseInt([...k][0] as string) || null,
-                  })
-                }
-                classNames={TW}
-              >
-                {vrDeInterior.map((vr) => {
-                  const despVR = getDespieceVRByVR(vr.id);
-                  return (
-                    <SelectItem key={String(vr.id)} textValue={vr.descripcion}>
-                      <div className="flex flex-col">
-                        <span>{vr.descripcion}</span>
-                        {despVR && (
-                          <span className="text-xs text-zinc-400">
-                            {despVR.formula_ancho_interior} ×{" "}
-                            {despVR.formula_alto_interior}
-                          </span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  );
-                })}
-              </Select>
-            )}
-          </div>
-        )}
-
-        {/* Con cruces: aviso de configuración por módulo */}
-        {cfg.tipo_cruce > 0 && (
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/40 rounded-lg px-3 py-2 leading-relaxed">
-            El vidrio y revestimiento se configura por paño ↓ en la grilla de la
-            sección Cruces.
-          </p>
+        />
+        <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 truncate">
+          {label}
+        </span>
+        {badge && !isOpen && (
+          <span className="text-[10px] font-bold font-mono text-zinc-400 dark:text-zinc-500 truncate max-w-[120px] bg-zinc-100 dark:bg-zinc-900 px-1.5 py-0.5 rounded">
+            {badge}
+          </span>
         )}
       </div>
-
-      <Divider />
-
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-zinc-400 mb-2">
-          <Proportions className="w-4.5 h-4.5" />
-          <p className="font-sans uppercase tracking-widest text-xs font-bold text-zinc-500 dark:text-zinc-400">
-            Opciones
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            size="sm"
-            variant={cfg.con_premarco ? "solid" : "flat"}
-            color={cfg.con_premarco ? "primary" : "default"}
-            onPress={() => upd({ con_premarco: !cfg.con_premarco })}
-            className="text-[10px] h-8"
-          >
-            {cfg.con_premarco ? "Con Premarco" : "Sin Premarco"}
-          </Button>
-          <Button
-            size="sm"
-            variant={cfg.con_tapajuntas ? "solid" : "flat"}
-            color={cfg.con_tapajuntas ? "primary" : "default"}
-            onPress={() => upd({ con_tapajuntas: !cfg.con_tapajuntas })}
-            className="text-[10px] h-8"
-          >
-            {cfg.con_tapajuntas ? "Con Tapajuntas" : "Sin Tapajuntas"}
-          </Button>
-        </div>
-      </div>
-
-      <Divider />
-
-      {/* ── CRUCES ── */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-zinc-400 mb-2">
-          <Grid2X2 className="w-4.5 h-4.5" />
-          <p className="font-sans uppercase tracking-widest text-xs font-bold text-zinc-500 dark:text-zinc-400">
-            Cruces y Divisiones
-          </p>
-        </div>
-        <Select
-          label="Tipo de cruces"
-          size="sm"
-          selectedKeys={[String(cfg.tipo_cruce)]}
-          onSelectionChange={(k: any) => {
-            const tipo = parseInt([...k][0] as string) as 0 | 1 | 2;
-            if (tipo === 0)
-              upd({
-                tipo_cruce: 0,
-                cruces_h: 0,
-                cruces_v: 0,
-                pos_h: [],
-                pos_v: [],
-                modulosConfig: [],
-              });
-            else if (tipo === 1)
-              upd({ tipo_cruce: 1, pos_h: [], pos_v: [], modulosConfig: [] });
-            else upd({ tipo_cruce: 2, cruces_h: 0, cruces_v: 0 });
-          }}
-          classNames={TW}
-        >
-          <SelectItem key="0" textValue="Sin cruces">
-            Sin cruces
-          </SelectItem>
-          <SelectItem key="1" textValue="Centrados (equidistantes)">
-            Centrados (equidistantes)
-          </SelectItem>
-          <SelectItem key="2" textValue="Posición variable (mm)">
-            Posición variable (mm)
-          </SelectItem>
-        </Select>
-
-        {/* ── Centrados ── */}
-        {cfg.tipo_cruce === 1 && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <NumberInput
-                label="Horizontales"
-                min={0}
-                max={10}
-                value={String(cfg.cruces_h)}
-                onValueChange={(v: any) => upd({ cruces_h: parseInt(v) || 0 })}
-                onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
-                  e.target.select()
-                }
-                size="sm"
-                description="Cruces horizontales"
-                classNames={IW}
-              />
-              <NumberInput
-                label="Verticales"
-                min={0}
-                max={10}
-                value={String(cfg.cruces_v)}
-                onValueChange={(v: any) => upd({ cruces_v: parseInt(v) || 0 })}
-                onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
-                  e.target.select()
-                }
-                size="sm"
-                description="Cruces verticales"
-                classNames={IW}
-              />
-            </div>
-
-            {/* Grilla de paños — centrados */}
-            {(cfg.cruces_h > 0 || cfg.cruces_v > 0) && cfg.id_hoja && (
-              <GrillaModulos
-                nFilas={cfg.cruces_h + 1}
-                nCols={cfg.cruces_v + 1}
-                filasAltos={Array.from({ length: cfg.cruces_h + 1 }, () =>
-                  Math.round(alto / (cfg.cruces_h + 1)),
-                )}
-                colsAnchos={Array.from({ length: cfg.cruces_v + 1 }, () =>
-                  Math.round(ancho / (cfg.cruces_v + 1)),
-                )}
-                idTipologia={id_tipologia}
-                interioresDeHoja={interioresDeHoja}
-                interiorDefault={cfg.id_interior}
-                vidrios={vidrios}
-                tiposInterior={tiposInterior}
-                vidrioDefault={cfg.id_vidrio}
-                cvInteriores={cvDeInterior}
-                cvExteriores={cveDeInterior}
-                cvIntDefault={cfg.id_contravidrio}
-                cvExtDefault={cfg.id_contravidrio_ext}
-                getModulo={getModulo}
-                patchModulo={patchModulo}
-              />
-            )}
-          </div>
+      <div className="flex items-center gap-1.5 ml-2">
+        {isComplete && !isOpen && (
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
         )}
-
-        {/* ── Variables ── */}
-        {cfg.tipo_cruce === 2 && (
-          <div className="space-y-3">
-            {/* Horizontales */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
-                  Horizontales ({posH.length})
-                  <span className="font-normal text-zinc-400 ml-1 text-[10px]">
-                    desde abajo
-                  </span>
-                </p>
-                <Button
-                  size="sm"
-                  variant="flat"
-                  startContent={<Plus className="w-3 h-3" />}
-                  onPress={addPosH}
-                  isDisabled={posH.length >= 5}
-                  className="h-6 text-[10px] px-2"
-                >
-                  Agregar
-                </Button>
-              </div>
-              {posH.length === 0 && (
-                <p className="text-[10px] text-zinc-400 italic">
-                  Sin cruces horizontales
-                </p>
-              )}
-              {posH.map((pos, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="text-[10px] text-zinc-400 w-4 text-right">
-                    {i + 1}.
-                  </span>
-                  <Input
-                    size="sm"
-                    type="number"
-                    min={1}
-                    max={alto - 1}
-                    value={String(pos)}
-                    onValueChange={(v: any) => setPosH(i, parseInt(v) || 0)}
-                    onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
-                      e.target.select()
-                    }
-                    endContent={
-                      <span className="text-[10px] text-zinc-400">mm</span>
-                    }
-                    classNames={{
-                      base: "flex-1",
-                      inputWrapper:
-                        "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 h-8",
-                    }}
-                  />
-                  <span className="text-[10px] text-zinc-400 w-9">
-                    ({((pos / alto) * 100).toFixed(0)}%)
-                  </span>
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    variant="light"
-                    color="danger"
-                    onPress={() => delPosH(i)}
-                    className="h-8 w-8 min-w-8"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-
-            {/* Verticales */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
-                  Verticales ({posV.length})
-                  <span className="font-normal text-zinc-400 ml-1 text-[10px]">
-                    desde izquierda
-                  </span>
-                </p>
-                <Button
-                  size="sm"
-                  variant="flat"
-                  startContent={<Plus className="w-3 h-3" />}
-                  onPress={addPosV}
-                  isDisabled={posV.length >= 5}
-                  className="h-6 text-[10px] px-2"
-                >
-                  Agregar
-                </Button>
-              </div>
-              {posV.length === 0 && (
-                <p className="text-[10px] text-zinc-400 italic">
-                  Sin cruces verticales
-                </p>
-              )}
-              {posV.map((pos, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="text-[10px] text-zinc-400 w-4 text-right">
-                    {i + 1}.
-                  </span>
-                  <Input
-                    size="sm"
-                    type="number"
-                    min={1}
-                    max={ancho - 1}
-                    value={String(pos)}
-                    onValueChange={(v: any) => setPosV(i, parseInt(v) || 0)}
-                    onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
-                      e.target.select()
-                    }
-                    endContent={
-                      <span className="text-[10px] text-zinc-400">mm</span>
-                    }
-                    classNames={{
-                      base: "flex-1",
-                      inputWrapper:
-                        "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 h-8",
-                    }}
-                  />
-                  <span className="text-[10px] text-zinc-400 w-9">
-                    ({((pos / ancho) * 100).toFixed(0)}%)
-                  </span>
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    variant="light"
-                    color="danger"
-                    onPress={() => delPosV(i)}
-                    className="h-8 w-8 min-w-8"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-
-            {/* Grilla de paños — variables */}
-            {tieneModulos && cfg.id_hoja && (
-              <GrillaModulos
-                nFilas={nFilas}
-                nCols={nCols}
-                filasAltos={filasAltos}
-                colsAnchos={colsAnchos}
-                idTipologia={id_tipologia}
-                interioresDeHoja={interioresDeHoja}
-                interiorDefault={cfg.id_interior}
-                vidrios={vidrios}
-                tiposInterior={tiposInterior}
-                vidrioDefault={cfg.id_vidrio}
-                cvInteriores={cvDeInterior}
-                cvExteriores={cveDeInterior}
-                cvIntDefault={cfg.id_contravidrio}
-                cvExtDefault={cfg.id_contravidrio_ext}
-                getModulo={getModulo}
-                patchModulo={patchModulo}
-              />
-            )}
-          </div>
-        )}
+        <ChevronDown
+          className={clsx(
+            "w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 shrink-0",
+            isOpen && "rotate-180",
+          )}
+        />
       </div>
-
-      {/* ── NOTAS ── */}
-      <Input
-        label="Notas"
-        value={cfg.notas}
-        onValueChange={(v: string) => upd({ notas: v })}
-        size="sm"
-        placeholder="Observaciones..."
-        classNames={IW}
-      />
     </div>
   );
 }
 
-// ── GrillaModulos ──
-
-interface Vidrio2 {
-  codigo: string;
-  descri: string;
-  espesor: number;
-  tipo_rev: number;
-}
-interface CV2 {
-  id: number;
-  descripcion: string;
-  predeterminado: boolean;
-}
-interface TipoInt2 {
-  id: number;
-  descripcion: string;
-}
-
-function GrillaModulos({
-  nFilas,
-  nCols,
-  filasAltos,
-  colsAnchos,
-  idTipologia,
-  interioresDeHoja,
-  interiorDefault,
-  vidrios,
-  tiposInterior,
-  vidrioDefault,
-  cvInteriores,
-  cvExteriores,
-  cvIntDefault,
-  cvExtDefault,
-  getModulo,
-  patchModulo,
+function RowSelect({
+  label,
+  items,
+  selectedKey,
+  onKeyChange,
+  placeholder,
+  useCode,
 }: {
-  nFilas: number;
-  nCols: number;
-  filasAltos: number[];
-  colsAnchos: number[];
-  idTipologia: number;
-  interioresDeHoja: { id: number; descripcion: string }[];
-  interiorDefault: number | null;
-  vidrios: Vidrio2[];
-  tiposInterior: TipoInt2[];
-  vidrioDefault: string | null;
-  cvInteriores: CV2[];
-  cvExteriores: CV2[];
-  cvIntDefault: number | null;
-  cvExtDefault: number | null;
-  getModulo: (id: number, f: number, c: number) => any;
-  patchModulo: (id: number, f: number, c: number, data: any) => void;
+  label: string;
+  items: Array<{
+    id: number;
+    descri?: string | null;
+    codigo?: string | null;
+    descripcion?: string | null;
+  }>;
+  selectedKey: number | undefined | null;
+  onKeyChange: (key: number | null) => void;
+  placeholder?: string;
+  useCode?: boolean;
 }) {
-  const soloUnInterior = interioresDeHoja.length <= 1;
-  const tieneCV = cvInteriores.length > 0;
-  const tieneCVE = cvExteriores.length > 0;
-
-  const vidrosCrudos = vidrios.filter((v) => {
-    const t = tiposInterior.find((x) => x.id === v.tipo_rev);
-    return !t || t.descripcion.toLowerCase().includes("vidrio");
-  });
-  const revestimientos = vidrios.filter((v) => {
-    const t = tiposInterior.find((x) => x.id === v.tipo_rev);
-    return (
-      t &&
-      !t.descripcion.toLowerCase().includes("vidrio") &&
-      !t.descripcion.toLowerCase().includes("mosquit")
-    );
-  });
+  const hasValue = selectedKey !== null && selectedKey !== undefined;
+  const existsInCatalog =
+    hasValue && items.some((item) => item.id === selectedKey);
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wide">
-          Vidrio y revestimiento por paño
-          <span className="font-normal ml-1 text-zinc-400">
-            — {nFilas} fila{nFilas !== 1 ? "s" : ""} × {nCols} col
-            {nCols !== 1 ? "umnas" : "umna"}
-          </span>
-        </p>
-        <button
-          className="text-[10px] text-zinc-400 hover:text-zinc-600 underline"
-          onClick={() => {
-            for (let f = 0; f < nFilas; f++)
-              for (let c = 0; c < nCols; c++)
-                patchModulo(idTipologia, f, c, {
-                  idInterior: interiorDefault,
-                  idVidrio: vidrioDefault,
-                  idContravidrio: cvIntDefault,
-                  idContravidrioExt: cvExtDefault,
-                });
-          }}
-        >
-          Aplicar globales a todos
-        </button>
-      </div>
-
-      <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-        {Array.from({ length: nFilas }, (_, displayRow) => {
-          const fila = nFilas - 1 - displayRow;
+    <div className="space-y-1">
+      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">
+        {label}
+      </label>
+      <Select
+        size="sm"
+        aria-label={label}
+        placeholder={placeholder}
+        classNames={SEL}
+        selectedKeys={
+          existsInCatalog ? new Set([String(selectedKey)]) : new Set()
+        }
+        onSelectionChange={(keys: React.Key[]) => {
+          const key = Array.from(keys)[0];
+          onKeyChange(key ? Number(key) : null);
+        }}
+      >
+        {items.map((item) => {
+          const text = useCode
+            ? item.codigo
+            : item.descri || item.descripcion || `ID: ${item.id}`;
           return (
-            <div
-              key={fila}
-              className={clsx(
-                "flex divide-x divide-zinc-200 dark:divide-zinc-700",
-                displayRow > 0 &&
-                  "border-t border-zinc-200 dark:border-zinc-700",
-              )}
-            >
-              {/* Etiqueta de fila */}
-              <div className="w-11 shrink-0 flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-800/50 px-1 py-2 gap-0.5">
-                <span className="text-[9px] text-zinc-400 font-mono leading-none">
-                  {Math.round(filasAltos[fila]!)}mm
-                </span>
-                {nFilas > 1 && (
-                  <span className="text-[8px] text-zinc-300 dark:text-zinc-600 leading-none mt-0.5">
-                    F{fila + 1}
-                  </span>
-                )}
-              </div>
-
-              {/* Celdas */}
-              {Array.from({ length: nCols }, (_, col) => {
-                const mod = getModulo(idTipologia, fila, col);
-                const diffInterior =
-                  mod.idInterior && mod.idInterior !== interiorDefault;
-                const diffVidrio =
-                  mod.idVidrio && mod.idVidrio !== vidrioDefault;
-                const diffCV =
-                  mod.idContravidrio && mod.idContravidrio !== cvIntDefault;
-                const diffCVE =
-                  mod.idContravidrioExt &&
-                  mod.idContravidrioExt !== cvExtDefault;
-                const hasDiff = diffInterior || diffVidrio || diffCV || diffCVE;
-                return (
-                  <div
-                    key={col}
-                    className={clsx(
-                      "flex-1 min-w-0 p-1.5 space-y-1",
-                      hasDiff && "bg-amber-50/50 dark:bg-amber-900/10",
-                    )}
-                  >
-                    {/* Header de celda */}
-                    {(nFilas > 1 || nCols > 1) && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-[9px] text-zinc-400 font-mono">
-                          {nCols > 1 ? `C${col + 1}` : ""}
-                          {nCols > 1 && nFilas > 1 ? "·" : ""}
-                          {nFilas > 1 ? `F${fila + 1}` : ""}
-                        </span>
-                        <span className="text-[9px] text-zinc-300 dark:text-zinc-600 font-mono">
-                          {Math.round(colsAnchos[col]!)}mm
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Interior */}
-                    {!soloUnInterior && interioresDeHoja.length > 0 && (
-                      <Select
-                        size="sm"
-                        placeholder="= interior global"
-                        selectedKeys={
-                          mod.idInterior ? [String(mod.idInterior)] : []
-                        }
-                        onSelectionChange={(k: any) => {
-                          const id = parseInt([...k][0] as string) || null;
-                          patchModulo(idTipologia, fila, col, {
-                            idInterior: id,
-                          });
-                        }}
-                        classNames={{
-                          trigger: clsx(
-                            "h-7 min-h-unit-7 text-[10px] border",
-                            diffInterior
-                              ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700"
-                              : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700",
-                          ),
-                        }}
-                      >
-                        <SelectItem key="" textValue="= interior global">
-                          <span className="text-zinc-400 italic text-[10px]">
-                            = interior global
-                          </span>
-                        </SelectItem>
-                        {interioresDeHoja.map((i) => (
-                          <SelectItem
-                            key={String(i.id)}
-                            textValue={i.descripcion}
-                          >
-                            {i.descripcion}
-                            {i.id === interiorDefault && (
-                              <span className="text-[9px] text-zinc-400 ml-1">
-                                (pred.)
-                              </span>
-                            )}
-                          </SelectItem>
-                        ))}
-                      </Select>
-                    )}
-
-                    {/* Vidrio */}
-                    <Select
-                      size="sm"
-                      placeholder="= vidrio global"
-                      selectedKeys={mod.idVidrio ? [mod.idVidrio] : []}
-                      onSelectionChange={(k: any) => {
-                        const val = ([...k][0] as string) || null;
-                        patchModulo(idTipologia, fila, col, { idVidrio: val });
-                      }}
-                      classNames={{
-                        trigger: clsx(
-                          "h-7 min-h-unit-7 text-[10px] border",
-                          diffVidrio
-                            ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700"
-                            : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700",
-                        ),
-                      }}
-                    >
-                      <SelectItem key="" textValue="= vidrio global">
-                        <span className="text-zinc-400 italic text-[10px]">
-                          = vidrio global
-                        </span>
-                      </SelectItem>
-                      {vidrosCrudos.map((v) => (
-                        <SelectItem
-                          key={v.codigo}
-                          textValue={`${v.descri} ${v.espesor}mm`}
-                        >
-                          <span className="text-[10px]">{v.descri}</span>
-                          <span className="text-[9px] text-zinc-400 ml-1">
-                            {v.espesor}mm
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </Select>
-
-                    {/* Revestimiento por paño */}
-                    {revestimientos.length > 0 && (
-                      <Select
-                        size="sm"
-                        placeholder="Sin revestimiento"
-                        selectedKeys={
-                          mod.idRevestimiento ? [mod.idRevestimiento] : []
-                        }
-                        onSelectionChange={(k: any) => {
-                          const val = ([...k][0] as string) || null;
-                          patchModulo(idTipologia, fila, col, {
-                            idRevestimiento: val,
-                          });
-                        }}
-                        classNames={{
-                          trigger:
-                            "h-7 min-h-unit-7 text-[10px] border bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700",
-                        }}
-                      >
-                        <SelectItem key="" textValue="Sin revestimiento">
-                          <span className="text-zinc-400 italic text-[10px]">
-                            Sin revestimiento
-                          </span>
-                        </SelectItem>
-                        {revestimientos.map((v) => {
-                          const tipo = tiposInterior.find(
-                            (t) => t.id === v.tipo_rev,
-                          );
-                          return (
-                            <SelectItem
-                              key={v.codigo}
-                              textValue={`${v.descri} ${tipo?.descripcion ?? ""}`}
-                            >
-                              <span className="text-[10px]">{v.descri}</span>
-                              <span className="text-[9px] text-zinc-400 ml-1">
-                                {tipo?.descripcion ?? ""}
-                              </span>
-                            </SelectItem>
-                          );
-                        })}
-                      </Select>
-                    )}
-
-                    {/* CV Interior */}
-                    {tieneCV && (
-                      <Select
-                        size="sm"
-                        placeholder="= CV global"
-                        selectedKeys={
-                          mod.idContravidrio ? [String(mod.idContravidrio)] : []
-                        }
-                        onSelectionChange={(k: any) => {
-                          const id = parseInt([...k][0] as string) || null;
-                          patchModulo(idTipologia, fila, col, {
-                            idContravidrio: id,
-                          });
-                        }}
-                        classNames={{
-                          trigger: clsx(
-                            "h-7 min-h-unit-7 text-[10px] border",
-                            diffCV
-                              ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700"
-                              : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700",
-                          ),
-                        }}
-                      >
-                        <SelectItem key="" textValue="= CV global">
-                          <span className="text-zinc-400 italic text-[10px]">
-                            = CV Int. global
-                          </span>
-                        </SelectItem>
-                        {cvInteriores.map((cv) => (
-                          <SelectItem
-                            key={String(cv.id)}
-                            textValue={cv.descripcion}
-                          >
-                            <span className="text-[10px]">
-                              {cv.descripcion}
-                            </span>
-                            {cv.predeterminado && (
-                              <span className="text-[9px] text-zinc-400 ml-1">
-                                (pred.)
-                              </span>
-                            )}
-                          </SelectItem>
-                        ))}
-                      </Select>
-                    )}
-
-                    {/* CV Exterior */}
-                    {tieneCVE && (
-                      <Select
-                        size="sm"
-                        placeholder="= CVE global"
-                        selectedKeys={
-                          mod.idContravidrioExt
-                            ? [String(mod.idContravidrioExt)]
-                            : []
-                        }
-                        onSelectionChange={(k: any) => {
-                          const id = parseInt([...k][0] as string) || null;
-                          patchModulo(idTipologia, fila, col, {
-                            idContravidrioExt: id,
-                          });
-                        }}
-                        classNames={{
-                          trigger: clsx(
-                            "h-7 min-h-unit-7 text-[10px] border",
-                            diffCVE
-                              ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700"
-                              : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700",
-                          ),
-                        }}
-                      >
-                        <SelectItem key="" textValue="= CVE global">
-                          <span className="text-zinc-400 italic text-[10px]">
-                            = CV Ext. global
-                          </span>
-                        </SelectItem>
-                        {cvExteriores.map((cv) => (
-                          <SelectItem
-                            key={String(cv.id)}
-                            textValue={cv.descripcion}
-                          >
-                            <span className="text-[10px]">
-                              {cv.descripcion}
-                            </span>
-                            {cv.predeterminado && (
-                              <span className="text-[9px] text-zinc-400 ml-1">
-                                (pred.)
-                              </span>
-                            )}
-                          </SelectItem>
-                        ))}
-                      </Select>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <SelectItem key={String(item.id)} textValue={text || ""}>
+              <span className="text-xs font-medium font-mono">{text}</span>
+            </SelectItem>
           );
         })}
+      </Select>
+    </div>
+  );
+}
 
-        {/* Footer anchos */}
-        <div className="flex divide-x divide-zinc-200 dark:divide-zinc-700 border-t border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/40">
-          <div className="w-11 shrink-0" />
-          {colsAnchos.map((w, col) => (
-            <div key={col} className="flex-1 text-center py-1">
-              <span className="text-[9px] text-zinc-400 font-mono">
-                {Math.round(w)}mm
+function CruceModeSelector({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  const modes = [
+    { id: 0, label: "Liso", icon: AlignCenter },
+    { id: 1, label: "Centrados", icon: ArrowUpDown },
+    { id: 2, label: "Variables", icon: ArrowLeftRight },
+  ];
+
+  return (
+    <div className="grid grid-cols-3 gap-1 bg-zinc-100/80 dark:bg-zinc-900/60 p-0.5 rounded-lg border border-zinc-200/30 dark:border-zinc-800/30">
+      {modes.map((m) => {
+        const Icon = m.icon;
+        const active = value === m.id;
+        return (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => onChange(m.id)}
+            className={clsx(
+              "flex flex-col items-center gap-1 py-1 rounded-md transition-all outline-none",
+              active
+                ? "bg-white dark:bg-zinc-800 shadow-sm text-amber-600 dark:text-amber-400 font-bold"
+                : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-400 font-medium",
+            )}
+          >
+            <Icon className="w-3.5 h-3.5" />
+            <span className="text-[10px] tracking-wide">{m.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function CentradosCounter({
+  label,
+  value,
+  max,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/20 px-2.5 py-1.5 rounded-xl border border-zinc-100 dark:border-zinc-800/30">
+      <span className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
+        {label}
+      </span>
+      <div className="flex items-center gap-2.5">
+        <button
+          type="button"
+          disabled={value <= 0}
+          onClick={() => onChange(value - 1)}
+          className="w-5 h-5 rounded-md flex items-center justify-center bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-500 active:scale-95 disabled:opacity-40 disabled:pointer-events-none transition-all"
+        >
+          <Minus className="w-3 h-3" />
+        </button>
+        <span className="text-xs font-bold font-mono text-zinc-700 dark:text-zinc-300 w-3 text-center">
+          {value}
+        </span>
+        <button
+          type="button"
+          disabled={value >= max}
+          onClick={() => onChange(value + 1)}
+          className="w-5 h-5 rounded-md flex items-center justify-center bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-500 active:scale-95 disabled:opacity-40 disabled:pointer-events-none transition-all"
+        >
+          <Plus className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ModoRellenoTabs({
+  value,
+  onChange,
+}: {
+  value: ModoRelleno;
+  onChange: (v: ModoRelleno) => void;
+}) {
+  const tabs: { v: ModoRelleno; label: string }[] = [
+    { v: "simple", label: "Simple" },
+    { v: "dvh", label: "DVH" },
+    { v: "revestimiento", label: "Revest." },
+  ];
+  return (
+    <div className="flex p-0.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-200/40 dark:border-zinc-700/40">
+      {tabs.map(({ v, label }) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => onChange(v)}
+          className={clsx(
+            "flex-1 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-md transition-all",
+            value === v
+              ? "bg-white dark:bg-zinc-700 text-amber-600 dark:text-amber-400 shadow-sm"
+              : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300",
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Editor de interior para un paño individual ────────────────────────────────
+function InteriorFilaEditor({
+  label,
+  modoRelleno,
+  onModoChange,
+  interiorKey,
+  dvh1Key,
+  dvh2Key,
+  camaraKey,
+  revestKey,
+  direccKey,
+  detalle,
+  vidrios,
+  perfiles,
+  upd,
+}: {
+  label: string;
+  modoRelleno: ModoRelleno;
+  onModoChange: (v: ModoRelleno) => void;
+  interiorKey: keyof ObraDetalle;
+  dvh1Key: keyof ObraDetalle;
+  dvh2Key: keyof ObraDetalle;
+  camaraKey: keyof ObraDetalle;
+  revestKey: keyof ObraDetalle;
+  direccKey: keyof ObraDetalle;
+  detalle: ObraDetalle | undefined;
+  vidrios: Vidrio[];
+  perfiles: Perfil[];
+  upd: (patch: Partial<ObraDetalle>) => void;
+}) {
+  const perfilRevest =
+    perfiles.find((p) => p.nro_perfil === (detalle?.[revestKey] as string)) ??
+    null;
+
+  return (
+    <div className="space-y-2 p-2.5 bg-zinc-50 dark:bg-zinc-900/40 rounded-xl border border-zinc-200/50 dark:border-zinc-800/50">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wide">
+          {label}
+        </span>
+        <ModoRellenoTabs value={modoRelleno} onChange={onModoChange} />
+      </div>
+
+      {/* ── SIMPLE ── */}
+      {modoRelleno === "simple" && (
+        <Select
+          size="sm"
+          aria-label={`Material ${label}`}
+          placeholder="Sin asignar"
+          // selectedKeys={
+          //   detalle?.[interiorKey] != null ? [String(detalle[interiorKey])] : []
+          // }
+          selectedKeys={(() => {
+            const val = detalle?.[interiorKey];
+            if (val == null) return new Set<string>();
+            const key = String(val);
+            return vidrios.some((v) => String(v.id) === key)
+              ? new Set([key])
+              : new Set<string>();
+          })()}
+          onSelectionChange={(k: any) =>
+            upd({ [interiorKey]: ([...k][0] as string) || null } as any)
+          }
+          classNames={SEL}
+        >
+          {vidrios.map((v) => (
+            <SelectItem key={String(v.id)} textValue={v.descri ?? v.codigo}>
+              <div className="flex items-center justify-between w-full">
+                <span className="text-xs">{v.descri ?? v.codigo}</span>
+                <span className="text-[10px] text-zinc-400 font-mono">
+                  {v.espesor}mm
+                </span>
+              </div>
+            </SelectItem>
+          ))}
+        </Select>
+      )}
+
+      {/* ── DVH ── */}
+      {modoRelleno === "dvh" && (
+        <div className="flex flex-col gap-2">
+          {(
+            [
+              { key: dvh1Key, lb: "V. Ext" },
+              { key: dvh2Key, lb: "V. Int" },
+            ] as const
+          ).map(({ key, lb }) => (
+            <div key={String(key)} className="flex items-center gap-2">
+              <span className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider w-10 shrink-0 text-right">
+                {lb}
               </span>
+              <Select
+                size="sm"
+                aria-label={lb}
+                placeholder="Vidrio..."
+                // selectedKeys={
+                //   detalle?.[key] != null ? [String(detalle[key])] : []
+                // }
+                selectedKeys={(() => {
+                  const val = detalle?.[key];
+                  if (val == null) return new Set<string>();
+                  const k2 = String(val);
+                  return vidrios.some((v) => String(v.id) === k2)
+                    ? new Set([k2])
+                    : new Set<string>();
+                })()}
+                onSelectionChange={(k: any) =>
+                  upd({ [key]: ([...k][0] as string) || null } as any)
+                }
+                classNames={SEL}
+              >
+                {vidrios.map((v) => (
+                  <SelectItem
+                    key={String(v.id)}
+                    textValue={v.descri ?? v.codigo}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-xs">{v.descri ?? v.codigo}</span>
+                      <span className="text-[10px] text-zinc-400 font-mono">
+                        {v.espesor}mm
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </Select>
             </div>
           ))}
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider w-10 shrink-0 text-right">
+              Cámara
+            </span>
+            <Select
+              size="sm"
+              aria-label="Espesor cámara"
+              placeholder="Espesor..."
+              // selectedKeys={
+              //   detalle?.[camaraKey] != null ? [String(detalle[camaraKey])] : []
+              // }
+              selectedKeys={(() => {
+                const val = detalle?.[camaraKey];
+                if (val == null) return new Set<string>();
+                const key = String(val);
+                return OPCIONES_CAMARA.includes(key)
+                  ? new Set([key])
+                  : new Set<string>();
+              })()}
+              onSelectionChange={(k: any) =>
+                upd({ [camaraKey]: ([...k][0] as string) || null } as any)
+              }
+              classNames={SEL}
+            >
+              {OPCIONES_CAMARA.map((c) => (
+                <SelectItem key={c} textValue={`${c}mm`}>
+                  <span className="font-mono text-xs">{c} mm</span>
+                </SelectItem>
+              ))}
+            </Select>
+          </div>
+          {detalle?.[dvh1Key] && detalle?.[camaraKey] && detalle?.[dvh2Key] && (
+            <div className="text-center text-[10px] font-mono font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400/80 rounded-lg py-1.5 border border-amber-500/20">
+              Composición:{" "}
+              {vidrios.find((v) => String(v.id) === String(detalle[dvh1Key]))
+                ?.espesor ?? "?"}{" "}
+              / {String(detalle[camaraKey])} /{" "}
+              {vidrios.find((v) => String(v.id) === String(detalle[dvh2Key]))
+                ?.espesor ?? "?"}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── REVESTIMIENTO ── */}
+      {modoRelleno === "revestimiento" && (
+        <div className="flex flex-col gap-2">
+          <Select
+            size="sm"
+            aria-label="Perfil de revestimiento"
+            placeholder="Seleccionar perfil..."
+            // selectedKeys={
+            //   detalle?.[revestKey] ? [detalle[revestKey] as string] : []
+            // }
+            selectedKeys={(() => {
+              const val = detalle?.[revestKey] as string | null | undefined;
+              if (!val) return new Set<string>();
+              return perfiles.some((p) => p.nro_perfil === val)
+                ? new Set([val])
+                : new Set<string>();
+            })()}
+            onSelectionChange={(k: any) =>
+              upd({ [revestKey]: ([...k][0] as string) || null } as any)
+            }
+            classNames={SEL}
+          >
+            {perfiles
+              .filter((p) => !p.bloqueado)
+              .map((p) => (
+                <SelectItem
+                  key={p.nro_perfil}
+                  textValue={`${p.nro_perfil} — ${p.descri}`}
+                >
+                  <div className="flex items-center justify-between w-full gap-2">
+                    <span className="font-mono text-[10px] text-zinc-400 shrink-0">
+                      {p.nro_perfil}
+                    </span>
+                    <span className="flex-1 truncate text-xs">{p.descri}</span>
+                    <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 shrink-0 font-mono">
+                      {p.cubre}mm
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+          </Select>
+          <div className="grid grid-cols-2 gap-1.5">
+            {(["vertical", "horizontal"] as const).map((dir) => (
+              <button
+                key={dir}
+                type="button"
+                onClick={() => upd({ [direccKey]: dir } as any)}
+                className={clsx(
+                  "flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all border",
+                  (detalle?.[direccKey] as string) === dir
+                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                    : "bg-white dark:bg-zinc-900/60 text-zinc-400 border-zinc-200/80 dark:border-zinc-700/60 hover:text-zinc-600",
+                )}
+              >
+                {dir === "vertical" ? (
+                  <ArrowUpDown className="w-3.5 h-3.5" />
+                ) : (
+                  <ArrowLeftRight className="w-3.5 h-3.5" />
+                )}
+                {dir}
+              </button>
+            ))}
+          </div>
+          {perfilRevest && (
+            <div className="flex items-center gap-2 text-[10px] font-mono font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg px-2.5 py-1.5 border border-amber-500/20">
+              <span className="truncate">{perfilRevest.nro_perfil}</span>
+              <span className="text-zinc-300 dark:text-zinc-600">·</span>
+              <span className="capitalize font-sans">
+                {detalle?.[direccKey] as string}
+              </span>
+              <span className="text-zinc-300 dark:text-zinc-600">·</span>
+              <span>{perfilRevest.cubre}mm cubre</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
+
+export default function TipologiaConfigPanel({
+  detalle,
+  upsertDetalle,
+}: Props) {
+  const [openSections, setOpenSections] = useState({
+    acabado: true,
+    estructura: true,
+    cruces: true,
+  });
+
+  const [inputH, setInputH] = useState("");
+  const [inputV, setInputV] = useState("");
+
+  // ── Catálogos ───────────────────────────────────────────────────────────────
+  const { data: tratamientos = [], isLoading: loadingTratamientos } =
+    useTratamientos();
+  const { data: mosquiterosFiltrados = [] } = useMosquiterosByHoja(
+    detalle?.hoja ?? undefined,
+  );
+  const { data: vidrios = [], isLoading: loadingVidrios } = useVidrios();
+  const { data: perfiles = [], isLoading: loadingPerfiles } = usePerfiles();
+  const { data: tiposInterior = [] } = useTiposInteriores();
+
+  const idHoja = detalle?.hoja;
+  const idInterior = detalle?.interior;
+
+  const { data: interiores = [] } = useInterioresByHoja(idHoja ?? undefined);
+  const { data: contravidrios = [] } = useContravidriosByInterior(
+    idInterior ?? undefined,
+  );
+  const { data: contravidriosExt = [] } = useContravidriosExtByInterior(
+    idInterior ?? undefined,
+  );
+  const { data: vidriosRepartidos = [] } = useVidrioRepartidosByInterior(
+    idInterior ?? undefined,
+  );
+
+  // ── Modo relleno ────────────────────────────────────────────────────────────
+  function modoDesdeDB(d: ObraDetalle | undefined): ModoRelleno {
+    if (!d) return "simple";
+    if (d.revest_1) return "revestimiento";
+    if (d.dvh_1_1) return "dvh";
+    return "simple";
+  }
+
+  const [modoRelleno, setModoRelleno] = useState<ModoRelleno>(() =>
+    modoDesdeDB(detalle),
+  );
+  useEffect(() => {
+    setModoRelleno(modoDesdeDB(detalle));
+  }, [detalle?.id, detalle?.revest_1, detalle?.dvh_1_1]);
+
+  // Para cruces con múltiples paños
+  const [interiorIgualParaTodos, setInteriorIgualParaTodos] = useState(true);
+  const [modoRellenoByFila, setModoRellenoByFila] = useState<ModoRelleno[]>([
+    "simple",
+    "simple",
+    "simple",
+    "simple",
+  ]);
+
+  function setModoFilaAt(idx: number, modo: ModoRelleno) {
+    setModoRellenoByFila((prev) => {
+      const next = [...prev] as ModoRelleno[];
+      next[idx] = modo;
+      return next;
+    });
+  }
+
+  // ── upd ─────────────────────────────────────────────────────────────────────
+  const upd = (fields: Partial<ObraDetalle>) => {
+    upsertDetalle({ ...detalle, ...fields });
+  };
+
+  // Limpiar campos del modo anterior al cambiar
+  function cambiarModo(nuevo: ModoRelleno) {
+    setModoRelleno(nuevo);
+    if (nuevo === "simple") {
+      upd({
+        dvh_1_1: null,
+        dvh_1_2: null,
+        camara_1: null,
+        revest_1: null,
+        direcc_1: null,
+      });
+    } else if (nuevo === "dvh") {
+      upd({ revest_1: null, direcc_1: null, interior_1: null });
+    } else {
+      upd({ dvh_1_1: null, dvh_1_2: null, camara_1: null, interior_1: null });
+    }
+  }
+
+  const toggleSection = (key: keyof typeof openSections) =>
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  // ── Vidrios filtrados (solo tipo vidrio) ────────────────────────────────────
+  const vidrosCrudos = vidrios.filter((v) => {
+    const t = tiposInterior.find((x) => x.id === v.tipo_rev);
+    return !t || t.descripcion?.toLowerCase().includes("vidrio");
+  });
+
+  // ── Cruces ──────────────────────────────────────────────────────────────────
+  const tipoCruce = detalle?.tipo_cruce ?? 0;
+
+  const posH = [
+    detalle?.horizontal_1,
+    detalle?.horizontal_2,
+    detalle?.horizontal_3,
+  ].filter((v): v is number => typeof v === "number" && v > 0);
+  const posV = [
+    detalle?.vertical_1,
+    detalle?.vertical_2,
+    detalle?.vertical_3,
+    detalle?.vertical_4,
+    detalle?.vertical_5,
+  ].filter((v): v is number => typeof v === "number" && v > 0);
+
+  const savePosH = (arr: number[]) => {
+    const next = [...arr].sort((a, b) => a - b).slice(0, 3);
+    upd({
+      horizontal_1: next[0] ?? null,
+      horizontal_2: next[1] ?? null,
+      horizontal_3: next[2] ?? null,
+      cant_centrados_horizontal: next.length,
+    });
+  };
+  const savePosV = (arr: number[]) => {
+    const next = [...arr].sort((a, b) => a - b).slice(0, 5);
+    upd({
+      vertical_1: next[0] ?? null,
+      vertical_2: next[1] ?? null,
+      vertical_3: next[2] ?? null,
+      vertical_4: next[3] ?? null,
+      vertical_5: next[4] ?? null,
+      cant_centrados_vertical: next.length,
+    });
+  };
+  const addCruceH = (mm?: number) => {
+    const val = mm ?? Math.round((detalle?.alto ?? 1000) / 2);
+    if (val <= 0 || val >= (detalle?.alto ?? 9999)) return;
+    savePosH([...posH, val]);
+  };
+  const addCruceV = (mm?: number) => {
+    const val = mm ?? Math.round((detalle?.ancho ?? 1000) / 2);
+    if (val <= 0 || val >= (detalle?.ancho ?? 9999)) return;
+    savePosV([...posV, val]);
+  };
+
+  const handleCruceMode = (mode: number) => {
+    if (mode === 0) {
+      upd({
+        tipo_cruce: 0,
+        cant_centrados_horizontal: 0,
+        cant_centrados_vertical: 0,
+        horizontal_1: null,
+        horizontal_2: null,
+        horizontal_3: null,
+        vertical_1: null,
+        vertical_2: null,
+        vertical_3: null,
+        vertical_4: null,
+        vertical_5: null,
+      });
+    } else if (mode === 1) {
+      upd({
+        tipo_cruce: 1,
+        cant_centrados_horizontal: Math.max(
+          1,
+          detalle?.cant_centrados_horizontal ?? 0,
+        ),
+        cant_centrados_vertical: 0,
+        horizontal_1: null,
+        horizontal_2: null,
+        horizontal_3: null,
+        vertical_1: null,
+        vertical_2: null,
+        vertical_3: null,
+        vertical_4: null,
+        vertical_5: null,
+      });
+    } else if (mode === 2) {
+      upd({ tipo_cruce: 2 });
+    }
+  };
+
+  const FILA_FIELDS: Array<{
+    interiorKey: keyof ObraDetalle;
+    dvh1Key: keyof ObraDetalle;
+    dvh2Key: keyof ObraDetalle;
+    camaraKey: keyof ObraDetalle;
+    revestKey: keyof ObraDetalle;
+    direccKey: keyof ObraDetalle;
+  }> = [
+    {
+      interiorKey: "interior_1",
+      dvh1Key: "dvh_1_1",
+      dvh2Key: "dvh_1_2",
+      camaraKey: "camara_1",
+      revestKey: "revest_1",
+      direccKey: "direcc_1",
+    },
+    {
+      interiorKey: "interior_2",
+      dvh1Key: "dvh_2_1",
+      dvh2Key: "dvh_2_2",
+      camaraKey: "camara_2",
+      revestKey: "revest_2",
+      direccKey: "direcc_2",
+    },
+    {
+      interiorKey: "interior_3",
+      dvh1Key: "dvh_3_1",
+      dvh2Key: "dvh_3_2",
+      camaraKey: "camara_3",
+      revestKey: "revest_3",
+      direccKey: "direcc_3",
+    },
+    {
+      interiorKey: "interior_4",
+      dvh1Key: "dvh_4_1",
+      dvh2Key: "dvh_4_2",
+      camaraKey: "camara_4",
+      revestKey: "revest_4",
+      direccKey: "direcc_4",
+    },
+  ];
+
+  const cantPanos =
+    tipoCruce === 0
+      ? 1
+      : tipoCruce === 1
+        ? Math.max(
+            1,
+            ((detalle?.cant_centrados_horizontal ?? 0) + 1) *
+              ((detalle?.cant_centrados_vertical ?? 0) + 1),
+          )
+        : Math.max(1, (posH.length + 1) * (posV.length + 1));
+  const panosCount = Math.min(cantPanos, 4);
+
+  // ── Badges ──────────────────────────────────────────────────────────────────
+  const tSel = tratamientos.find((t) => t.id === detalle?.color);
+  const acabadoBadge = tSel?.descripcion ?? undefined;
+
+  let cruceBadge = "Sin cruces";
+  if (tipoCruce === 1) cruceBadge = "Centrados";
+  if (tipoCruce === 2) {
+    cruceBadge = `Variables (${(posV.length + 1) * (posH.length + 1)} paños)`;
+  }
+
+  // ── Mosquitero ──────────────────────────────────────────────────────────────
+  const mosquiteroAdecuado =
+    mosquiterosFiltrados.find((m) => m.id_hoja === detalle?.hoja) ||
+    mosquiterosFiltrados.find((m) => m.predeterminado) ||
+    mosquiterosFiltrados[0];
+
+  if (!detalle || loadingTratamientos || loadingVidrios || loadingPerfiles) {
+    return <TipologiaConfigPanelSkeleton />;
+  }
+
+  const ancho = detalle.ancho ?? 0;
+  const alto = detalle.alto ?? 0;
+
+  return (
+    <div className="h-full flex flex-col bg-white dark:bg-zinc-950 border-l border-zinc-200/80 dark:border-zinc-800/80 select-none">
+      {/* Encabezado */}
+      <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/10">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <LayoutGrid className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">
+              Componentes
+            </h3>
+            <p className="text-[10px] text-zinc-400 font-medium font-mono">
+              {ancho} × {alto} mm
+            </p>
+          </div>
         </div>
       </div>
 
-      {soloUnInterior && interioresDeHoja.length > 0 && (
-        <p className="text-[10px] text-zinc-400 italic">
-          Interior: todos los paños usarán «{interioresDeHoja[0]?.descripcion}».
-          Agregá más interiores en Productos para poder diferenciarlos.
-        </p>
-      )}
+      <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+        {/* ══════════ ACABADO ══════════ */}
+        <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 overflow-hidden">
+          <SectionHeader
+            icon={Palette}
+            label="Acabado y Terminación"
+            isOpen={openSections.acabado}
+            isComplete={!!detalle.color}
+            badge={acabadoBadge}
+            onClick={() => toggleSection("acabado")}
+          />
+          {openSections.acabado && (
+            <div className="px-3 pb-3 pt-2 space-y-2.5 border-t border-zinc-100 dark:border-zinc-800/60">
+              <RowSelect
+                label="Tratamiento / Color"
+                items={tratamientos}
+                selectedKey={detalle.color}
+                onKeyChange={(k) => upd({ color: k })}
+                placeholder="Seleccione un acabado..."
+              />
+              <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/40 px-2.5 py-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800/40">
+                <div className="flex items-center gap-2">
+                  <Waves className="w-3.5 h-3.5 text-zinc-400" />
+                  <span className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
+                    Mosquitero Incorporado
+                  </span>
+                </div>
+                <Switch
+                  size="sm"
+                  color="warning"
+                  isSelected={
+                    typeof detalle.mosquitero === "number" &&
+                    detalle.mosquitero > 0
+                  }
+                  onValueChange={(v: boolean) =>
+                    upd({
+                      mosquitero: v ? (mosquiteroAdecuado?.id ?? null) : null,
+                    })
+                  }
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ══════════ ESTRUCTURA E INTERIOR ══════════ */}
+        <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 overflow-hidden">
+          <SectionHeader
+            icon={Layers}
+            label="Especificaciones Estructura"
+            isOpen={openSections.estructura}
+            isComplete={!!detalle.interior}
+            badge={undefined}
+            onClick={() => toggleSection("estructura")}
+          />
+          {openSections.estructura && (
+            <div className="px-3 pb-3 pt-2 space-y-2.5 border-t border-zinc-100 dark:border-zinc-800/60">
+              {/* Interior / Acoplado */}
+              <RowSelect
+                label="Componente Interior / Acoplado"
+                items={interiores}
+                selectedKey={detalle.interior}
+                onKeyChange={(k) =>
+                  upd({
+                    interior: k,
+                    contravidrios: null,
+                    contravidrios_ext: null,
+                  })
+                }
+                placeholder="Seleccione interior..."
+              />
+
+              {/* Contravidrios y VR — solo si hay interior seleccionado */}
+              {idInterior && (
+                <>
+                  {contravidrios.length > 0 && (
+                    <RowSelect
+                      label="Contravidrio Interior"
+                      items={contravidrios}
+                      selectedKey={detalle.contravidrios}
+                      onKeyChange={(k) => upd({ contravidrios: k })}
+                      placeholder="Automático por interior..."
+                    />
+                  )}
+                  {contravidriosExt.length > 0 && (
+                    <RowSelect
+                      label="Contravidrio Exterior"
+                      items={contravidriosExt}
+                      selectedKey={detalle.contravidrios_ext}
+                      onKeyChange={(k) => upd({ contravidrios_ext: k })}
+                      placeholder="Automático por interior..."
+                    />
+                  )}
+                  {vidriosRepartidos.length > 0 && (
+                    <RowSelect
+                      label="Vidrio Repartido (VR)"
+                      items={vidriosRepartidos}
+                      selectedKey={detalle.vr_1}
+                      onKeyChange={(k) => upd({ vr_1: k })}
+                      placeholder="Sin vidrio repartido..."
+                    />
+                  )}
+                </>
+              )}
+
+              {/* ── MATERIAL DE RELLENO ── */}
+              <div className="pt-1 border-t border-zinc-100 dark:border-zinc-800/60 space-y-2">
+                {/* Sin cruces: un solo editor */}
+                {tipoCruce === 0 && (
+                  <InteriorFilaEditor
+                    label="Material de relleno"
+                    modoRelleno={modoRelleno}
+                    onModoChange={cambiarModo}
+                    interiorKey="interior_1"
+                    dvh1Key="dvh_1_1"
+                    dvh2Key="dvh_1_2"
+                    camaraKey="camara_1"
+                    revestKey="revest_1"
+                    direccKey="direcc_1"
+                    detalle={detalle}
+                    vidrios={vidrosCrudos}
+                    perfiles={perfiles}
+                    upd={upd}
+                  />
+                )}
+
+                {/* Con cruces: toggle igual/por paño */}
+                {tipoCruce > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">
+                        Material de relleno
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-zinc-400">
+                          {interiorIgualParaTodos
+                            ? "Igual para todos"
+                            : "Por paño"}
+                        </span>
+                        <Switch
+                          size="sm"
+                          isSelected={!interiorIgualParaTodos}
+                          onValueChange={(v: boolean) =>
+                            setInteriorIgualParaTodos(!v)
+                          }
+                          classNames={{
+                            wrapper:
+                              "bg-zinc-200 dark:bg-zinc-700 group-data-[selected=true]:bg-amber-500",
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <LayoutGrid className="w-3 h-3 text-zinc-400" />
+                      <span className="text-[10px] text-zinc-400 font-mono">
+                        {panosCount} paño{panosCount !== 1 ? "s" : ""}
+                        {tipoCruce === 1
+                          ? ` · ${(detalle.cant_centrados_vertical ?? 0) + 1} col × ${(detalle.cant_centrados_horizontal ?? 0) + 1} fil`
+                          : ` · ${posV.length + 1} col × ${posH.length + 1} fil`}
+                      </span>
+                    </div>
+
+                    {interiorIgualParaTodos ? (
+                      <InteriorFilaEditor
+                        label="Todos los paños"
+                        modoRelleno={modoRelleno}
+                        onModoChange={cambiarModo}
+                        interiorKey="interior_1"
+                        dvh1Key="dvh_1_1"
+                        dvh2Key="dvh_1_2"
+                        camaraKey="camara_1"
+                        revestKey="revest_1"
+                        direccKey="direcc_1"
+                        detalle={detalle}
+                        vidrios={vidrosCrudos}
+                        perfiles={perfiles}
+                        upd={(patch) => {
+                          // Replica el valor en todos los paños
+                          const multi: Partial<ObraDetalle> = {};
+                          FILA_FIELDS.slice(0, panosCount).forEach((f) => {
+                            if ("interior_1" in patch)
+                              (multi as any)[f.interiorKey] = (
+                                patch as any
+                              ).interior_1;
+                            if ("dvh_1_1" in patch)
+                              (multi as any)[f.dvh1Key] = (
+                                patch as any
+                              ).dvh_1_1;
+                            if ("dvh_1_2" in patch)
+                              (multi as any)[f.dvh2Key] = (
+                                patch as any
+                              ).dvh_1_2;
+                            if ("camara_1" in patch)
+                              (multi as any)[f.camaraKey] = (
+                                patch as any
+                              ).camara_1;
+                            if ("revest_1" in patch)
+                              (multi as any)[f.revestKey] = (
+                                patch as any
+                              ).revest_1;
+                            if ("direcc_1" in patch)
+                              (multi as any)[f.direccKey] = (
+                                patch as any
+                              ).direcc_1;
+                          });
+                          upd(multi);
+                        }}
+                      />
+                    ) : (
+                      <div className="space-y-2">
+                        {Array.from({ length: panosCount }, (_, idx) => {
+                          const f = FILA_FIELDS[idx];
+                          return (
+                            <InteriorFilaEditor
+                              key={idx}
+                              label={`Paño ${idx + 1}`}
+                              modoRelleno={modoRellenoByFila[idx] ?? "simple"}
+                              onModoChange={(modo) => setModoFilaAt(idx, modo)}
+                              interiorKey={f.interiorKey}
+                              dvh1Key={f.dvh1Key}
+                              dvh2Key={f.dvh2Key}
+                              camaraKey={f.camaraKey}
+                              revestKey={f.revestKey}
+                              direccKey={f.direccKey}
+                              detalle={detalle}
+                              vidrios={vidrosCrudos}
+                              perfiles={perfiles}
+                              upd={upd}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ══════════ CRUCES ══════════ */}
+        <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 overflow-hidden">
+          <SectionHeader
+            icon={Grid2X2}
+            label="Cruces y Divisiones"
+            isOpen={openSections.cruces}
+            isComplete={tipoCruce > 0}
+            badge={cruceBadge}
+            onClick={() => toggleSection("cruces")}
+          />
+          {openSections.cruces && (
+            <div className="px-3 pb-3 pt-2 space-y-3 border-t border-zinc-100 dark:border-zinc-800/60">
+              <CruceModeSelector value={tipoCruce} onChange={handleCruceMode} />
+
+              {/* CENTRADOS */}
+              {tipoCruce === 1 && (
+                <div className="space-y-2 pt-1">
+                  <CentradosCounter
+                    label="Horizontales"
+                    value={detalle.cant_centrados_horizontal ?? 0}
+                    max={3}
+                    onChange={(v) => upd({ cant_centrados_horizontal: v })}
+                  />
+                  <CentradosCounter
+                    label="Verticales"
+                    value={detalle.cant_centrados_vertical ?? 0}
+                    max={5}
+                    onChange={(v) => upd({ cant_centrados_vertical: v })}
+                  />
+                </div>
+              )}
+
+              {/* VARIABLES */}
+              {tipoCruce === 2 && (
+                <div className="space-y-3 pt-1 animate-fadeIn">
+                  {/* Horizontales */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">
+                      Divisiones Horizontales (Máx. 3)
+                    </label>
+                    <div className="flex gap-1.5">
+                      <Input
+                        size="sm"
+                        type="number"
+                        placeholder={`Ej: ${Math.round(alto / 2)} mm`}
+                        value={inputH}
+                        onValueChange={setInputH}
+                        className="flex-1"
+                        classNames={{ input: "text-xs font-mono" }}
+                      />
+                      <Button
+                        size="sm"
+                        isIconOnly
+                        color="warning"
+                        variant="flat"
+                        isDisabled={posH.length >= 3}
+                        onPress={() => {
+                          const num = parseInt(inputH);
+                          addCruceH(isNaN(num) ? undefined : num);
+                          setInputH("");
+                        }}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {posH.length === 0 ? (
+                        <span className="text-[10px] text-zinc-400 italic">
+                          Ningún corte horizontal.
+                        </span>
+                      ) : (
+                        posH.map((pos, idx) => (
+                          <Chip
+                            key={idx}
+                            size="sm"
+                            variant="flat"
+                            color="warning"
+                            className="font-mono text-[10px]"
+                            onClose={() =>
+                              savePosH(posH.filter((_, i) => i !== idx))
+                            }
+                          >
+                            H: {pos}mm
+                          </Chip>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Verticales */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">
+                      Divisiones Verticales (Máx. 5)
+                    </label>
+                    <div className="flex gap-1.5">
+                      <Input
+                        size="sm"
+                        type="number"
+                        placeholder={`Ej: ${Math.round(ancho / 2)} mm`}
+                        value={inputV}
+                        onValueChange={setInputV}
+                        className="flex-1"
+                        classNames={{ input: "text-xs font-mono" }}
+                      />
+                      <Button
+                        size="sm"
+                        isIconOnly
+                        color="warning"
+                        variant="flat"
+                        isDisabled={posV.length >= 5}
+                        onPress={() => {
+                          const num = parseInt(inputV);
+                          addCruceV(isNaN(num) ? undefined : num);
+                          setInputV("");
+                        }}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {posV.length === 0 ? (
+                        <span className="text-[10px] text-zinc-400 italic">
+                          Ningún corte vertical.
+                        </span>
+                      ) : (
+                        posV.map((pos, idx) => (
+                          <Chip
+                            key={idx}
+                            size="sm"
+                            variant="flat"
+                            color="warning"
+                            className="font-mono text-[10px]"
+                            onClose={() =>
+                              savePosV(posV.filter((_, i) => i !== idx))
+                            }
+                          >
+                            V: {pos}mm
+                          </Chip>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {(posH.length > 0 || posV.length > 0) && (
+                    <div className="flex items-center gap-2 text-[10px] text-zinc-400 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg px-2 py-1.5 border border-zinc-100 dark:border-zinc-800/40">
+                      <LayoutGrid className="w-3 h-3 text-amber-500" />
+                      <span className="font-mono">
+                        Malla: {posV.length + 1} × {posH.length + 1} ={" "}
+                        {(posV.length + 1) * (posH.length + 1)} paños fijos
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {tipoCruce === 0 && (
+                <p className="text-[10px] text-zinc-400 italic text-center py-1">
+                  Un solo paño entero sin divisiones transversales
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

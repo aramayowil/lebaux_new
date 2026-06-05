@@ -1,11 +1,17 @@
-import { TipologiaConfig } from "@/store/obrasStore";
+import { ObraDetalle } from "@/types";
 import { Group, Line, Rect } from "react-konva";
+
+// 🌟 Extendemos la interfaz localmente para este componente gráfico
+interface ObraDetalleCanvas extends ObraDetalle {
+  pos_h?: number[];
+  pos_v?: number[];
+}
 
 interface RenderCrucesProps {
   width: number;
   height: number;
-  config: TipologiaConfig;
-  espesoPerfilCruce: number; // Ahora este es el ancho total
+  config: ObraDetalleCanvas; // 🌟 Usamos la interfaz extendida
+  espesoPerfilCruce: number;
   contravidrioThick: number;
   colors: {
     colorDeAluminio: string;
@@ -23,16 +29,19 @@ const RenderCruces = ({
   contravidrioThick,
   colors,
 }: RenderCrucesProps) => {
-  const tipoDeCruce = config.tipo_cruce;
+  const tipoDeCruce = config.tipo_cruce ?? 0;
   if (tipoDeCruce === 0) return null;
 
-  // 1. OBTENCIÓN DE POSICIONES
   let posV: number[] = [];
   let posH: number[] = [];
 
   if (tipoDeCruce === 1) {
-    const cantV = Number(config?.cruces_v) || 0;
-    const cantH = Number(config?.cruces_h) || 0;
+    const cantV =
+      Number(config?.cant_centrados_vertical ?? (config as any)?.cruces_v) || 0;
+    const cantH =
+      Number(config?.cant_centrados_horizontal ?? (config as any)?.cruces_h) ||
+      0;
+
     posV = Array.from({ length: cantV }).map(
       (_, i) => (width / (cantV + 1)) * (i + 1),
     );
@@ -40,6 +49,7 @@ const RenderCruces = ({
       (_, i) => (height / (cantH + 1)) * (i + 1),
     );
   } else {
+    // 🌟 Al estar declarado opcional en la interfaz extendida superior, añadimos un fallback '?? []'
     posV = Array.isArray(config.pos_v) ? config.pos_v : [];
     posH = (Array.isArray(config.pos_h) ? config.pos_h : []).map(
       (p) => height - p,
@@ -51,10 +61,9 @@ const RenderCruces = ({
 
   return (
     <Group>
-      {/* 1. RENDERIZADO HORIZONTAL (PASANTE/CONTINUO) */}
+      {/* 1. RENDERIZADO HORIZONTAL */}
       {posH.map((hY, i) => (
         <Group key={`h-pasante-${i}`}>
-          {/* Bisel Superior Pasante */}
           <Line
             points={[
               0,
@@ -71,8 +80,6 @@ const RenderCruces = ({
             stroke={colors.contorno}
             strokeWidth={1}
           />
-
-          {/* Cuerpo Central Horizontal */}
           <Rect
             x={0}
             y={hY - espesoPerfilCruce / 2}
@@ -82,8 +89,6 @@ const RenderCruces = ({
             stroke={colors.contorno}
             strokeWidth={1}
           />
-
-          {/* Bisel Inferior Pasante */}
           <Line
             points={[
               0,
@@ -103,7 +108,7 @@ const RenderCruces = ({
         </Group>
       ))}
 
-      {/* 2. RENDERIZADO VERTICAL (SEGMENTADO) */}
+      {/* 2. RENDERIZADO VERTICAL */}
       {posV.map((vX, vIdx) => (
         <Group key={`v-columna-${vIdx}`}>
           {tramosH.map((_, tIdx) => {
@@ -112,7 +117,6 @@ const RenderCruces = ({
             const startY = tramosH[tIdx];
             const endY = tramosH[tIdx + 1];
 
-            // Determinamos el inicio y fin real para que corte en el perfil horizontal
             const yActual = startY === 0 ? 0 : startY + espesoPerfilCruce / 2;
             const yFinal =
               endY === height ? height : endY - espesoPerfilCruce / 2;
@@ -122,17 +126,14 @@ const RenderCruces = ({
 
             return (
               <Group key={`v-seg-${vIdx}-${tIdx}`}>
-                {/* Bisel Izquierdo Segmentado */}
                 <Line
                   points={[
                     vX - espesoPerfilCruce / 2,
                     yActual,
                     vX - espesoPerfilCruce / 2 - contravidrioThick,
-                    yActual +
-                      (startY === 0 ? contravidrioThick : contravidrioThick),
+                    yActual + contravidrioThick,
                     vX - espesoPerfilCruce / 2 - contravidrioThick,
-                    yFinal -
-                      (endY === height ? contravidrioThick : contravidrioThick),
+                    yFinal - contravidrioThick,
                     vX - espesoPerfilCruce / 2,
                     yFinal,
                   ]}
@@ -141,8 +142,6 @@ const RenderCruces = ({
                   stroke={colors.contorno}
                   strokeWidth={1}
                 />
-
-                {/* Rectángulo Central Vertical */}
                 <Rect
                   x={vX - espesoPerfilCruce / 2}
                   y={yActual}
@@ -152,18 +151,14 @@ const RenderCruces = ({
                   stroke={colors.contorno}
                   strokeWidth={0.5}
                 />
-
-                {/* Bisel Derecho Segmentado */}
                 <Line
                   points={[
                     vX + espesoPerfilCruce / 2,
                     yActual,
                     vX + espesoPerfilCruce / 2 + contravidrioThick,
-                    yActual +
-                      (startY === 0 ? contravidrioThick : contravidrioThick),
+                    yActual + contravidrioThick,
                     vX + espesoPerfilCruce / 2 + contravidrioThick,
-                    yFinal -
-                      (endY === height ? contravidrioThick : contravidrioThick),
+                    yFinal - contravidrioThick,
                     vX + espesoPerfilCruce / 2,
                     yFinal,
                   ]}

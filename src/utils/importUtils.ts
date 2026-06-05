@@ -29,7 +29,7 @@ export function procesarYCompararDatos(
 
     // Buscar si ya existe en la base de datos por nro_perfil
     const original = dbPerfiles.find(
-      (p) => p.nro_perfil.toLowerCase() === nro_perfil.toLowerCase()
+      (p) => p.nro_perfil?.toLowerCase() === nro_perfil.toLowerCase()
     );
 
     const id_linea = lineaMap[rawLinea.toLowerCase()] || 0;

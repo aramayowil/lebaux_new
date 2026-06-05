@@ -18,6 +18,7 @@ import {
   Tooltip,
   Chip,
   Alert,
+  Textarea,
 } from "@heroui/react";
 import {
   Plus,
@@ -28,6 +29,7 @@ import {
   Phone,
   MapPin,
   AlertTriangle,
+  FileText,
 } from "lucide-react";
 
 import type { Obra } from "@/types";
@@ -39,7 +41,7 @@ import {
 } from "@/hooks/obra/useObras";
 
 // ── 1. IMPORTACIÓN DEL NUEVO ESQUELETO MÓDULAR ────────────────────────────────
-import ObrasPageSkeleton from "@/components/obras/skeletons/obrasSkeleton";
+import ObrasPageSkeleton from "@/components/obras/skeletons/ObrasPageSkeleton";
 
 import { toastSuccess } from "@/utils/toasts/ToastSuccess";
 import { toastError } from "@/utils/toasts/ToastError";
@@ -51,6 +53,18 @@ const inputBase = {
   inputWrapper:
     "border-zinc-200 dark:border-zinc-800 focus-within:!border-amber-500 rounded-xl bg-white dark:bg-zinc-900/50",
   input: "text-sm text-zinc-800 dark:text-zinc-200",
+};
+
+// Estado inicial alineado con la interfaz Obra (Omit<Obra, "id">)
+const initialFormState: Omit<Obra, "id"> = {
+  apellido: "",
+  nombre: "",
+  detalles: "",
+  numero: null,
+  archivo: "",
+  direccion: "",
+  telefono: "",
+  ciudad: "",
 };
 
 export default function ObrasPage() {
@@ -80,33 +94,25 @@ export default function ObrasPage() {
   const [search, setSearch] = useState("");
   const [selectedObraId, setSelectedObraId] = useState<number | null>(null);
   const [editing, setEditing] = useState<Obra | null>(null);
-  const [form, setForm] = useState<Omit<Obra, "id">>({
-    apellido: "",
-    nombre: "",
-    direccion: "",
-    telefono: "",
-    ciudad: "",
-  });
+
+  // Usamos el estado inicial actualizado
+  const [form, setForm] = useState<Omit<Obra, "id">>(initialFormState);
 
   // --- Filtering ---
   const filtered = useMemo(() => {
     if (!obras) return [];
     const s = search.toLowerCase();
     return obras.filter((o) =>
-      `${o.apellido} ${o.nombre} ${o.ciudad}`.toLowerCase().includes(s),
+      `${o.apellido} ${o.nombre} ${o.ciudad} ${o.numero || ""}`
+        .toLowerCase()
+        .includes(s),
     );
   }, [obras, search]);
 
   // --- Handlers ---
   const openNew = () => {
     setEditing(null);
-    setForm({
-      apellido: "",
-      nombre: "",
-      direccion: "",
-      telefono: "",
-      ciudad: "",
-    });
+    setForm(initialFormState);
     onOpen();
   };
 
@@ -122,7 +128,7 @@ export default function ObrasPage() {
   };
 
   const handleSave = async () => {
-    if (!form.apellido.trim()) {
+    if (!form.apellido?.trim()) {
       toastError({
         title: "Validación",
         description: "El apellido es obligatorio",
@@ -160,7 +166,6 @@ export default function ObrasPage() {
     }
   };
 
-  // ── 2. SE REMOVIÓ EL CONDICIONAL SUPERIOR DE `isLoading` ───────────────────
   if (loadError)
     return (
       <div className="max-w-5xl mx-auto p-8">
@@ -174,7 +179,7 @@ export default function ObrasPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-12 px-4 md:px-0 animate-in fade-in duration-400">
-      {/* ── Header Consistente (Siempre renderizado y visible) ────────────── */}
+      {/* ── Header Consistente ────────────── */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/50">
         <div>
           <h2 className="text-3xl font-extrabold text-zinc-800 dark:text-zinc-100 tracking-tight">
@@ -182,7 +187,6 @@ export default function ObrasPage() {
           </h2>
           <p className="text-zinc-400 text-xs mt-1 flex items-center gap-1.5 font-medium">
             {isLoading ? (
-              // Indicador mínimo y sutil para la métrica mientras resuelve la consulta de base de datos
               <span className="inline-block w-20 h-3 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
             ) : (
               <>
@@ -203,7 +207,7 @@ export default function ObrasPage() {
         </Button>
       </header>
 
-      {/* ── 3. INYECCIÓN DEL NUEVO ESQUELETO ABAJO DEL HEADER ───────────────── */}
+      {/* ── Esqueleto / Tabla ───────────────── */}
       {isLoading ? (
         <ObrasPageSkeleton />
       ) : (
@@ -212,7 +216,7 @@ export default function ObrasPage() {
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
             <Input
               isClearable
-              placeholder="Buscar cliente o ciudad..."
+              placeholder="Buscar cliente, ciudad, N°..."
               startContent={<Search className="w-4 h-4 text-zinc-400" />}
               value={search}
               onValueChange={setSearch}
@@ -259,7 +263,7 @@ export default function ObrasPage() {
               <TableHeader>
                 <TableColumn>Cliente</TableColumn>
                 <TableColumn>Ubicación</TableColumn>
-                <TableColumn>Contacto</TableColumn>
+                <TableColumn>Contacto / Info</TableColumn>
                 <TableColumn className="w-32 text-center">Acciones</TableColumn>
               </TableHeader>
 
@@ -291,12 +295,17 @@ export default function ObrasPage() {
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
                           <span className="text-[11px] font-mono font-bold text-amber-600 dark:text-amber-400">
-                            {obra.apellido.charAt(0).toUpperCase()}
+                            {obra.apellido?.charAt(0).toUpperCase() ?? ""}
                           </span>
                         </div>
                         <div>
                           <p className="font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-tight text-xs">
                             {obra.apellido}
+                            {obra.numero && (
+                              <span className="ml-2 text-zinc-400 text-[10px] font-mono">
+                                #{obra.numero}
+                              </span>
+                            )}
                           </p>
                           <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
                             {obra.nombre}
@@ -323,16 +332,29 @@ export default function ObrasPage() {
                       </div>
                     </TableCell>
 
-                    {/* Contacto */}
+                    {/* Contacto e Información adicional */}
                     <TableCell className="py-3.5">
-                      <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
-                        <Phone
-                          className="w-3.5 h-3.5 shrink-0 text-zinc-400"
-                          strokeWidth={1.5}
-                        />
-                        <span className="text-xs font-mono font-medium">
-                          {obra.telefono || "Sin teléfono"}
-                        </span>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
+                          <Phone
+                            className="w-3.5 h-3.5 shrink-0 text-zinc-400"
+                            strokeWidth={1.5}
+                          />
+                          <span className="text-xs font-mono font-medium truncate">
+                            {obra.telefono || "Sin teléfono"}
+                          </span>
+                        </div>
+                        {obra.archivo && (
+                          <div className="flex items-center gap-2 text-zinc-400 dark:text-zinc-500">
+                            <FileText
+                              className="w-3.5 h-3.5 shrink-0 text-zinc-400"
+                              strokeWidth={1.5}
+                            />
+                            <span className="text-[10px] truncate max-w-[150px]">
+                              {obra.archivo}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </TableCell>
 
@@ -400,7 +422,7 @@ export default function ObrasPage() {
         isOpen={isOpen}
         onOpenChange={onOpenChange}
         backdrop="blur"
-        size="xl"
+        size="2xl"
         classNames={{
           base: "bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800 rounded-2xl",
           header: "border-b border-zinc-100 dark:border-zinc-800/60",
@@ -420,15 +442,16 @@ export default function ObrasPage() {
                 </p>
               </ModalHeader>
 
-              <ModalBody className="py-6 gap-4">
+              <ModalBody className="py-6 gap-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Datos Principales */}
                   <Input
                     label="Apellido"
                     labelPlacement="outside"
                     placeholder="Ej: García"
                     variant="bordered"
                     isRequired
-                    value={form.apellido}
+                    value={form.apellido ?? ""}
                     onValueChange={(v: string) =>
                       setForm({ ...form, apellido: v })
                     }
@@ -439,9 +462,48 @@ export default function ObrasPage() {
                     labelPlacement="outside"
                     placeholder="Ej: Carlos"
                     variant="bordered"
-                    value={form.nombre}
+                    value={form.nombre ?? ""}
                     onValueChange={(v: string) =>
                       setForm({ ...form, nombre: v })
+                    }
+                    classNames={inputBase}
+                  />
+
+                  {/* Nuevos Campos */}
+                  <Input
+                    label="Número"
+                    labelPlacement="outside"
+                    placeholder="Nº de obra"
+                    variant="bordered"
+                    type="number"
+                    value={form.numero?.toString() ?? ""}
+                    onValueChange={(v: string) =>
+                      setForm({ ...form, numero: v ? Number(v) : null })
+                    }
+                    classNames={inputBase}
+                  />
+                  <Input
+                    label="Archivo"
+                    labelPlacement="outside"
+                    placeholder="Ej: plano_v2.pdf"
+                    variant="bordered"
+                    value={form.archivo ?? ""}
+                    onValueChange={(v: string) =>
+                      setForm({ ...form, archivo: v })
+                    }
+                    classNames={inputBase}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Teléfono"
+                    labelPlacement="outside"
+                    placeholder="Ej: 381 555-0100"
+                    variant="bordered"
+                    value={form.telefono ?? ""}
+                    onValueChange={(v: string) =>
+                      setForm({ ...form, telefono: v })
                     }
                     classNames={inputBase}
                   />
@@ -450,34 +512,40 @@ export default function ObrasPage() {
                     labelPlacement="outside"
                     placeholder="Ej: Tucumán"
                     variant="bordered"
-                    value={form.ciudad}
+                    value={form.ciudad ?? ""}
                     onValueChange={(v: string) =>
                       setForm({ ...form, ciudad: v })
                     }
                     classNames={inputBase}
                   />
-                  <Input
-                    label="Teléfono"
-                    labelPlacement="outside"
-                    placeholder="Ej: 381 555-0100"
-                    variant="bordered"
-                    value={form.telefono}
-                    onValueChange={(v: string) =>
-                      setForm({ ...form, telefono: v })
-                    }
-                    classNames={inputBase}
-                  />
                 </div>
+
                 <Input
                   label="Dirección completa"
                   labelPlacement="outside"
                   placeholder="Calle, número, barrio..."
                   variant="bordered"
-                  value={form.direccion}
+                  value={form.direccion ?? ""}
                   onValueChange={(v: string) =>
                     setForm({ ...form, direccion: v })
                   }
                   classNames={inputBase}
+                />
+
+                <Textarea
+                  label="Detalles y Observaciones"
+                  labelPlacement="outside"
+                  placeholder="Añadir notas relevantes sobre el proyecto..."
+                  variant="bordered"
+                  value={form.detalles ?? ""}
+                  onValueChange={(v: string) =>
+                    setForm({ ...form, detalles: v })
+                  }
+                  classNames={{
+                    ...inputBase,
+                    input:
+                      "text-sm text-zinc-800 dark:text-zinc-200 resize-none min-h-[80px]",
+                  }}
                 />
               </ModalBody>
 

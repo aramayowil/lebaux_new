@@ -21,6 +21,23 @@ export function useHojas() {
   });
 }
 
+export function useHojasById(id: number) {
+  return useQuery({
+    queryKey: [TABLE, "id", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .schema(SQUEMA)
+        .from(TABLE)
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) throw error;
+      return data as Hoja;
+    },
+  });
+}
+
 // --- 2. EDITAR / ACTUALIZAR ---
 export function useUpdateHoja() {
   const queryClient = useQueryClient();

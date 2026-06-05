@@ -274,7 +274,7 @@ export default function DespieceAccesoriosPanel({
                         }))
                       }
                       onBlur={() =>
-                        handleBlurCantidad(item.id, item.formula_cantidad)
+                        handleBlurCantidad(item.id, item.formula_cantidad ?? "")
                       }
                       size="sm"
                     />

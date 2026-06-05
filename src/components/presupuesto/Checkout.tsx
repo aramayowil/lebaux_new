@@ -45,9 +45,9 @@ export default function Checkout({ obra, tipologias }: CheckoutProps) {
     // Esto asume un costo base por área o un valor provisorio.
     return tipologias.reduce((acc, t) => {
       // Mock precio: $100,000 por metro cuadrado
-      const areaM2 = (t.ancho / 1000) * (t.alto / 1000);
+      const areaM2 = ((t.ancho ?? 0) / 1000) * ((t.alto ?? 0) / 1000);
       const precioUnitario = areaM2 * 100000;
-      return acc + precioUnitario * t.cantidad;
+      return acc + precioUnitario * (t.cantidad ?? 0);
     }, 0);
   }, [tipologias]);
 

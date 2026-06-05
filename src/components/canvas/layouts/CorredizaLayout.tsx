@@ -1,6 +1,5 @@
 import { Group, Rect, Arrow } from "react-konva";
-import { ObraTipologia } from "@/types";
-import { TipologiaConfig } from "@/store/obrasStore";
+import { ObraTipologia, ObraDetalle } from "@/types"; // 🌟 Importamos ObraDetalle
 import { RenderFoco } from "../components/FocoRender";
 import RenderCruces from "../components/RenderCruces";
 import { RenderContravidrio } from "../components/RenderContravidrios";
@@ -10,8 +9,8 @@ interface LayoutProps {
   drawH: number;
   scale: number;
   tipologia: ObraTipologia;
-  config: TipologiaConfig;
-  hojas: number;
+  config: ObraDetalle; // 🌟 Cambiado de TipologiaConfig a ObraDetalle
+  hojas: number; // Recibe el número de hojas (ej: 2, 3, 4, 6)
   isFocused: boolean;
   focusedHoja: number;
   colors: {
@@ -21,6 +20,11 @@ interface LayoutProps {
     lineasCotas: string;
   };
   onContextMenu?: (e: any, index: number) => void;
+
+  // 🌟 Agregados como opcionales para absorber las propiedades calculadas de commonProps sin romper TS
+  posH?: number[];
+  posV?: number[];
+  espesoPerfil?: number;
 }
 
 export const CorredizaLayout = ({
@@ -36,35 +40,23 @@ export const CorredizaLayout = ({
 }: LayoutProps) => {
   const { colorDeAluminio, vidrio, contorno, lineasCotas } = colors;
 
-  // --- CONFIGURACIÓN DE+ PERFILES TÉCNICOS ---
-
-  // --- PERFILES DE MARCO
+  // --- CONFIGURACIÓN DE PERFILES TÉCNICOS ---
   const jambaMarco = (36 - 6) * scale;
   const umbralYdintelMarco = 49.1 * scale;
-
-  //--PERFILES DE HOJA
   const paranteHoja = 53.5 * scale;
   const zocaloYcabezalHoja = 52.4 * scale;
-
-  //PERFIL DE CRUCE
   const perfilDeCruce = 55 * scale;
-
-  //GROSOR DE CONTRAVIDRIO
   const contravidrioThick = 17 * scale;
 
-  // El espacio interno es el ancho total menos las jambas del marco
   const marcoHojaW = drawW - jambaMarco * 2;
-  const marcoHojaH = drawH - umbralYdintelMarco * 2; // Menos dintel y umbral del marco
+  const marcoHojaH = drawH - umbralYdintelMarco * 2;
 
-  //Accesorios
   const cierreLateralW = 20 * scale;
   const cierreLateralH = 80 * scale;
-
   const colorCierreLateral = "#595959";
 
   const RenderMarcoPrincipal = () => (
     <Group>
-      {/* Jamba izquierda */}
       <Rect
         width={jambaMarco}
         height={drawH}
@@ -72,7 +64,6 @@ export const CorredizaLayout = ({
         stroke={contorno}
         strokeWidth={1}
       />
-      {/* Jamba Derecha */}
       <Rect
         x={drawW - jambaMarco}
         width={jambaMarco}
@@ -81,7 +72,6 @@ export const CorredizaLayout = ({
         stroke={contorno}
         strokeWidth={1}
       />
-      {/* Dintel (Superior) */}
       <Rect
         x={jambaMarco}
         y={0}
@@ -91,7 +81,6 @@ export const CorredizaLayout = ({
         stroke={contorno}
         strokeWidth={1}
       />
-      {/* Umbral (Inferior) */}
       <Rect
         x={jambaMarco}
         y={drawH - umbralYdintelMarco}
@@ -117,12 +106,10 @@ export const CorredizaLayout = ({
     hojaH: number;
     direction: "left" | "right" | "center";
   }) => {
-    // Posición X: Cada hoja se desplaza su ancho menos el solape (jamba de hoja)
     const xPos = index * (hojaW - paranteHoja);
 
     return (
       <Group x={xPos}>
-        {/* CABEZAL DE HOJA */}
         <Rect
           x={paranteHoja}
           width={hojaW - paranteHoja * 2}
@@ -131,8 +118,6 @@ export const CorredizaLayout = ({
           stroke={contorno}
           strokeWidth={1}
         />
-
-        {/* PARANTE LATERAL  */}
         <Rect
           width={paranteHoja}
           height={hojaH}
@@ -140,7 +125,6 @@ export const CorredizaLayout = ({
           stroke={contorno}
           strokeWidth={1}
         />
-        {/* PARANTE CENTRAL DE HOJA */}
         <Rect
           x={hojaW - paranteHoja}
           width={paranteHoja}
@@ -149,7 +133,6 @@ export const CorredizaLayout = ({
           stroke={contorno}
           strokeWidth={1}
         />
-        {/* ZÓCALO DE HOJA */}
         <Rect
           x={paranteHoja}
           y={hojaH - zocaloYcabezalHoja}
@@ -160,7 +143,6 @@ export const CorredizaLayout = ({
           strokeWidth={1}
         />
 
-        {/* ÁREA DE VIDRIO E INTERACCIÓN */}
         <Group x={paranteHoja} y={zocaloYcabezalHoja}>
           {RenderInteriorHoja(
             hojaW - paranteHoja * 2,
@@ -170,7 +152,6 @@ export const CorredizaLayout = ({
           )}
         </Group>
 
-        {/*CIERRRE LATERAL*/}
         {direction === "left" && (
           <Rect
             x={paranteHoja - cierreLateralW}
@@ -182,7 +163,6 @@ export const CorredizaLayout = ({
             strokeWidth={1}
           />
         )}
-
         {direction === "right" && (
           <Rect
             x={hojaW - paranteHoja}
@@ -206,9 +186,6 @@ export const CorredizaLayout = ({
   ) => {
     const estaEnFoco = isFocused && focusedHoja === index;
     const centerY = interiorH / 2;
-
-    // Definimos los puntos de inicio y fin para que la flecha esté centrada
-    // Usamos un 40% del ancho del vidrio (del 30% al 70%)
     const xStart = interiorW * 0.3;
     const xEnd = interiorW * 0.7;
 
@@ -221,11 +198,7 @@ export const CorredizaLayout = ({
           stroke={contorno}
           strokeWidth={1}
         />
-
-        {/* FOCO DE SELECCIÓN */}
         {estaEnFoco && <RenderFoco width={interiorW} height={interiorH} />}
-
-        {/* CONTRAVIDRIO */}
         <RenderContravidrio
           hojaW={interiorW}
           hojaH={interiorH}
@@ -233,7 +206,7 @@ export const CorredizaLayout = ({
           colors={colors}
         />
 
-        {/* DIVISIONES DINÁMICAS */}
+        {/* 🌟 DIVISIONES DINÁMICAS (Se le pasa config que ahora es ObraDetalle) */}
         <RenderCruces
           width={interiorW}
           height={interiorH}
@@ -243,14 +216,12 @@ export const CorredizaLayout = ({
           colors={colors}
         />
 
-        {/* Flechas de Apertura */}
         <Arrow
           points={
             direction === "right"
-              ? [xEnd, centerY, xStart, centerY] // De derecha a izquierda
-              : [xStart, centerY, xEnd, centerY] // De izquierda a derecha (usado para right y center)
+              ? [xEnd, centerY, xStart, centerY]
+              : [xStart, centerY, xEnd, centerY]
           }
-          // El truco: si es center, dibuja punta al inicio Y al final
           pointerAtBeginning={direction === "center"}
           fill={lineasCotas}
           stroke={lineasCotas}
@@ -263,14 +234,18 @@ export const CorredizaLayout = ({
     );
   };
 
-  const renderPorCasos = (hojas: number, width: number, height: number) => {
-    const hojaW = (width + (hojas - 1) * paranteHoja) / hojas;
+  const renderPorCasos = (
+    hojasCount: number,
+    width: number,
+    height: number,
+  ) => {
+    const hojaW = (width + (hojasCount - 1) * paranteHoja) / hojasCount;
     const hojaWpara4 = width / 2;
     const widthHoja4 = (hojaWpara4 + paranteHoja) / 2;
-
     const hojasWpara3 = width / 2;
     const widthHoja3 = (hojasWpara3 + 2 * paranteHoja) / 3;
-    switch (hojas) {
+
+    switch (hojasCount) {
       case 2:
         return (
           <>
@@ -325,42 +300,40 @@ export const CorredizaLayout = ({
         return (
           <>
             <Group>
-              <Group>
-                <RenderHojaIndividual
-                  key={0}
-                  id={0}
-                  index={0}
-                  hojaW={widthHoja4}
-                  hojaH={height}
-                  direction="left"
-                />
-                <RenderHojaIndividual
-                  key={1}
-                  id={1}
-                  index={1}
-                  hojaW={widthHoja4}
-                  hojaH={height}
-                  direction="right"
-                />
-              </Group>
-              <Group x={width / 2}>
-                <RenderHojaIndividual
-                  key={2}
-                  id={2}
-                  index={0}
-                  hojaW={widthHoja4}
-                  hojaH={height}
-                  direction="left"
-                />
-                <RenderHojaIndividual
-                  key={3}
-                  id={3}
-                  index={1}
-                  hojaW={widthHoja4}
-                  hojaH={height}
-                  direction="right"
-                />
-              </Group>
+              <RenderHojaIndividual
+                key={0}
+                id={0}
+                index={0}
+                hojaW={widthHoja4}
+                hojaH={height}
+                direction="left"
+              />
+              <RenderHojaIndividual
+                key={1}
+                id={1}
+                index={1}
+                hojaW={widthHoja4}
+                hojaH={height}
+                direction="right"
+              />
+            </Group>
+            <Group x={width / 2}>
+              <RenderHojaIndividual
+                key={2}
+                id={2}
+                index={0}
+                hojaW={widthHoja4}
+                hojaH={height}
+                direction="left"
+              />
+              <RenderHojaIndividual
+                key={3}
+                id={3}
+                index={1}
+                hojaW={widthHoja4}
+                hojaH={height}
+                direction="right"
+              />
             </Group>
           </>
         );
@@ -368,58 +341,56 @@ export const CorredizaLayout = ({
         return (
           <>
             <Group>
-              <Group>
-                <RenderHojaIndividual
-                  key={0}
-                  id={0}
-                  index={0}
-                  hojaW={widthHoja3}
-                  hojaH={height}
-                  direction="left"
-                />
-                <RenderHojaIndividual
-                  key={1}
-                  id={1}
-                  index={1}
-                  hojaW={widthHoja3}
-                  hojaH={height}
-                  direction="center"
-                />
-                <RenderHojaIndividual
-                  key={2}
-                  id={2}
-                  index={2}
-                  hojaW={widthHoja3}
-                  hojaH={height}
-                  direction="right"
-                />
-              </Group>
-              <Group x={width / 2}>
-                <RenderHojaIndividual
-                  key={3}
-                  id={3}
-                  index={0}
-                  hojaW={widthHoja3}
-                  hojaH={height}
-                  direction="left"
-                />
-                <RenderHojaIndividual
-                  key={4}
-                  id={4}
-                  index={1}
-                  hojaW={widthHoja3}
-                  hojaH={height}
-                  direction="center"
-                />
-                <RenderHojaIndividual
-                  key={5}
-                  id={5}
-                  index={2}
-                  hojaW={widthHoja3}
-                  hojaH={height}
-                  direction="right"
-                />
-              </Group>
+              <RenderHojaIndividual
+                key={0}
+                id={0}
+                index={0}
+                hojaW={widthHoja3}
+                hojaH={height}
+                direction="left"
+              />
+              <RenderHojaIndividual
+                key={1}
+                id={1}
+                index={1}
+                hojaW={widthHoja3}
+                hojaH={height}
+                direction="center"
+              />
+              <RenderHojaIndividual
+                key={2}
+                id={2}
+                index={2}
+                hojaW={widthHoja3}
+                hojaH={height}
+                direction="right"
+              />
+            </Group>
+            <Group x={width / 2}>
+              <RenderHojaIndividual
+                key={3}
+                id={3}
+                index={0}
+                hojaW={widthHoja3}
+                hojaH={height}
+                direction="left"
+              />
+              <RenderHojaIndividual
+                key={4}
+                id={4}
+                index={1}
+                hojaW={widthHoja3}
+                hojaH={height}
+                direction="center"
+              />
+              <RenderHojaIndividual
+                key={5}
+                id={5}
+                index={2}
+                hojaW={widthHoja3}
+                hojaH={height}
+                direction="right"
+              />
             </Group>
           </>
         );
@@ -431,7 +402,6 @@ export const CorredizaLayout = ({
   return (
     <Group>
       <RenderMarcoPrincipal />
-      {/* Mapeo de hojas */}
       <Group x={jambaMarco} y={umbralYdintelMarco}>
         {renderPorCasos(hojas, marcoHojaW, marcoHojaH)}
       </Group>

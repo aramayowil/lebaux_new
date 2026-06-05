@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import type { Cruces } from "@/types";
+import type { Cruce } from "@/types";
 
 const TABLE = "cruces";
 const SQUEMA = "opendata";
@@ -17,17 +17,17 @@ export function useCrucesByInterior(idInterior: number | undefined) {
         .eq("id_interior", idInterior);
 
       if (error) throw error;
-      return data as Cruces[];
+      return data as Cruce[];
     },
     enabled: !!idInterior,
   });
 }
 
-export function useAddCruces() {
+export function useAddCruce() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (newCruce: Omit<Cruces, "id">) => {
+    mutationFn: async (newCruce: Omit<Cruce, "id">) => {
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
@@ -36,7 +36,7 @@ export function useAddCruces() {
         .single();
 
       if (error) throw error;
-      return data as Cruces;
+      return data as Cruce;
     },
     onSuccess: (newItem) => {
       queryClient.invalidateQueries({
@@ -47,11 +47,11 @@ export function useAddCruces() {
   });
 }
 
-export function useUpdateCruces() {
+export function useUpdateCruce() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<Cruces> }) => {
+    mutationFn: async ({ id, data }: { id: number; data: Partial<Cruce> }) => {
       const { data: updated, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
@@ -61,7 +61,7 @@ export function useUpdateCruces() {
         .single();
 
       if (error) throw error;
-      return updated as Cruces;
+      return updated as Cruce;
     },
     onSuccess: (updatedItem) => {
       queryClient.invalidateQueries({
@@ -72,7 +72,7 @@ export function useUpdateCruces() {
   });
 }
 
-export function useDeleteCruces() {
+export function useDeleteCruce() {
   const queryClient = useQueryClient();
 
   return useMutation({

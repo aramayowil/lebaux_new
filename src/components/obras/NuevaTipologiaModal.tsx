@@ -1,11 +1,4 @@
-/**
- * NuevaTipologiaModal
- * Wizard de 2 pasos:
- *   1. Datos básicos (descripción, ancho, alto, cantidad)
- *   2. Producto: extrusora → línea → tipo → apertura → marco → hoja → interior
- */
-
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Modal,
   ModalContent,
@@ -18,7 +11,6 @@ import {
   SelectItem,
 } from "@heroui/react";
 import { CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
-import type { TipologiaConfig } from "@/store/obrasStore";
 import { useLineas } from "@/hooks/catalogo/useLineas";
 import { useTipos } from "@/hooks/obra/useTipos";
 import { useExtrusoras } from "@/hooks/catalogo/useExtrusoras";
@@ -27,6 +19,7 @@ import { useHojas } from "@/hooks/productos/useHojas";
 import { useMarcos } from "@/hooks/productos/useMarco";
 import { useProductos } from "@/hooks/productos/useProducto";
 import { NumberInput } from "@heroui/react";
+import { Progress } from "@heroui/react";
 
 const TW_SM = {
   trigger:
@@ -43,7 +36,13 @@ interface Props {
       alto: number;
       cantidad: number;
     },
-    config: Partial<TipologiaConfig>,
+    config: {
+      id_tipo?: number | null;
+      id_producto?: number | null;
+      id_marco?: number | null;
+      id_hoja?: number | null;
+      id_interior?: number | null;
+    },
   ) => void;
 }
 
@@ -154,18 +153,20 @@ export default function NuevaTipologiaModal({
     setSel((prev) => ({ ...prev, ...data }));
   }
 
-  // Listas derivadas protegidas (usan arrays garantizados por el fallback)
-  const extrusorasActivas = extrusoras.filter((e) => !e.bloqueado);
-  const primeraExtrusora = extrusorasActivas[0] || null;
-
+  // Listas derivadas protegidas
   const lineasDeExtrusora = sel.idExtrusora
     ? lineas.filter((l) => l.id_extrusora === sel.idExtrusora && !l.bloqueado)
     : [];
 
-  const primeraLineaDeExtrusora = lineasDeExtrusora[0] || null;
-
+  // Filtro adaptativo inteligente para evitar listas vacías de entrada
   const productosFiltrados = productos.filter((p) => {
-    if (sel.idLinea && p.id_linea !== sel.idLinea) return false;
+    if (sel.idLinea) {
+      if (p.id_linea !== sel.idLinea) return false;
+    } else if (sel.idExtrusora) {
+      // Si seleccionó extrusora pero aún no una línea, muestra productos de todas las líneas de esa extrusora
+      const lineasIds = lineasDeExtrusora.map((l) => l.id);
+      if (p.id_linea && !lineasIds.includes(p.id_linea)) return false;
+    }
     if (sel.idTipo && p.id_tipo !== sel.idTipo) return false;
     return true;
   });
@@ -182,6 +183,8 @@ export default function NuevaTipologiaModal({
 
   // Manejadores en cascada usando opcional chaining (?.) seguro
   function handleProductoChange(id: number | null) {
+    const prod = id ? productos.find((x) => x.id === id) : null;
+
     const m = id
       ? (marcos.find((x) => x.id_producto === id && x.predeterminado) ??
         marcos.find((x) => x.id_producto === id))
@@ -194,11 +197,14 @@ export default function NuevaTipologiaModal({
       ? (interiores.find((x) => x.id_hoja === h.id && x.predeterminado) ??
         interiores.find((x) => x.id_hoja === h.id))
       : null;
+
+    const t = prod?.id_tipo ? tipos.find((x) => x.id === prod.id_tipo) : null;
     upSel({
       idProducto: id,
       idMarco: m?.id ?? null,
       idHoja: h?.id ?? null,
       idInterior: i?.id ?? null,
+      idTipo: t?.id ?? null,
     });
   }
 
@@ -224,11 +230,12 @@ export default function NuevaTipologiaModal({
 
   function handleCrear(onClose: () => void) {
     if (!form.descripcion.trim()) return;
-    const config: Partial<TipologiaConfig> = {
+    const config = {
       id_producto: sel.idProducto,
       id_marco: sel.idMarco,
       id_hoja: sel.idHoja,
       id_interior: sel.idInterior,
+      id_tipo: sel.idTipo,
     };
     onCrear(form, config);
     // Reset
@@ -252,23 +259,6 @@ export default function NuevaTipologiaModal({
   const hojaSelObj = sel.idHoja ? hojas.find((h) => h.id === sel.idHoja) : null;
   const paso1Valido = form.descripcion.trim().length > 0;
 
-  // 1. Sincronizar primera Extrusora
-  useEffect(() => {
-    if (sel.idExtrusora === null && primeraExtrusora) {
-      upSel({ idExtrusora: primeraExtrusora.id });
-    }
-  }, [sel.idExtrusora, primeraExtrusora]);
-
-  // 2. Sincronizar primera Línea (reacciona automáticamente si cambia la extrusora)
-  useEffect(() => {
-    if (
-      sel.idExtrusora !== null &&
-      sel.idLinea === null &&
-      primeraLineaDeExtrusora
-    ) {
-      upSel({ idLinea: primeraLineaDeExtrusora.id });
-    }
-  }, [sel.idExtrusora, sel.idLinea, primeraLineaDeExtrusora]);
   return (
     <Modal
       isOpen={isOpen}
@@ -279,8 +269,19 @@ export default function NuevaTipologiaModal({
       <ModalContent>
         {(onClose: () => void) => (
           <>
-            <ModalHeader className="font-sans text-base flex items-center gap-3">
-              Nueva tipología
+            <ModalHeader className="flex flex-col gap-2 pb-3 mb-1">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sm text-zinc-800 dark:text-zinc-100">
+                  {paso === 1 ? "Nueva tipología" : "Seleccionar producto"}
+                </span>
+              </div>
+              <Progress
+                aria-label="Paso del formulario"
+                value={paso === 1 ? 50 : 100}
+                color="warning"
+                size="sm"
+                className="w-full"
+              />
             </ModalHeader>
 
             <ModalBody className="gap-4 pb-2">
@@ -340,12 +341,12 @@ export default function NuevaTipologiaModal({
                     />
                     <NumberInput
                       label="Alto"
-                      type="number"
-                      value={String(form.alto)}
-                      onValueChange={(v: string) =>
-                        setForm((f) => ({ ...f, alto: parseInt(v) || 600 }))
+                      value={form.alto}
+                      onValueChange={(v: number) =>
+                        setForm((f) => ({ ...f, alto: v || 0 }))
                       }
                       size="sm"
+                      minValue={1}
                       endContent={
                         <span className="text-[11px] text-steel-400">mm</span>
                       }
@@ -355,14 +356,17 @@ export default function NuevaTipologiaModal({
                     />
                     <NumberInput
                       label="Cantidad"
-                      type="number"
-                      value={String(form.cantidad)}
-                      onValueChange={(v: string) =>
-                        setForm((f) => ({ ...f, cantidad: parseInt(v) || 1 }))
+                      value={form.cantidad}
+                      onValueChange={(v: number) =>
+                        setForm((f) => ({ ...f, cantidad: v || 1 }))
                       }
                       size="sm"
+                      minValue={1}
                       startContent={
                         <span className="text-[11px] text-steel-400">×</span>
+                      }
+                      onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
+                        e.target.select()
                       }
                     />
                   </div>
@@ -393,7 +397,8 @@ export default function NuevaTipologiaModal({
                           sel.idExtrusora ? [String(sel.idExtrusora)] : []
                         }
                         onSelectionChange={(k: any) => {
-                          const id = parseInt([...k][0] as string) || null;
+                          const first = [...k][0];
+                          const id = first ? parseInt(first as string) : null;
                           upSel({
                             idExtrusora: id,
                             idLinea: null,
@@ -409,7 +414,7 @@ export default function NuevaTipologiaModal({
                           .filter((e) => e && !e.bloqueado)
                           .map((e) => (
                             <SelectItem key={String(e.id)}>
-                              {e.extrusora}
+                              {e.extrusora ?? "Sin nombre"}
                             </SelectItem>
                           ))}
                       </Select>
@@ -421,7 +426,8 @@ export default function NuevaTipologiaModal({
                         isDisabled={!sel.idExtrusora}
                         selectedKeys={sel.idLinea ? [String(sel.idLinea)] : []}
                         onSelectionChange={(k: any) => {
-                          const id = parseInt([...k][0] as string) || null;
+                          const first = [...k][0];
+                          const id = first ? parseInt(first as string) : null;
                           upSel({
                             idLinea: id,
                             idProducto: null,
@@ -433,7 +439,9 @@ export default function NuevaTipologiaModal({
                         classNames={TW_SM}
                       >
                         {lineasDeExtrusora.map((l) => (
-                          <SelectItem key={String(l.id)}>{l.linea}</SelectItem>
+                          <SelectItem key={String(l.id)}>
+                            {l.linea ?? "Sin línea"}
+                          </SelectItem>
                         ))}
                       </Select>
 
@@ -443,7 +451,8 @@ export default function NuevaTipologiaModal({
                         size="sm"
                         selectedKeys={sel.idTipo ? [String(sel.idTipo)] : []}
                         onSelectionChange={(k: any) => {
-                          const id = parseInt([...k][0] as string) || null;
+                          const first = [...k][0];
+                          const id = first ? parseInt(first as string) : null;
                           upSel({
                             idTipo: id,
                             idProducto: null,
@@ -456,7 +465,7 @@ export default function NuevaTipologiaModal({
                       >
                         {tipos.map((t) => (
                           <SelectItem key={String(t.id)}>
-                            {t.forma_tipo}
+                            {t.forma_tipo ?? "Sin tipo"}
                           </SelectItem>
                         ))}
                       </Select>
@@ -495,11 +504,11 @@ export default function NuevaTipologiaModal({
                                 )}
                                 <div>
                                   <p className="font-medium text-xs leading-tight">
-                                    {p.descripcion}
+                                    {p.descripcion ?? "Sin descripción"}
                                   </p>
                                   {tipo && (
                                     <p className="text-[10px] text-steel-400 mt-0.5">
-                                      {tipo.forma_tipo}
+                                      {tipo.forma_tipo ?? "Sin tipo"}
                                     </p>
                                   )}
                                 </div>
@@ -534,9 +543,9 @@ export default function NuevaTipologiaModal({
                           {marcosDeProducto.map((m) => (
                             <SelectItem
                               key={String(m.id)}
-                              textValue={m.descripcion}
+                              textValue={m.descripcion ?? ""}
                             >
-                              {m.descripcion}
+                              {m.descripcion ?? "Sin descripción"}
                               {m.predeterminado && (
                                 <span className="text-[10px] text-steel-400 ml-1">
                                   (pred.)
@@ -561,9 +570,10 @@ export default function NuevaTipologiaModal({
                           {hojasDeMarco.map((h) => (
                             <SelectItem
                               key={String(h.id)}
-                              textValue={h.descripcion}
+                              textValue={h.descripcion ?? ""}
                             >
-                              {h.descripcion} (×{h.cantidad})
+                              {h.descripcion ?? "Sin descripción"} (×
+                              {h.cantidad})
                             </SelectItem>
                           ))}
                         </Select>
@@ -585,9 +595,9 @@ export default function NuevaTipologiaModal({
                           {interioresDeHoja.map((i) => (
                             <SelectItem
                               key={String(i.id)}
-                              textValue={i.descripcion}
+                              textValue={i.descripcion ?? ""}
                             >
-                              {i.descripcion}
+                              {i.descripcion ?? "Sin descripción"}
                               {i.predeterminado && (
                                 <span className="text-[10px] text-steel-400 ml-1">
                                   (pred.)
@@ -603,8 +613,10 @@ export default function NuevaTipologiaModal({
                         <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-2">
                           <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
                           <span>
-                            <strong>{productoSel.descripcion}</strong> ·{" "}
-                            {hojaSelObj.cantidad} hoja
+                            <strong>
+                              {productoSel.descripcion ?? "Sin descripción"}
+                            </strong>{" "}
+                            · {hojaSelObj.cantidad} hoja
                             {hojaSelObj.cantidad !== 1 ? "s" : ""} ·{" "}
                             {form.ancho}×{form.alto} mm
                           </span>
@@ -624,16 +636,21 @@ export default function NuevaTipologiaModal({
               )}
             </ModalBody>
 
-            <ModalFooter className="gap-2">
+            <ModalFooter className="gap-2 pt-3 mt-2 border-t border-zinc-100 dark:border-zinc-800">
               {paso === 1 ? (
                 <>
-                  <Button variant="light" size="md" onPress={onClose}>
+                  <Button
+                    variant="bordered"
+                    size="sm"
+                    className="h-8 px-3 text-xs font-semibold border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 rounded-lg"
+                    onPress={onClose}
+                  >
                     Cancelar
                   </Button>
                   <Button
-                    color="primary"
-                    size="md"
+                    size="sm"
                     isDisabled={!paso1Valido}
+                    className="h-8 px-4 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-40"
                     onPress={() => setPaso(2)}
                   >
                     Siguiente →
@@ -641,14 +658,18 @@ export default function NuevaTipologiaModal({
                 </>
               ) : (
                 <>
-                  <Button variant="light" size="md" onPress={() => setPaso(1)}>
+                  <Button
+                    variant="bordered"
+                    size="sm"
+                    className="h-8 px-3 text-xs font-semibold border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 rounded-lg"
+                    onPress={() => setPaso(1)}
+                  >
                     ← Atrás
                   </Button>
-
                   <Button
-                    color="primary"
-                    size="md"
+                    size="sm"
                     isDisabled={!sel.idProducto || isLoadingGlobal}
+                    className="h-8 px-4 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-40"
                     onPress={() => handleCrear(onClose)}
                   >
                     Crear tipología

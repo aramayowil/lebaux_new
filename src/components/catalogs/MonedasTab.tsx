@@ -57,7 +57,7 @@ export default function MonedasTab() {
   );
 
   async function handleNew(close: () => void) {
-    if (!newForm.descripcion.trim()) return;
+    if (!(newForm.descripcion ?? "").trim()) return;
     try {
       await createMoneda(newForm as Moneda);
       setNewForm({ descripcion: "", cotizacion: 1, bloqueado: false });
@@ -179,7 +179,7 @@ export default function MonedasTab() {
                     )}
                   </td>
                   <td className="px-4 py-1.5 text-right">
-                    {m.cotizacion > 1 && (
+                    {m.cotizacion !== undefined && m.cotizacion !== null && m.cotizacion > 1 && (
                       <span className="text-xs text-steel-500 font-mono">
                         1 unidad = {formatPesos(m.cotizacion)}
                       </span>
@@ -266,7 +266,7 @@ export default function MonedasTab() {
                 <Button
                   color="primary"
                   onPress={() => handleNew(onClose)}
-                  isDisabled={!newForm.descripcion.trim()}
+                  isDisabled={!(newForm.descripcion ?? "").trim()}
                 >
                   Crear
                 </Button>

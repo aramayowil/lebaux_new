@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useLocation } from "react-router-dom";
+import { Outlet, NavLink } from "react-router-dom";
 import { useState } from "react";
 import {
   Home,
@@ -10,15 +10,13 @@ import {
   FolderUp,
   Sun,
   Moon,
-  ChevronsUpDown,
   User,
   CreditCard,
   LogOut,
   HelpCircle,
   MessageSquare,
-  PanelRightClose,
-  PanelRightOpen,
   ShieldCheck,
+  PanelLeftOpen,
 } from "lucide-react";
 import {
   Tooltip,
@@ -31,7 +29,6 @@ import {
 } from "@heroui/react";
 import { useTheme } from "@/hooks/useTheme";
 import clsx from "clsx";
-import { Button } from "@heroui/react";
 import { useAuth } from "@/context/AuthContext";
 
 const NAV = [
@@ -40,16 +37,14 @@ const NAV = [
   { to: "/productos", icon: Layers, label: "Productos" },
   { to: "/catalogos", icon: BookOpen, label: "Catálogos" },
   { to: "/importar", icon: FolderUp, label: "Importar" },
-  { to: "/usuarios", icon: ShieldCheck, label: "Usuarios y Permisos" },
+  { to: "/usuarios", icon: ShieldCheck, label: "Usuarios" },
   { to: "/opciones", icon: Settings, label: "Opciones" },
 ];
 
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const { dark, toggle } = useTheme();
-  const location = useLocation();
   const [hasNotifications, setHasNotifications] = useState(true);
-
   const { user: supabaseUser, logout } = useAuth();
 
   const user = {
@@ -58,56 +53,87 @@ export default function AppLayout() {
       supabaseUser?.email?.split("@")[0] ||
       "Usuario",
     email: supabaseUser?.email || "",
-    avatar: supabaseUser?.user_metadata?.avatar_url || "", // HeroUI usará la inicial si está vacío
+    avatar: supabaseUser?.user_metadata?.avatar_url || "",
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-steel-50 dark:bg-steel-950">
+    <div className="flex h-screen overflow-hidden bg-steel-100 dark:bg-zinc-950">
       {/* ── Sidebar ── */}
+      {/* <aside
+        className={clsx(
+          "flex flex-col h-full",
+          "bg-steel-100 dark:bg-steel-950 transition-all duration-200 ease-in-out shrink-0",
+          collapsed ? "w-[64px]" : "w-[210px]",
+        )}
+      > */}
       <aside
         className={clsx(
-          "flex flex-col h-full border-r border-steel-100 dark:border-steel-800",
-          "bg-white dark:bg-steel-900 transition-all duration-200 ease-in-out shrink-0",
+          "flex flex-col h-full",
+          "bg-zinc-100 dark:bg-zinc-950 transition-all duration-200 ease-in-out shrink-0",
           collapsed ? "w-[64px]" : "w-[210px]",
         )}
       >
-        {/* Logo Section */}
+        {/* Logo + Toggle */}
         <div
           className={clsx(
-            "flex items-center h-14 px-4 border-b border-steel-100 dark:border-steel-800",
-            collapsed ? "justify-center" : "justify-start",
+            "flex items-center h-14 px-3 shrink-0",
+            collapsed ? "justify-center" : "justify-between",
           )}
         >
-          <img
-            src={
-              collapsed
-                ? "/images/logos/url_logo.png"
-                : "/images/logos/LEBAUX-LOGO.png"
-            }
-            alt="Lebaux"
+          {/* Logo — cuando está colapsado muestra icono de expand en hover */}
+          <button
+            onClick={() => collapsed && setCollapsed(false)}
             className={clsx(
-              "transition-all duration-300 object-contain select-none pointer-events-none",
-              collapsed ? "h-7" : "h-9",
-              "mix-blend-multiply dark:mix-blend-normal",
+              "group relative flex items-center justify-center transition-all",
+              collapsed ? "cursor-pointer w-7 h-7" : "cursor-default",
             )}
-          />
+          >
+            <img
+              src={
+                collapsed
+                  ? "/images/logos/url_logo.png"
+                  : "/images/logos/LEBAUX-LOGO.png"
+              }
+              alt="Lebaux"
+              className={clsx(
+                "transition-all duration-200 object-contain select-none pointer-events-none",
+                collapsed ? "w-7 h-7 group-hover:opacity-0" : "h-8",
+                "mix-blend-multiply dark:mix-blend-normal",
+              )}
+            />
+            {/* Ícono expand — solo visible en hover cuando colapsado */}
+            {collapsed && (
+              <PanelLeftOpen className="w-5 h-5 absolute inset-0 m-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-steel-500 dark:text-steel-400" />
+            )}
+          </button>
+
+          {/* Botón collapse — solo visible cuando está expandido */}
+          {!collapsed && (
+            <button
+              onClick={() => setCollapsed(true)}
+              className="p-1.5 rounded-lg text-steel-400 hover:text-steel-700 dark:hover:text-steel-200 hover:bg-steel-100 dark:hover:bg-steel-800 transition-colors"
+              aria-label="Colapsar sidebar"
+            >
+              <PanelLeftOpen className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Nav links */}
-        <nav className="flex-1 py-3 px-3 flex flex-col gap-0.5 overflow-y-auto">
+        <nav className="flex-1 py-3 px-2 flex flex-col gap-0.5 overflow-y-auto">
           {NAV.map(({ to, icon: Icon, label }) => (
             <Tooltip
               key={to}
               content={label}
               placement="right"
               isDisabled={!collapsed}
+              delay={300}
             >
               <NavLink
                 to={to}
                 className={({ isActive }) =>
                   clsx(
                     "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
-
                     collapsed && "justify-center px-0 h-9",
                     isActive
                       ? "bg-lebaux-amber/10 text-lebaux-amber font-semibold"
@@ -129,8 +155,43 @@ export default function AppLayout() {
           ))}
         </nav>
 
-        {/* Bottom User Profile */}
-        <div className="px-3 pb-3 flex flex-col gap-1 border-t border-steel-100 dark:border-steel-800 pt-2">
+        {/* Bottom — Notificaciones + Avatar */}
+        <div
+          className={clsx(
+            "px-2 pb-3 pt-2 flex flex-col gap-1",
+            "border-steel-100 dark:border-steel-800",
+          )}
+        >
+          {/* Notificaciones */}
+          <Tooltip
+            content="Notificaciones"
+            placement="right"
+            isDisabled={!collapsed}
+            delay={300}
+          >
+            <button
+              onClick={() => setHasNotifications(false)}
+              className={clsx(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all w-full",
+                "text-steel-500 dark:text-steel-400 hover:bg-steel-100 dark:hover:bg-steel-800 hover:text-steel-800 dark:hover:text-steel-100",
+                collapsed && "justify-center px-0 h-9",
+              )}
+            >
+              <Badge
+                content=""
+                isInvisible={!hasNotifications}
+                color="warning"
+                size="sm"
+                shape="circle"
+                className="border-white dark:border-steel-900"
+              >
+                <Bell className="w-4.5 h-4.5 shrink-0" strokeWidth={1.8} />
+              </Badge>
+              {!collapsed && <span>Notificaciones</span>}
+            </button>
+          </Tooltip>
+
+          {/* Avatar / User dropdown */}
           <Dropdown placement="top-start" closeOnSelect={true}>
             <DropdownTrigger>
               <button
@@ -142,12 +203,9 @@ export default function AppLayout() {
               >
                 <Avatar src={user.avatar} size="sm" name={user.name} />
                 {!collapsed && (
-                  <>
-                    <span className="flex-1 truncate text-sm font-medium">
-                      {user.name}
-                    </span>
-                    <ChevronsUpDown className="w-5 h-5 text-steel-400 shrink-0" />
-                  </>
+                  <span className="flex-1 truncate text-sm font-medium">
+                    {user.name}
+                  </span>
                 )}
               </button>
             </DropdownTrigger>
@@ -197,7 +255,6 @@ export default function AppLayout() {
                 {dark ? "Modo claro" : "Modo oscuro"}
               </DropdownItem>
 
-              {/* Secciones de Soporte y Feedback movidas aquí adentro */}
               <DropdownItem
                 key="feedback"
                 className="border-t border-steel-100 dark:border-steel-800/50"
@@ -226,78 +283,17 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      {/* ── Main content ── */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Topbar */}
-        <header className="h-14 flex items-center justify-between px-4 border-b border-steel-200 dark:border-steel-800 bg-white dark:bg-steel-900 shrink-0">
-          <div className="flex items-center gap-2">
-            {/* Botón para colapsar/expandir al inicio del Topbar */}
-            <button
-              onClick={() => setCollapsed((c) => !c)}
-              className="p-1 rounded-lg text-steel-500 hover:text-steel-700 dark:text-steel-400 dark:hover:text-steel-200 hover:bg-steel-100 dark:hover:bg-steel-800 transition-colors mr-1"
-              aria-label="Toggle Sidebar"
-            >
-              {collapsed ? (
-                <PanelRightClose className="w-5 h-5" />
-              ) : (
-                <PanelRightOpen className="w-5 h-5" />
-              )}
-            </button>
-
-            <PageTitle pathname={location.pathname} />
-          </div>
-
-          {/* Icono de campana para notificaciones al final del Topbar */}
-          <div className="flex items-center gap-2">
-            <Button
-              isIconOnly
-              variant="light"
-              onPress={() => setHasNotifications(!hasNotifications)}
-              className="p-1 rounded-full text-steel-500 hover:text-steel-700 dark:text-steel-400 dark:hover:text-steel-200 hover:bg-steel-100 dark:hover:bg-steel-800 transition-colors relative"
-            >
-              <Badge
-                content=""
-                isInvisible={!hasNotifications}
-                color="warning"
-                size="sm"
-                shape="circle"
-                className="border-white dark:border-steel-900"
-              >
-                <Bell className="w-5 h-5" strokeWidth={2} />
-              </Badge>
-            </Button>
-          </div>
-        </header>
-
-        {/* Page */}
-        <main className="flex-1 overflow-auto scrollbar-thin p-6 fade-in">
+      {/* ── Contenido principal sin topbar ── */}
+      {/* <main className="flex-1 overflow-hidden p-3">
+        <div className="w-full h-full bg-white dark:bg-zinc-900 rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.08),0_4px_16px_rgba(0,0,0,0.06)] border border-zinc-200/80 dark:border-zinc-700/50 overflow-auto scrollbar-thin">
           <Outlet />
-        </main>
-      </div>
-    </div>
-  );
-}
-
-export function PageTitle({ pathname }: { pathname: string }) {
-  const map: Record<string, string> = {
-    "/inicio": "Dashboard",
-    "/obras": "Obras",
-    "/catalogos": "Catálogos",
-    "/productos": "Productos",
-    "/importar": "Importar",
-    "/usuarios": "Usuarios y Permisos",
-    "/opciones": "Opciones",
-  };
-
-  const base = "/" + pathname.split("/")[1];
-  const title = map[base] ?? "Lebaux";
-
-  return (
-    <div className="flex items-center gap-3">
-      <div className="w-0.5 h-5 bg-lebaux-amber rounded-full" />
-      <h1 className="font-sans font-bold text-lg sm:text-xl tracking-tight text-steel-900 dark:text-steel-50">
-        {title}
-      </h1>
+        </div>
+      </main> */}
+      <main className="flex-1 overflow-hidden pt-3">
+        <div className="w-full h-full bg-white dark:bg-steel-900 rounded-lg shadow-sm overflow-auto scrollbar-thin">
+          <Outlet />
+        </div>
+      </main>
     </div>
   );
 }

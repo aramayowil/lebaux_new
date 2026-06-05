@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { Tipos } from "@/types";
+import type { ObraTipo } from "@/types";
 
 const TABLE = "tipos";
 const SCHEMA = "obras";
@@ -15,7 +15,7 @@ export function useTipos() {
         .select("*");
 
       if (error) throw error;
-      return data as Tipos[];
+      return data as ObraTipo[];
     },
   });
 }

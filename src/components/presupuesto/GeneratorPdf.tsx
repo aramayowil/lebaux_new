@@ -23,11 +23,12 @@ import {
   UserRound,
 } from "lucide-react";
 
-import { useObrasStore } from "@/store/obrasStore";
+import { useObraDetallesByObra } from "@/hooks/obra/useObraDetalles";
 import { useProductos } from "@/hooks/productos/useProducto";
 import { useTipos } from "@/hooks/obra/useTipos";
 import { useHojas } from "@/hooks/productos/useHojas";
 import TipologiaCanvas from "@/components/canvas/TipologiaCanvas";
+import { obraDetalleToConfig } from "@/lib/obraDetalleAdapter";
 
 function obtenerFechaHoy() {
   return new Date().toLocaleDateString("es-AR");
@@ -63,7 +64,7 @@ function GeneratorPdf({
   const [isLoading, setIsLoading] = useState(false);
 
   // --- HOOKS PARA RENDERIZAR LOS CANVAS OCULTOS ---
-  const { getConfig } = useObrasStore();
+  const { data: allDetalles = [] } = useObraDetallesByObra(obra.id);
   const { data: productos } = useProductos();
   const { data: tipos } = useTipos();
   const { data: hojas } = useHojas();
@@ -154,9 +155,13 @@ function GeneratorPdf({
     <>
       <div style={{ position: "absolute", top: "-9999px", left: "-9999px", opacity: 0, pointerEvents: "none" }}>
         {isOpen && tipologias.map((tipologia) => {
-          const configSel = getConfig(tipologia.id);
-          const nHojas = configSel?.id_hoja && hojas
-              ? (hojas.find((h) => h.id === configSel.id_hoja)?.cantidad ?? 1)
+          const configSel = allDetalles.find(
+            (d) =>
+              d.id_tipologia === tipologia.id &&
+              (!d.ubicacion_en_tipo || d.ubicacion_en_tipo === "")
+          );
+          const nHojas = configSel?.hoja && hojas
+              ? (hojas.find((h) => h.id === configSel.hoja)?.cantidad ?? 1)
               : 1;
 
           const formaTipo = productos && configSel
@@ -174,7 +179,7 @@ function GeneratorPdf({
             <TipologiaCanvas
               key={tipologia.id}
               tipologia={tipologia}
-              config={configSel}
+              config={obraDetalleToConfig(configSel)}
               tipoDeProducto={tipoDeProducto}
               hojas={nHojas}
               width={400}

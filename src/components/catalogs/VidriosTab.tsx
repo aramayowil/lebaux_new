@@ -13,7 +13,6 @@ import {
   Input,
 } from "@heroui/react";
 import { Trash2, Square } from "lucide-react";
-import { useCatalogosStore } from "@/store/catalogosStore";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
 import EditableCell from "@/components/ui/EditableCell";
 import CatalogToolbar from "@/components/ui/CatalogToolbar";
@@ -51,12 +50,12 @@ const BLANK: Omit<Vidrio, "id"> = {
   codigo: "",
   descri: "",
   precio: 0,
-  base: 3660,
-  altura: 2440,
+  base: 3600,
+  altura: 2500,
   espesor: 4,
   tipo_rev: 1,
   id_moneda: 1,
-  color: 197221232, // rgb(197 221 232) color de vidrio
+  color: 16575173, // rgb(159 157 165)
   bloqueado: false,
 };
 
@@ -69,7 +68,10 @@ export default function VidriosTab() {
   const { mutateAsync: updateVidrio } = useUpdateVidrio();
   const { mutateAsync: deleteVidrio } = useDeleteVidrio();
 
-  const { toPesos } = useCatalogosStore();
+  const toPesos = (precio: number, monedaId: number) => {
+    const m = monedas.find((x) => x.id === monedaId);
+    return precio * (m?.cotizacion ?? 1);
+  };
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
   // Ahora el hook de edición rastrea por el ID numérico de la fila
@@ -87,12 +89,12 @@ export default function VidriosTab() {
     return matchSearch && matchTipo;
   });
 
-  const getTipo = (id: number) => tiposInterior.find((t) => t.id === id);
+  const getTipo = (id: number | null | undefined) => id ? tiposInterior.find((t) => t.id === id) : undefined;
 
-  const areaM2 = (v: Vidrio) => ((v.base * v.altura) / 1_000_000).toFixed(2);
+  const areaM2 = (v: Vidrio) => (((v.base ?? 0) * (v.altura ?? 0)) / 1_000_000).toFixed(2);
   const precioM2 = (v: Vidrio) => {
-    const area = (v.base * v.altura) / 1_000_000;
-    return area > 0 ? toPesos(v.precio / area, v.id_moneda) : 0;
+    const area = ((v.base ?? 0) * (v.altura ?? 0)) / 1_000_000;
+    return area > 0 ? toPesos((v.precio ?? 0) / area, v.id_moneda ?? 1) : 0;
   };
 
   const commit = useCallback(
@@ -139,7 +141,7 @@ export default function VidriosTab() {
   );
 
   function handleNew(close: () => void) {
-    if (!newForm.codigo.trim() || !newForm.descri.trim()) return;
+    if (!(newForm.codigo ?? "").trim() || !(newForm.descri ?? "").trim()) return;
     createVidrio(newForm);
     setNewForm(BLANK);
     close();
@@ -168,7 +170,7 @@ export default function VidriosTab() {
             <SelectItem key="all">Todos los tipos</SelectItem>
             {tiposInterior.map((t) => (
               <SelectItem key={String(t.id)}>
-                {capitalizeFirstLetter(t.descripcion)}
+                {capitalizeFirstLetter(t.descripcion ?? "")}
               </SelectItem>
             ))}
           </Select>
@@ -248,7 +250,7 @@ export default function VidriosTab() {
                     <div className="flex items-center gap-1.5">
                       <div
                         className="w-3.5 h-3.5 rounded-full border border-steel-200 dark:border-steel-600 shrink-0"
-                        style={{ background: rgbNumToHex(v.color) }}
+                        style={{ background: rgbNumToHex(v.color ?? 0) }}
                       />
                       <span className="font-mono text-xs text-steel-500">
                         {v.color}
@@ -363,11 +365,11 @@ export default function VidriosTab() {
                     <div className="flex items-center gap-2">
                       <label
                         className="cursor-pointer w-8 h-8 rounded-lg border-2 border-steel-200 dark:border-steel-600 shadow-sm hover:scale-110 transition-transform shrink-0"
-                        style={{ background: rgbNumToHex(newForm.color) }}
+                        style={{ background: rgbNumToHex(newForm.color ?? 0) }}
                       >
                         <input
                           type="color"
-                          value={rgbNumToHex(newForm.color)}
+                          value={rgbNumToHex(newForm.color ?? 0)}
                           onChange={(e) =>
                             setNewForm((f) => ({
                               ...f,
@@ -423,15 +425,15 @@ export default function VidriosTab() {
                   >
                     {tiposInterior.map((t) => (
                       <SelectItem key={String(t.id)}>
-                        {capitalizeFirstLetter(t.descripcion)}
+                        {capitalizeFirstLetter(t.descripcion ?? "")}
                       </SelectItem>
                     ))}
                   </Select>
                 </div>
 
-                {newForm.precio > 0 &&
-                  newForm.base > 0 &&
-                  newForm.altura > 0 && (
+                {newForm.precio !== undefined && newForm.precio !== null && newForm.precio > 0 &&
+                  newForm.base !== undefined && newForm.base !== null && newForm.base > 0 &&
+                  newForm.altura !== undefined && newForm.altura !== null && newForm.altura > 0 && (
                     <div className="bg-steel-50 dark:bg-steel-800/60 rounded-lg px-4 py-3 grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <p className="text-xs text-steel-400 mb-0.5">
@@ -439,7 +441,7 @@ export default function VidriosTab() {
                         </p>
                         <p className="font-mono font-semibold text-steel-700 dark:text-steel-200">
                           {(
-                            (newForm.base * newForm.altura) /
+                            ((newForm.base ?? 0) * (newForm.altura ?? 0)) /
                             1_000_000
                           ).toFixed(3)}{" "}
                           m²
@@ -452,9 +454,9 @@ export default function VidriosTab() {
                         <p className="font-mono font-semibold text-steel-700 dark:text-steel-200">
                           {formatPesos(
                             toPesos(
-                              newForm.precio /
-                                ((newForm.base * newForm.altura) / 1_000_000),
-                              newForm.id_moneda,
+                              (newForm.precio ?? 0) /
+                                (((newForm.base ?? 0) * (newForm.altura ?? 0)) / 1_000_000),
+                              newForm.id_moneda ?? 1,
                             ),
                           )}
                         </p>
@@ -469,7 +471,7 @@ export default function VidriosTab() {
                 <Button
                   color="primary"
                   onPress={() => handleNew(onClose)}
-                  isDisabled={!newForm.codigo.trim() || !newForm.descri.trim()}
+                  isDisabled={!newForm.codigo.trim() || !(newForm.descri ?? "").trim()}
                 >
                   Crear
                 </Button>

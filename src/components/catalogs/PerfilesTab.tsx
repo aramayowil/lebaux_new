@@ -82,6 +82,8 @@ export default function PerfilesTab() {
           : 0,
       cubre: 0,
       minimo_reutilizable: 500,
+      interior: false,
+      bloqueado: false,
     }),
     [monedas, lineas, selectDefaultExt],
   );
@@ -204,8 +206,8 @@ export default function PerfilesTab() {
     if (hasSearchFilter) {
       filteredPerfiles = filteredPerfiles.filter(
         (perfil) =>
-          perfil.nro_perfil.toLowerCase().includes(filterValue.toLowerCase()) ||
-          perfil.descri.toLowerCase().includes(filterValue.toLowerCase()),
+          (perfil.nro_perfil ?? "").toLowerCase().includes(filterValue.toLowerCase()) ||
+          (perfil.descri ?? "").toLowerCase().includes(filterValue.toLowerCase()),
       );
     }
 
@@ -264,7 +266,7 @@ export default function PerfilesTab() {
         case "precio_kg":
           return (
             <div className="capitalize font-mono text-sm">
-              {formatPesos(item.precio_kg)}
+              {formatPesos(item.precio_kg ?? 0)}
             </div>
           );
         case "precioTira":
@@ -278,8 +280,8 @@ export default function PerfilesTab() {
             >
               {formatPesos(
                 toPesos(
-                  (item.precio_kg * item.peso_metro * item.long_tira) / 1000,
-                  item.id_moneda,
+                  ((item.precio_kg ?? 0) * (item.peso_metro ?? 0) * (item.long_tira ?? 0)) / 1000,
+                  item.id_moneda ?? 1,
                 ),
               )}
             </Chip>
@@ -648,7 +650,7 @@ export default function PerfilesTab() {
                     ))}
                   </Select>
                 </div>
-                {newForm.peso_metro > 0 && newForm.long_tira > 0 && (
+                {(newForm.peso_metro ?? 0) > 0 && (newForm.long_tira ?? 0) > 0 && (
                   <div className="bg-steel-50 dark:bg-steel-800/60 rounded-lg px-4 py-3 grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-xs text-steel-400 mb-0.5">
@@ -656,7 +658,7 @@ export default function PerfilesTab() {
                       </p>
                       <p className="font-mono font-semibold text-steel-700 dark:text-steel-200">
                         {(
-                          (newForm.peso_metro * newForm.long_tira) /
+                          ((newForm.peso_metro ?? 0) * (newForm.long_tira ?? 0)) /
                           1000
                         ).toFixed(3)}{" "}
                         kg
@@ -669,11 +671,11 @@ export default function PerfilesTab() {
                       <p className="font-mono font-semibold text-steel-700 dark:text-steel-200">
                         {formatPesos(
                           toPesos(
-                            (newForm.precio_kg *
-                              newForm.peso_metro *
-                              newForm.long_tira) /
+                            ((newForm.precio_kg ?? 0) *
+                              (newForm.peso_metro ?? 0) *
+                              (newForm.long_tira ?? 0)) /
                               1000,
-                            newForm.id_moneda,
+                            newForm.id_moneda ?? 1,
                           ),
                         )}
                       </p>
@@ -689,7 +691,7 @@ export default function PerfilesTab() {
                   color="primary"
                   onPress={() => handleSave(onClose)}
                   isDisabled={
-                    !newForm.nro_perfil.trim() || !newForm.descri.trim()
+                    !(newForm.nro_perfil ?? "").trim() || !(newForm.descri ?? "").trim()
                   }
                 >
                   {isEditMode ? "Guardar cambios" : "Crear perfil"}
