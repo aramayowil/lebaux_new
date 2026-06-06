@@ -1,6 +1,5 @@
 import { Group, Rect, Line } from "react-konva";
-import { ObraTipologia } from "@/types";
-import { TipologiaConfig } from "@/types/canvasTypes";
+import { ObraDetalle, ObraTipologia } from "@/types";
 import { RenderContravidrio } from "../components/RenderContravidrios";
 import RenderCruces from "../components/RenderCruces";
 import { RenderFoco } from "../components/FocoRender";
@@ -10,7 +9,7 @@ interface LayoutProps {
   drawH: number;
   scale: number;
   tipologia: ObraTipologia;
-  config: TipologiaConfig;
+  config: ObraDetalle;
   hojas: number;
   isFocused: boolean;
   focusedHoja: number;

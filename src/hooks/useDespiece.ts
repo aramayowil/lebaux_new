@@ -48,10 +48,28 @@ export function useDespiece(
   const idHoja = detalle?.hoja;
   const idInterior = detalle?.interior;
 
+  // 🌟 Capturamos el contravidrio específico o usamos el fallback de interior
+  const idContravidrioEspecifico = detalle?.contravidrios ?? idInterior;
+
   const { data: despieceRules, isLoading: rulesLoading } = useQuery({
-    queryKey: ["despiece_rules_direct", idMarco, idHoja, idInterior],
+    queryKey: [
+      "despiece_rules_direct",
+      idMarco,
+      idHoja,
+      idInterior,
+      idContravidrioEspecifico,
+    ],
     queryFn: async () => {
       if (!idMarco && !idHoja) return null;
+
+      // Consolidamos los IDs únicos para la cláusula de búsqueda (evita duplicados si son iguales)
+      const idsCV = Array.from(
+        new Set(
+          [Number(idInterior), Number(idContravidrioEspecifico)].filter(
+            Boolean,
+          ),
+        ),
+      );
 
       const [rMarco, rHoja, rCruces, rCV, rCVE, rVR] = await Promise.all([
         idMarco
@@ -75,19 +93,20 @@ export function useDespiece(
               .select("*")
               .eq("id_cruces", idInterior)
           : null,
-        idInterior
+        // 🌟 Reemplazamos .eq por .in para traer de un solo viaje el ID del interior y el del contravidrio (ID 16)
+        idsCV.length > 0
           ? supabase
               .schema("opendata")
               .from("despiece_perfiles_contravidrio")
               .select("*")
-              .eq("id_contravidrio", idInterior)
+              .in("id_contravidrio", idsCV)
           : null,
-        idInterior
+        idsCV.length > 0
           ? supabase
               .schema("opendata")
               .from("despiece_perfiles_contravidrio_ext")
               .select("*")
-              .eq("id_contravidrio", idInterior)
+              .in("id_contravidrio", idsCV)
           : null,
         idInterior
           ? supabase
@@ -148,13 +167,11 @@ export function useDespiece(
         rules_perfiles_hoja: despieceRules.dpHoja,
         rules_cruces: despieceRules.dpCruces as DespieceCruce[],
 
-        // Unificamos ambos arrays para pasarlos limpios a la interfaz
         rules_perfiles_contravidrio: [
           ...despieceRules.dpCV,
           ...despieceRules.dpCVE,
         ] as DespiecePerfilContravidrio[],
 
-        // Función estricta: Si no lo encuentra, tira un error (que luego ataja el motor)
         find_despiece_contravidrio: (idContravidrio) => {
           const cv =
             despieceRules.dpCV.find(

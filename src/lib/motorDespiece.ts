@@ -28,7 +28,6 @@ export interface EntradaCalculo {
   cant_hojas_calculo: number;
 }
 
-// 🌟 Interfaz Estricta implementada
 export interface DatosProducto {
   marco?: Perfil;
   hoja?: Perfil;
@@ -105,7 +104,6 @@ export interface ResultadoDespiece {
   contexto: ContextoCalculo;
 }
 
-// Helper para fraccionar el vano total en base a posiciones absolutas de cruces
 function obtenerSegmentosDeCruces(
   total: number,
   posiciones: number[],
@@ -128,7 +126,6 @@ export function calcularDespiece(
   const hojas = entrada.cant_hojas_calculo ?? 0;
   const tipo_cruce = detalle.tipo_cruce ?? 0;
 
-  // 1. Extraer posiciones de cruces según el tipo (Centrados o Variables)
   let posHef: number[] = [];
   let posVef: number[] = [];
 
@@ -227,13 +224,11 @@ export function calcularDespiece(
     });
   }
 
-  // ── 2. Procesar Estructuras Perimetrales
   if (detalle.marco)
     datos.rules_perfiles_marco.forEach((dp) => addCorte("Marco", dp, ctxBase));
   if (detalle.hoja)
     datos.rules_perfiles_hoja.forEach((dp) => addCorte("Hoja", dp, ctxBase));
 
-  // ── 3. Procesar Cruces Físicos
   if (
     (posHef.length > 0 || posVef.length > 0) &&
     datos.rules_cruces.length > 0
@@ -329,26 +324,32 @@ export function calcularDespiece(
         let anchoInt = anchoMod;
         let altoInt = altoMod;
 
-        // Descuentos de Vidrio según Cruces
         if (datos.rules_cruces && datos.rules_cruces.length > 0) {
           const ruleCruce = datos.rules_cruces[0]!;
           const descVidrio = ruleCruce.descuento_vidrio ?? 0;
+
           anchoInt = ruleCruce.formula_ancho_entero
             ? calcularMedida(ruleCruce.formula_ancho_entero, ctxMod)
             : anchoMod - descVidrio;
+
           altoInt = ruleCruce.formula_alto_entero
             ? calcularMedida(ruleCruce.formula_alto_entero, ctxMod)
             : altoMod - descVidrio;
         }
 
-        const area = (anchoInt / 1000) * (altoInt / 1000);
+        if (anchoInt < 0) anchoInt = 0;
+        if (altoInt < 0) altoInt = 0;
+
+        // 🌟 Calculamos el área basándonos en los milímetros finales redondeados para manufactura
+        const anchoRedondo = Math.round(anchoInt);
+        const altoRedondo = Math.round(altoInt);
+        const area = (anchoRedondo / 1000) * (altoRedondo / 1000);
+
         const labelModulo = `Paño ${pañoIndex} (F${fila + 1}-C${col + 1})`;
 
-        // Procesamiento Estricto de Contravidrios
         const idCv = (detalle as any)[`contravidrio`] ?? detalle.interior;
         if (idCv) {
           try {
-            // 🌟 Al ser estricto, no validamos si es null, confiamos en la interfaz. Si falla, el catch lo atrapa.
             const ruleCv = datos.find_despiece_contravidrio(Number(idCv));
 
             const cantH = calcularCantidad(
@@ -409,71 +410,98 @@ export function calcularDespiece(
           }
         }
 
-        if (tipoInterior === "VIDRIO") {
-          const idVidrio = (detalle as any)[`dvh_${pañoIndex}_1`]?.toString();
-          if (idVidrio) {
-            const vid = datos.catalog_vidrios.find(
-              (v) => v.codigo === idVidrio,
-            );
-            if (vid) {
-              interiorsCalc.push({
-                tipo: "Vidrio",
-                cantidad: 1,
-                ancho: anchoInt,
-                alto: altoInt,
-                area,
-                precio: (vid.precio ?? 0) * area,
-                modulo: labelModulo,
-              });
-            }
+        let esVidrio = false;
+        let esRevestimiento = false;
+        let idVidrio: string | null = null;
+        let idPerfilRevest: string | null = null;
+
+        const dvhVal = (detalle as any)[`dvh_${pañoIndex}_1`]?.toString();
+        const simpleVal = (detalle as any)[`interior_${pañoIndex}`]?.toString();
+        const revestVal = (detalle as any)[`revest_${pañoIndex}`]?.toString();
+
+        if (dvhVal) {
+          esVidrio = true;
+          idVidrio = dvhVal;
+        } else if (simpleVal === "VIDRIO") {
+          esVidrio = true;
+          idVidrio = dvhVal;
+        } else if (simpleVal === "REVESTIMIENTO") {
+          esRevestimiento = true;
+          idPerfilRevest = revestVal;
+        } else if (
+          simpleVal &&
+          simpleVal !== "null" &&
+          simpleVal !== "undefined"
+        ) {
+          esVidrio = true;
+          idVidrio = simpleVal;
+        } else if (revestVal) {
+          esRevestimiento = true;
+          idPerfilRevest = revestVal;
+        }
+
+        if (esVidrio && idVidrio) {
+          const vid = datos.catalog_vidrios.find(
+            (v) => v.id.toString() === idVidrio || v.codigo === idVidrio,
+          );
+          if (vid) {
+            interiorsCalc.push({
+              tipo: "Vidrio",
+              cantidad: 1,
+              ancho: anchoRedondo,
+              alto: altoRedondo,
+              area,
+              precio: (vid.precio ?? 0) * area,
+              modulo: labelModulo,
+            });
           }
-        } else if (tipoInterior === "REVESTIMIENTO") {
-          const idPerfilRevest = (detalle as any)[`revest_${pañoIndex}`];
+        } else if (esRevestimiento && idPerfilRevest) {
           const orientacion = (detalle as any)[`direcc_${pañoIndex}`] ?? "H";
+          const perfilRevest = datos.catalog_perfiles.find(
+            (p) =>
+              p.nro_perfil === idPerfilRevest ||
+              p.id.toString() === idPerfilRevest,
+          );
+          if (perfilRevest) {
+            const pasoTablilla = 100;
+            const cantidadTablillas =
+              orientacion === "H"
+                ? Math.ceil(altoInt / pasoTablilla)
+                : Math.ceil(anchoInt / pasoTablilla);
+            const medidaCorteTablilla =
+              orientacion === "H" ? anchoInt : altoInt;
+            const kgCorte =
+              ((perfilRevest.peso_metro ?? 0) / 1000) *
+              medidaCorteTablilla *
+              cantidadTablillas;
 
-          if (idPerfilRevest) {
-            const perfilRevest = lkPerfil(Number(idPerfilRevest));
-            if (perfilRevest) {
-              const pasoTablilla = 100;
-              const cantidadTablillas =
-                orientacion === "H"
-                  ? Math.ceil(altoInt / pasoTablilla)
-                  : Math.ceil(anchoInt / pasoTablilla);
-              const medidaCorteTablilla =
-                orientacion === "H" ? anchoInt : altoInt;
-              const kgCorte =
+            cortes.push({
+              id: cortId++,
+              nivel: "Interior",
+              nro_perfil: perfilRevest.nro_perfil?.toString() ?? "REV",
+              descripcion_perfil:
+                perfilRevest.descri ?? "Tablilla Revestimiento",
+              angulo: "90°/90°",
+              cantidad: cantidadTablillas,
+              medida_mm: medidaCorteTablilla,
+              total_mm: medidaCorteTablilla * cantidadTablillas,
+              kg: kgCorte,
+              precio_unitario:
+                (perfilRevest.precio_kg ?? 0) *
                 ((perfilRevest.peso_metro ?? 0) / 1000) *
-                medidaCorteTablilla *
-                cantidadTablillas;
+                medidaCorteTablilla,
+              precio_total: (perfilRevest.precio_kg ?? 0) * kgCorte,
+            });
 
-              cortes.push({
-                id: cortId++,
-                nivel: "Interior",
-                nro_perfil: perfilRevest.nro_perfil?.toString() ?? "REV",
-                descripcion_perfil:
-                  perfilRevest.descri ?? "Tablilla Revestimiento",
-                angulo: "90°/90°",
-                cantidad: cantidadTablillas,
-                medida_mm: medidaCorteTablilla,
-                total_mm: medidaCorteTablilla * cantidadTablillas,
-                kg: kgCorte,
-                precio_unitario:
-                  (perfilRevest.precio_kg ?? 0) *
-                  ((perfilRevest.peso_metro ?? 0) / 1000) *
-                  medidaCorteTablilla,
-                precio_total: (perfilRevest.precio_kg ?? 0) * kgCorte,
-              });
-
-              interiorsCalc.push({
-                tipo: "Revestimiento",
-                cantidad: cantidadTablillas,
-                ancho: medidaCorteTablilla,
-                alto: pasoTablilla,
-                area: area,
-                precio: (perfilRevest.precio_kg ?? 0) * kgCorte,
-                modulo: labelModulo,
-              });
-            }
+            interiorsCalc.push({
+              tipo: "Revestimiento",
+              cantidad: cantidadTablillas,
+              ancho: medidaCorteTablilla,
+              alto: pasoTablilla,
+              area: area,
+              precio: (perfilRevest.precio_kg ?? 0) * kgCorte,
+              modulo: labelModulo,
+            });
           }
         }
       }
@@ -481,7 +509,7 @@ export function calcularDespiece(
     }
   }
 
-  // ── 5. Afectar cantidades y 6. Optimización ──────────────────────────────────
+  // ── 5. Afectar cantidades y 6. Optimización
   const mult = cantidad_tipologias ?? 1;
   cortes.forEach((c) => {
     c.cantidad *= mult;

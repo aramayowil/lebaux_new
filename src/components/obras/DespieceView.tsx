@@ -1,357 +1,510 @@
 import { useState } from "react";
-import { Tabs, Tab } from "@heroui/react";
-import { AlertCircle, Layers, Receipt, Scissors, ListTree } from "lucide-react";
-import { formatMm, formatPesos, formatKg } from "@/lib/calculoDespiece";
-import type { ResultadoDespiece, NivelCorte } from "@/lib/motorDespiece";
-import clsx from "clsx";
+import { Tabs, Tab, Chip, Divider } from "@heroui/react";
+import {
+  Layers,
+  Wrench,
+  Grid2x2,
+  BarChart3,
+  TrendingUp,
+  AlertCircle,
+} from "lucide-react";
+import { formatMm, formatPesos } from "@/lib/calculoDespiece";
+import type { ResultadoDespiece } from "@/lib/motorDespiece";
+import { useOpciones } from "@/hooks/catalogo/useOpciones";
 
-// Paleta de colores refinada estilo "Badge" industrial
-const NIVEL_COLOR: Record<NivelCorte, string> = {
-  Marco:
-    "bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20",
-  Hoja: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20",
-  "Contravid. Int.":
-    "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20",
-  "Contravid. Ext.":
-    "bg-orange-500/10 text-orange-700 dark:text-orange-400 border border-orange-500/20",
-  Cruces:
-    "bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20",
-  Interior:
-    "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20",
-};
-
-interface DespieceViewProps {
+interface Props {
   resultado: ResultadoDespiece;
+  titulo?: string;
 }
 
-export default function DespieceView({ resultado }: DespieceViewProps) {
-  const [activeTab, setActiveTab] = useState<string>("cortes");
+const NIVEL_COLOR: Record<string, string> = {
+  Marco: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300",
+  Hoja: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+  "Contravid. Int.":
+    "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+  "Contravid. Ext.":
+    "bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300",
+  Cruces:
+    "bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300",
+  Interior: "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300",
+};
+
+const nivelChip = (n: string) => (
+  <span
+    className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${NIVEL_COLOR[n] ?? "bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400"}`}
+  >
+    {n}
+  </span>
+);
+
+export default function DespieceView({ resultado, titulo }: Props) {
+  const [view, setView] = useState<"detalle" | "resumen">("resumen");
+  const { data: opciones } = useOpciones();
+
+  if (!opciones) return <div>Loading...</div>;
+
+  // 🌟 Desestructuración adaptada al snake_case estricto del motor
+  const {
+    cortes,
+    interiores,
+    resumenes,
+    costo_perfiles,
+    costo_interiores,
+    multiplicador,
+    contexto,
+  } = resultado;
+
+  // Los accesorios ahora viajan como cortes de nivel "Cruces" o están contemplados en el costo perimetral.
+  // Mantenemos la variable en 0 o mapeada si se extiende en un futuro.
+  const costoAccesoriosEfectivo = 0;
+
+  // Aplicación de márgenes comerciales parametrizados
+  const margenPerf = 1 + (opciones?.porcentaje_sobre_perfiles / 100 || 0);
+  const margenAcc = 1 + (opciones?.porcentaje_sobre_accesorios / 100 || 0);
+  const margenVid = 1 + (opciones?.porcentaje_sobre_vidrios / 100 || 0);
+  const iva = 1 + (opciones?.iva / 100 || 0);
+
+  const subtotal =
+    costo_perfiles * margenPerf +
+    costoAccesoriosEfectivo * margenAcc +
+    costo_interiores * margenVid;
+  const totalConIva = subtotal * iva;
+
+  const totalKg = resumenes.reduce((s, r) => s + r.kg, 0);
+  const totalTiras = resumenes.reduce((s, r) => s + r.tiras, 0);
 
   return (
-    <div className="w-full flex flex-col gap-4">
-      {/* Resumen de Costos de Producción */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="p-4 bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-400">
-              Aluminio Optimizado
-            </span>
-            <h3 className="text-xl font-black font-mono mt-0.5 text-zinc-800 dark:text-zinc-200">
-              {formatPesos(resultado.costo_perfiles)}
-            </h3>
-          </div>
-          <div className="p-2.5 bg-zinc-50 dark:bg-zinc-900 rounded-xl text-zinc-500">
-            <Scissors className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="p-4 bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-400">
-              Vidrios y Rellenos
-            </span>
-            <h3 className="text-xl font-black font-mono mt-0.5 text-zinc-800 dark:text-zinc-200">
-              {formatPesos(resultado.costo_interiores)}
-            </h3>
-          </div>
-          <div className="p-2.5 bg-zinc-50 dark:bg-zinc-900 rounded-xl text-zinc-500">
-            <Layers className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="p-4 bg-amber-500/5 rounded-2xl border border-amber-500/10 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-[10px] uppercase tracking-wider font-bold text-amber-600 dark:text-amber-500">
-              Costo Materiales Total
-            </span>
-            <h3 className="text-xl font-black font-mono mt-0.5 text-amber-600 dark:text-amber-400">
-              {formatPesos(resultado.costo_total)}
-            </h3>
-          </div>
-          <div className="p-2.5 bg-amber-500/10 rounded-xl text-amber-600">
-            <Receipt className="w-5 h-5" />
-          </div>
-        </div>
+    <div className="space-y-4">
+      {/* ── Banner de Contexto de Manufactura ── */}
+      <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
+        {titulo && (
+          <span className="font-semibold text-stone-700 dark:text-stone-200">
+            {titulo}
+          </span>
+        )}
+        <Chip size="sm" variant="flat">
+          ×{multiplicador} unidad{multiplicador !== 1 ? "es" : ""}
+        </Chip>
+        <span className="font-mono">
+          {contexto.ancho} × {contexto.alto} mm
+        </span>
+        <span>·</span>
+        <span>
+          {contexto.hojas} hoja{contexto.hojas !== 1 ? "s" : ""}
+        </span>
+        {(contexto.cruces_h > 0 || contexto.cruces_v > 0) && (
+          <span>
+            · {contexto.cruces_h}H + {contexto.cruces_v}V cruces
+          </span>
+        )}
       </div>
 
-      {/* Selector de Paneles de Despiece */}
+      {/* ── Tarjetas de Resumen de Costos Metrados ── */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <SummaryCard
+          icon={<Layers className="w-4 h-4 text-blue-500" />}
+          label="Perfiles"
+          sub={`${totalKg.toFixed(2)} kg · ${totalTiras} tira${totalTiras !== 1 ? "s" : ""}`}
+          value={formatPesos(costo_perfiles * margenPerf)}
+        />
+        <SummaryCard
+          icon={<Wrench className="w-4 h-4 text-emerald-500" />}
+          label="Accesorios"
+          sub="Calculados en despiece"
+          value={formatPesos(costoAccesoriosEfectivo * margenAcc)}
+        />
+        <SummaryCard
+          icon={<Grid2x2 className="w-4 h-4 text-amber-500" />}
+          label="Vidrios / Int."
+          sub={`${interiores.length} pieza${interiores.length !== 1 ? "s" : ""}`}
+          value={formatPesos(costo_interiores * margenVid)}
+        />
+        <SummaryCard
+          icon={<TrendingUp className="w-4 h-4 text-stone-500" />}
+          label={`Total + IVA ${opciones.iva}%`}
+          sub="Con márgenes aplicados"
+          value={formatPesos(totalConIva)}
+          highlight
+        />
+      </div>
+
+      <Divider />
+
+      {/* ── Pestañas de Visualización Operativa ── */}
       <Tabs
-        selectedKey={activeTab}
-        onSelectionChange={(k: Set<string>) => setActiveTab(String(k))}
-        // onSelectionChange={(k: React.Key) => setActiveTab(String(k))}
+        selectedKey={view}
+        onSelectionChange={(k: React.Key) =>
+          setView(k as "detalle" | "resumen")
+        }
+        size="sm"
         variant="underlined"
-        color="amber"
         classNames={{
-          tabList: "border-b border-zinc-200 dark:border-zinc-800 w-full gap-6",
-          tab: "h-10 px-1 font-medium text-sm",
+          tabList:
+            "border-b border-stone-200 dark:border-stone-700 w-full gap-0",
+          cursor: "bg-stone-600 dark:bg-stone-400 h-0.5",
+          tab: "px-4 h-8 text-xs font-medium",
         }}
       >
+        {/* ── VISTA RESUMEN: Agrupación por barras óptimas ── */}
         <Tab
-          key="cortes"
+          key="resumen"
           title={
-            <div className="flex items-center gap-2">
-              <Scissors className="w-4 h-4" />
-              <span>Lista de Cortes ({resultado.cortes?.length ?? 0})</span>
-            </div>
+            <span className="flex items-center gap-1.5">
+              <BarChart3 className="w-3.5 h-3.5" /> Resumen optimizado
+            </span>
           }
         >
-          <div className="mt-2 bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[800px]">
-                <thead>
-                  <tr className="border-b border-zinc-100 dark:border-zinc-800">
-                    <th className="p-3 text-xs font-bold uppercase tracking-wider text-zinc-400">
-                      Nivel
-                    </th>
-                    <th className="p-3 text-xs font-bold uppercase tracking-wider text-zinc-400">
-                      Perfil / Componente
-                    </th>
-                    <th className="p-3 text-right text-xs font-bold uppercase tracking-wider text-zinc-400">
-                      Cant
-                    </th>
-                    <th className="p-3 text-right text-xs font-bold uppercase tracking-wider text-zinc-400">
-                      Medida
-                    </th>
-                    <th className="p-3 text-right text-xs font-bold uppercase tracking-wider text-zinc-400">
-                      Subtotal
-                    </th>
-                    <th className="p-3 text-right text-xs font-bold uppercase tracking-wider text-zinc-400">
-                      Ángulos
-                    </th>
-                    <th className="p-3 text-right text-xs font-bold uppercase tracking-wider text-zinc-400">
-                      Peso
-                    </th>
-                    <th className="p-3 text-right text-xs font-bold uppercase tracking-wider text-zinc-400">
-                      Costo Est.
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-50 dark:divide-zinc-900">
-                  {resultado.cortes?.map((c) => (
-                    <tr
-                      key={c.id}
-                      className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40 transition-colors"
-                    >
-                      <td className="p-3">
-                        <span
-                          className={clsx(
-                            "px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide border whitespace-nowrap",
-                            NIVEL_COLOR[c.nivel] ?? NIVEL_COLOR["Marco"],
-                          )}
+          <div className="pt-4 space-y-4">
+            {resumenes.length > 0 && (
+              <section>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-2">
+                  Consolidado de Aluminio
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-stone-200 dark:border-stone-700">
+                        <Th>Perfil</Th>
+                        <Th right>Cortes</Th>
+                        <Th right>Total Metros</Th>
+                        <Th right>Tiras (6m)</Th>
+                        <Th right>Efic.</Th>
+                        <Th right>Peso Kg</Th>
+                        <Th right>Total Neto</Th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                      {resumenes.map((r) => (
+                        <tr
+                          key={r.nro_perfil}
+                          className="hover:bg-stone-50 dark:hover:bg-stone-800/30"
                         >
-                          {c.nivel}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center">
-                          <span className="font-mono text-xs font-bold text-amber-600 dark:text-amber-500 mr-2">
-                            {c.nro_perfil}
-                          </span>
-                          <span className="text-zinc-600 dark:text-zinc-400 text-xs font-medium line-clamp-1">
-                            {c.descripcion_perfil}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-3 text-right font-mono text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                        {c.cantidad}
-                      </td>
-                      <td className="p-3 text-right font-mono text-xs font-bold text-zinc-800 dark:text-zinc-100">
-                        {formatMm(c.medida_mm)}
-                      </td>
-                      <td className="p-3 text-right font-mono text-xs text-zinc-500">
-                        {c.total_mm.toLocaleString("es-AR")} mm
-                      </td>
-                      <td className="p-3 text-right font-mono text-xs text-zinc-400">
-                        {c.angulo || "90°/90°"}
-                      </td>
-                      <td className="p-3 text-right font-mono text-xs text-zinc-500">
-                        {formatKg(c.kg)}
-                      </td>
-                      <td className="p-3 text-right font-mono text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                        {formatPesos(c.precio_total)}
-                      </td>
-                    </tr>
-                  ))}
-                  {(!resultado.cortes || resultado.cortes.length === 0) && (
-                    <tr>
-                      <td
-                        colSpan={8}
-                        className="p-8 text-center text-zinc-400 text-xs"
-                      >
-                        No hay perfiles calculados para esta abertura.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </Tab>
+                          <td className="py-2 pr-3">
+                            <span className="font-mono font-semibold text-stone-700 dark:text-stone-300">
+                              {r.nro_perfil}
+                            </span>
+                            <span className="text-stone-400 ml-2 text-[10px]">
+                              {r.descripcion_perfil}
+                            </span>
+                          </td>
+                          <Td right mono>
+                            {r.total_cortes}
+                          </Td>
+                          <Td right mono>
+                            {(r.total_mm / 1000).toFixed(2)} m
+                          </Td>
+                          <Td right mono>
+                            {r.tiras}
+                          </Td>
+                          <Td right>
+                            <EficienciaChip v={r.eficiencia} />
+                          </Td>
+                          <Td right mono>
+                            {r.kg.toFixed(3)}
+                          </Td>
+                          <Td right bold>
+                            {formatPesos(r.precio_total * margenPerf)}
+                          </Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 border-stone-300 dark:border-stone-600 font-semibold">
+                        <td className="py-2 text-xs text-stone-500">TOTALES</td>
+                        <td />
+                        <td className="text-right font-mono text-xs py-2">
+                          {(
+                            resumenes.reduce((s, r) => s + r.total_mm, 0) / 1000
+                          ).toFixed(2)}{" "}
+                          m
+                        </td>
+                        <td className="text-right font-mono text-xs py-2">
+                          {totalTiras}
+                        </td>
+                        <td />
+                        <td className="text-right font-mono text-xs py-2">
+                          {totalKg.toFixed(3)}
+                        </td>
+                        <td className="text-right font-semibold text-sm py-2">
+                          {formatPesos(costo_perfiles * margenPerf)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </section>
+            )}
 
-        <Tab
-          key="interiores"
-          title={
-            <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4" />
-              <span>
-                Vidrios y Rellenos ({resultado.interiores?.length ?? 0})
-              </span>
-            </div>
-          }
-        >
-          <div className="mt-2 bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 shadow-sm">
-            {!resultado.interiores || resultado.interiores.length === 0 ? (
-              <div className="p-8 text-center text-zinc-400 text-xs flex flex-col items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-zinc-300" />
-                No se registraron paños de vidrio ni lamas de revestimiento en
-                esta abertura.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[600px]">
+            {/* Interiores / Vidrios / Revestimientos */}
+            {interiores.length > 0 && (
+              <section>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-2">
+                  Paños y Rellenos de Estructura
+                </p>
+                <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-zinc-100 dark:border-zinc-800">
-                      <th className="p-3 text-xs font-bold uppercase tracking-wider text-zinc-400">
-                        Tipo
-                      </th>
-                      <th className="p-3 text-xs font-bold uppercase tracking-wider text-zinc-400">
-                        Módulo/Ubicación
-                      </th>
-                      <th className="p-3 text-right text-xs font-bold uppercase tracking-wider text-zinc-400">
-                        Cant
-                      </th>
-                      <th className="p-3 text-right text-xs font-bold uppercase tracking-wider text-zinc-400">
-                        Medidas (Ancho x Alto)
-                      </th>
-                      <th className="p-3 text-right text-xs font-bold uppercase tracking-wider text-zinc-400">
-                        Superficie Total
-                      </th>
-                      <th className="p-3 text-right text-xs font-bold uppercase tracking-wider text-zinc-400">
-                        Costo Est.
-                      </th>
+                    <tr className="border-b border-stone-200 dark:border-stone-700">
+                      <Th>Ubicación / Módulo</Th>
+                      <Th>Tipo</Th>
+                      <Th right>Ancho</Th>
+                      <Th right>Alto</Th>
+                      <Th right>Área</Th>
+                      <Th right>Costo Neto</Th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-50 dark:divide-zinc-900">
-                    {resultado.interiores?.map((int, i) => (
+                  <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                    {interiores.map((i, idx) => (
                       <tr
-                        key={i}
-                        className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40 transition-colors"
+                        key={idx}
+                        className="hover:bg-stone-50 dark:hover:bg-stone-800/30"
                       >
-                        <td className="p-3">
-                          <span
-                            className={clsx(
-                              "px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide border whitespace-nowrap",
-                              int.tipo === "Vidrio"
-                                ? "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/20"
-                                : "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20",
-                            )}
-                          >
-                            {int.tipo}
-                          </span>
+                        <td className="py-1.5 pr-3 font-medium text-stone-600 dark:text-stone-400">
+                          {i.modulo ?? `Paño ${idx + 1}`}
                         </td>
-                        <td className="p-3 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                          {int.modulo ?? `Paño ${i + 1}`}
+                        <td className="py-1.5 pr-3">
+                          <IntTipoChip tipo={i.tipo} />
                         </td>
-                        <td className="p-3 text-right font-mono text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                          {int.cantidad}
-                        </td>
-                        <td className="p-3 text-right font-mono text-xs text-zinc-800 dark:text-zinc-100">
-                          {formatMm(int.ancho)} x {formatMm(int.alto)}
-                        </td>
-                        <td className="p-3 text-right font-mono text-xs text-zinc-500">
-                          {int.area.toFixed(2)} m²
-                        </td>
-                        <td className="p-3 text-right font-mono text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                          {formatPesos(int.precio)}
-                        </td>
+                        <Td right mono>
+                          {formatMm(i.ancho)}
+                        </Td>
+                        <Td right mono>
+                          {formatMm(i.alto)}
+                        </Td>
+                        <Td right mono>
+                          {i.area.toFixed(3)} m²
+                        </Td>
+                        <Td right bold>
+                          {i.precio > 0
+                            ? formatPesos(i.precio * margenVid)
+                            : "—"}
+                        </Td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </section>
             )}
+
+            {/* Desglose Analítico Final */}
+            <div className="bg-stone-50 dark:bg-stone-800/50 rounded-xl p-4 space-y-2">
+              <PriceLine
+                label={`Subtotal Perfiles (Margen ${opciones.porcentaje_sobre_perfiles}%)`}
+                value={costo_perfiles * margenPerf}
+              />
+              <PriceLine
+                label={`Subtotal Vidrios / Componentes (Margen ${opciones.porcentaje_sobre_vidrios}%)`}
+                value={costo_interiores * margenVid}
+              />
+              <Divider className="my-1" />
+              <PriceLine label="Subtotal Comercial" value={subtotal} />
+              <PriceLine
+                label={`IVA Inscripto (${opciones.iva}%)`}
+                value={subtotal * (iva - 1)}
+              />
+              <Divider className="my-1" />
+              <PriceLine label="TOTAL PRESUPUESTO" value={totalConIva} big />
+            </div>
           </div>
         </Tab>
 
+        {/* ── VISTA DETALLE: Listado de cortes individuales para taller ── */}
         <Tab
-          key="barras"
+          key="detalle"
           title={
-            <div className="flex items-center gap-2">
-              <ListTree className="w-4 h-4" />
-              <span>
-                Optimización de Barras ({resultado.resumenes?.length ?? 0})
-              </span>
-            </div>
+            <span className="flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5" /> Planilla de Cortes
+            </span>
           }
         >
-          <div className="mt-2 flex flex-col gap-3">
-            {!resultado.resumenes || resultado.resumenes.length === 0 ? (
-              <div className="p-8 text-center text-zinc-400 text-xs bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex flex-col items-center gap-2 shadow-sm">
-                <AlertCircle className="w-5 h-5 text-zinc-300" />
-                No hay perfiles para optimizar.
+          <div className="pt-4 overflow-x-auto">
+            {cortes.length === 0 ? (
+              <div className="text-center py-8 text-stone-400">
+                <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">
+                  Sin cortes calculados para esta tipología
+                </p>
               </div>
             ) : (
-              resultado.resumenes.map((r, idx) => (
-                <div
-                  key={idx}
-                  className="bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm flex flex-col gap-3"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-50 dark:border-zinc-900 pb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm font-black text-amber-600 dark:text-amber-500">
-                        {r.nro_perfil}
-                      </span>
-                      <h4 className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                        {r.descripcion_perfil}
-                      </h4>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs font-mono">
-                      <div>
-                        Tiras de {r.longitud_tira / 1000}m:{" "}
-                        <span className="font-bold text-zinc-800 dark:text-zinc-200">
-                          {r.tiras}
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-stone-200 dark:border-stone-700">
+                    <Th>Ubicación</Th>
+                    <Th>Código Perfil</Th>
+                    <Th right>Cant.</Th>
+                    <Th right>Medida Corte</Th>
+                    <Th right>Total m</Th>
+                    <Th>Ángulos</Th>
+                    <Th right>Peso (Kg)</Th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                  {cortes.map((c) => (
+                    <tr
+                      key={c.id}
+                      className="hover:bg-stone-50 dark:hover:bg-stone-800/30"
+                    >
+                      <td className="py-1.5 pr-2">{nivelChip(c.nivel)}</td>
+                      <td className="py-1.5 pr-3">
+                        <span className="font-mono font-semibold text-stone-700 dark:text-stone-300">
+                          {c.nro_perfil}
                         </span>
-                      </div>
-                      <div>
-                        Eficiencia:{" "}
-                        <span
-                          className={clsx(
-                            "font-bold",
-                            r.eficiencia > 0.8
-                              ? "text-emerald-600"
-                              : "text-amber-600",
-                          )}
-                        >
-                          {(r.eficiencia * 100).toFixed(1)}%
+                        <span className="text-stone-400 ml-1.5 text-[10px]">
+                          {c.descripcion_perfil}
                         </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1.5 items-center">
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase mr-1">
-                      Cortes:
-                    </span>
-                    {r.cortes?.map((c, cIdx) => (
-                      <div
-                        key={cIdx}
-                        className="px-2 py-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800/60 rounded-xl font-mono text-[11px] flex items-center gap-1"
-                      >
-                        <span className="font-bold text-zinc-700 dark:text-zinc-300">
-                          {c.medida_mm}
+                      </td>
+                      <Td right mono>
+                        {c.cantidad}
+                      </Td>
+                      <Td right mono>
+                        {formatMm(c.medida_mm)}
+                      </Td>
+                      <Td right mono>
+                        {(c.total_mm / 1000).toFixed(3)} m
+                      </Td>
+                      <td className="py-1.5 px-2">
+                        <span className="font-mono text-[10px] text-stone-500 bg-stone-100 dark:bg-stone-800 px-1 py-0.5 rounded">
+                          {c.angulo}
                         </span>
-                        <span className="text-[10px] text-zinc-400 font-sans">
-                          x{c.cantidad}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))
+                      </td>
+                      <Td right mono>
+                        {c.kg.toFixed(3)}
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
         </Tab>
       </Tabs>
     </div>
+  );
+}
+
+// ── Sub-componentes Internos Modulares ──────────────────────────────────────────
+
+function SummaryCard({
+  icon,
+  label,
+  sub,
+  value,
+  highlight = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  sub: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`border rounded-xl p-3 space-y-1 bg-white dark:bg-stone-900 ${highlight ? "border-stone-400 dark:border-stone-500" : "border-stone-200 dark:border-stone-800"}`}
+    >
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-stone-500 uppercase tracking-wide">
+        {icon} {label}
+      </div>
+      <p
+        className={`font-semibold tabular-nums ${highlight ? "text-base" : "text-sm"} text-stone-800 dark:text-stone-100`}
+      >
+        {value}
+      </p>
+      <p className="text-[10px] text-stone-400">{sub}</p>
+    </div>
+  );
+}
+
+function PriceLine({
+  label,
+  value,
+  big = false,
+}: {
+  label: string;
+  value: number;
+  big?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <span
+        className={`text-xs ${big ? "font-semibold text-stone-700 dark:text-stone-200" : "text-stone-500"}`}
+      >
+        {label}
+      </span>
+      <span
+        className={`font-mono ${big ? "text-base font-bold text-stone-800 dark:text-stone-100" : "text-xs text-stone-700 dark:text-stone-300"}`}
+      >
+        {formatPesos(value)}
+      </span>
+    </div>
+  );
+}
+
+function EficienciaChip({ v }: { v: number }) {
+  const pct = Math.round(v * 100);
+  const color =
+    v >= 0.85
+      ? "text-emerald-600 font-bold"
+      : v >= 0.7
+        ? "text-amber-600 font-medium"
+        : "text-red-500 font-medium";
+  return <span className={`font-mono text-[10px] ${color}`}>{pct}%</span>;
+}
+
+function IntTipoChip({
+  tipo,
+}: {
+  tipo: "Vidrio" | "Revestimiento" | "CV Int." | "CV Ext." | "VR" | string;
+}) {
+  const map: Record<string, string> = {
+    Vidrio: "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400",
+    Revestimiento:
+      "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300",
+    "CV Int.":
+      "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+    "CV Ext.":
+      "bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400",
+    VR: "bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400",
+  };
+  return (
+    <span
+      className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${map[tipo] ?? "bg-stone-100 text-stone-600"}`}
+    >
+      {tipo}
+    </span>
+  );
+}
+
+function Th({
+  children,
+  right,
+}: {
+  children?: React.ReactNode;
+  right?: boolean;
+}) {
+  return (
+    <th
+      className={`pb-2 text-[10px] font-semibold text-stone-400 uppercase tracking-wide whitespace-nowrap ${right ? "text-right" : "text-left"} pr-3`}
+    >
+      {children}
+    </th>
+  );
+}
+
+function Td({
+  children,
+  right,
+  mono,
+  bold,
+}: {
+  children: React.ReactNode;
+  right?: boolean;
+  mono?: boolean;
+  bold?: boolean;
+}) {
+  return (
+    <td
+      className={`py-1.5 pr-3 whitespace-nowrap ${right ? "text-right" : ""} ${mono ? "font-mono" : ""} ${bold ? "font-semibold" : ""}`}
+    >
+      {children}
+    </td>
   );
 }
