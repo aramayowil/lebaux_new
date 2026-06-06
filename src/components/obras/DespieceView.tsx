@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Tabs, Tab, Chip, Divider } from "@heroui/react";
+import { Tabs, Tab, Chip, Divider, Spinner } from "@heroui/react";
 import {
   Layers,
   Wrench,
@@ -41,28 +41,34 @@ export default function DespieceView({ resultado, titulo }: Props) {
   const [view, setView] = useState<"detalle" | "resumen">("resumen");
   const { data: opciones } = useOpciones();
 
-  if (!opciones) return <div>Loading...</div>;
+  if (!opciones) {
+    return (
+      <div className="h-48 flex items-center justify-center">
+        <Spinner color="amber" label="Cargando configuración de costos..." />
+      </div>
+    );
+  }
 
-  // 🌟 Desestructuración adaptada al snake_case estricto del motor
+  // 🌟 Desestructuración adaptada al snake_case estricto del motor con salvaguarda nullish
   const {
-    cortes,
-    interiores,
-    resumenes,
-    costo_perfiles,
-    costo_interiores,
-    multiplicador,
-    contexto,
-  } = resultado;
+    cortes = [],
+    interiores = [],
+    resumenes = [],
+    costo_perfiles = 0,
+    costo_interiores = 0,
+    multiplicador = 1,
+    contexto = { ancho: 0, alto: 0, hojas: 0, cruces_h: 0, cruces_v: 0, pos_h: [], pos_v: [] },
+  } = resultado || {};
 
   // Los accesorios ahora viajan como cortes de nivel "Cruces" o están contemplados en el costo perimetral.
   // Mantenemos la variable en 0 o mapeada si se extiende en un futuro.
   const costoAccesoriosEfectivo = 0;
 
   // Aplicación de márgenes comerciales parametrizados
-  const margenPerf = 1 + (opciones?.porcentaje_sobre_perfiles / 100 || 0);
-  const margenAcc = 1 + (opciones?.porcentaje_sobre_accesorios / 100 || 0);
-  const margenVid = 1 + (opciones?.porcentaje_sobre_vidrios / 100 || 0);
-  const iva = 1 + (opciones?.iva / 100 || 0);
+  const margenPerf = 1 + ((opciones?.porcentaje_sobre_perfiles ?? 0) / 100);
+  const margenAcc = 1 + ((opciones?.porcentaje_sobre_accesorios ?? 0) / 100);
+  const margenVid = 1 + ((opciones?.porcentaje_sobre_vidrios ?? 0) / 100);
+  const iva = 1 + ((opciones?.iva ?? 0) / 100);
 
   const subtotal =
     costo_perfiles * margenPerf +
@@ -70,8 +76,8 @@ export default function DespieceView({ resultado, titulo }: Props) {
     costo_interiores * margenVid;
   const totalConIva = subtotal * iva;
 
-  const totalKg = resumenes.reduce((s, r) => s + r.kg, 0);
-  const totalTiras = resumenes.reduce((s, r) => s + r.tiras, 0);
+  const totalKg = resumenes.reduce((s, r) => s + (r.kg || 0), 0);
+  const totalTiras = resumenes.reduce((s, r) => s + (r.tiras || 0), 0);
 
   return (
     <div className="space-y-4">
@@ -86,15 +92,15 @@ export default function DespieceView({ resultado, titulo }: Props) {
           ×{multiplicador} unidad{multiplicador !== 1 ? "es" : ""}
         </Chip>
         <span className="font-mono">
-          {contexto.ancho} × {contexto.alto} mm
+          {contexto?.ancho ?? 0} × {contexto?.alto ?? 0} mm
         </span>
         <span>·</span>
         <span>
-          {contexto.hojas} hoja{contexto.hojas !== 1 ? "s" : ""}
+          {contexto?.hojas ?? 0} hoja{(contexto?.hojas ?? 0) !== 1 ? "s" : ""}
         </span>
-        {(contexto.cruces_h > 0 || contexto.cruces_v > 0) && (
+        {((contexto?.cruces_h ?? 0) > 0 || (contexto?.cruces_v ?? 0) > 0) && (
           <span>
-            · {contexto.cruces_h}H + {contexto.cruces_v}V cruces
+            · {contexto?.cruces_h ?? 0}H + {contexto?.cruces_v ?? 0}V cruces
           </span>
         )}
       </div>
@@ -121,7 +127,7 @@ export default function DespieceView({ resultado, titulo }: Props) {
         />
         <SummaryCard
           icon={<TrendingUp className="w-4 h-4 text-stone-500" />}
-          label={`Total + IVA ${opciones.iva}%`}
+          label={`Total + IVA ${opciones?.iva ?? 0}%`}
           sub="Con márgenes aplicados"
           value={formatPesos(totalConIva)}
           highlight
@@ -191,7 +197,7 @@ export default function DespieceView({ resultado, titulo }: Props) {
                             {r.total_cortes}
                           </Td>
                           <Td right mono>
-                            {(r.total_mm / 1000).toFixed(2)} m
+                            {((r.total_mm || 0) / 1000).toFixed(2)} m
                           </Td>
                           <Td right mono>
                             {r.tiras}
@@ -200,10 +206,10 @@ export default function DespieceView({ resultado, titulo }: Props) {
                             <EficienciaChip v={r.eficiencia} />
                           </Td>
                           <Td right mono>
-                            {r.kg.toFixed(3)}
+                            {(r.kg || 0).toFixed(3)}
                           </Td>
                           <Td right bold>
-                            {formatPesos(r.precio_total * margenPerf)}
+                            {formatPesos((r.precio_total || 0) * margenPerf)}
                           </Td>
                         </tr>
                       ))}
@@ -214,7 +220,7 @@ export default function DespieceView({ resultado, titulo }: Props) {
                         <td />
                         <td className="text-right font-mono text-xs py-2">
                           {(
-                            resumenes.reduce((s, r) => s + r.total_mm, 0) / 1000
+                            resumenes.reduce((s, r) => s + (r.total_mm || 0), 0) / 1000
                           ).toFixed(2)}{" "}
                           m
                         </td>
@@ -271,11 +277,11 @@ export default function DespieceView({ resultado, titulo }: Props) {
                           {formatMm(i.alto)}
                         </Td>
                         <Td right mono>
-                          {i.area.toFixed(3)} m²
+                          {(i.area ?? 0).toFixed(3)} m²
                         </Td>
                         <Td right bold>
                           {i.precio > 0
-                            ? formatPesos(i.precio * margenVid)
+                            ? formatPesos((i.precio || 0) * margenVid)
                             : "—"}
                         </Td>
                       </tr>
@@ -288,17 +294,17 @@ export default function DespieceView({ resultado, titulo }: Props) {
             {/* Desglose Analítico Final */}
             <div className="bg-stone-50 dark:bg-stone-800/50 rounded-xl p-4 space-y-2">
               <PriceLine
-                label={`Subtotal Perfiles (Margen ${opciones.porcentaje_sobre_perfiles}%)`}
+                label={`Subtotal Perfiles (Margen ${opciones?.porcentaje_sobre_perfiles ?? 0}%)`}
                 value={costo_perfiles * margenPerf}
               />
               <PriceLine
-                label={`Subtotal Vidrios / Componentes (Margen ${opciones.porcentaje_sobre_vidrios}%)`}
+                label={`Subtotal Vidrios / Componentes (Margen ${opciones?.porcentaje_sobre_vidrios ?? 0}%)`}
                 value={costo_interiores * margenVid}
               />
               <Divider className="my-1" />
               <PriceLine label="Subtotal Comercial" value={subtotal} />
               <PriceLine
-                label={`IVA Inscripto (${opciones.iva}%)`}
+                label={`IVA Inscripto (${opciones?.iva ?? 0}%)`}
                 value={subtotal * (iva - 1)}
               />
               <Divider className="my-1" />
@@ -359,7 +365,7 @@ export default function DespieceView({ resultado, titulo }: Props) {
                         {formatMm(c.medida_mm)}
                       </Td>
                       <Td right mono>
-                        {(c.total_mm / 1000).toFixed(3)} m
+                        {((c.total_mm || 0) / 1000).toFixed(3)} m
                       </Td>
                       <td className="py-1.5 px-2">
                         <span className="font-mono text-[10px] text-stone-500 bg-stone-100 dark:bg-stone-800 px-1 py-0.5 rounded">
@@ -367,7 +373,7 @@ export default function DespieceView({ resultado, titulo }: Props) {
                         </span>
                       </td>
                       <Td right mono>
-                        {c.kg.toFixed(3)}
+                        {(c.kg || 0).toFixed(3)}
                       </Td>
                     </tr>
                   ))}
