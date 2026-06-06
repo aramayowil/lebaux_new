@@ -32,7 +32,7 @@ const DespieceModal = ({
   isOpen,
   onClose,
 }: DespieceModalProps) => {
-  const { idObra: idObraParam } = useParams<any>();
+  const { id: idObraParam } = useParams<any>();
   const idObra = Number(idObraParam);
 
   // Queries de sincronización con la DB
