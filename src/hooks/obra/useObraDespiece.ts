@@ -57,7 +57,7 @@ export function useObraDespieceByTipologia(
       if (error) throw error;
       return (data ?? []) as ObraDespiece[];
     },
-    // 🌟 Combinamos las condiciones: debe haber IDs válidos Y además cumplir lo que pida el componente externo
+
     ...options,
     enabled: !!idObra && !!idTipologia && (options?.enabled ?? true),
   });

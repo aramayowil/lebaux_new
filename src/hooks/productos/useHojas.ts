@@ -21,10 +21,12 @@ export function useHojas() {
   });
 }
 
-export function useHojasById(id: number) {
+export function useHojasById(id: number | undefined) {
   return useQuery({
     queryKey: [TABLE, "id", id],
     queryFn: async () => {
+      if (id === undefined) return null;
+
       const { data, error } = await supabase
         .schema(SQUEMA)
         .from(TABLE)
@@ -35,6 +37,8 @@ export function useHojasById(id: number) {
       if (error) throw error;
       return data as Hoja;
     },
+    // CRÍTICO: La query SOLO se dispara si el id existe y es mayor a 0
+    enabled: typeof id === "number" && id > 0,
   });
 }
 
