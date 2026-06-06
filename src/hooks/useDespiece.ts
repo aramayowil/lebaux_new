@@ -7,7 +7,12 @@ import {
   type EntradaCalculo,
   type DatosProducto,
 } from "@/lib/motorDespiece";
-import type { ObraTipologia, ObraDetalle } from "@/types";
+import type {
+  ObraTipologia,
+  ObraDetalle,
+  DespieceCruce,
+  DespiecePerfilContravidrio,
+} from "@/types";
 
 // Catálogos Generales
 import { usePerfiles } from "./catalogo/usePerfiles";
@@ -15,7 +20,7 @@ import { useAccesorios } from "./catalogo/useAccesorios";
 import { useVidrios } from "./catalogo/useVidrios";
 import { useTratamientos } from "./catalogo/useTratamientos";
 
-// Productos globales (Aquí consumimos tus hooks de productos)
+// Productos globales
 import { useHojasById } from "./productos/useHojas";
 
 export interface UseDespieceResult {
@@ -48,49 +53,55 @@ export function useDespiece(
     queryFn: async () => {
       if (!idMarco && !idHoja) return null;
 
-      const [rMarco, rHoja, rInt, rCV, rCVE, rVR] = await Promise.all([
+      const [rMarco, rHoja, rCruces, rCV, rCVE, rVR] = await Promise.all([
         idMarco
           ? supabase
+              .schema("opendata")
               .from("despiece_perfiles_marco")
               .select("*")
               .eq("id_marco", idMarco)
           : null,
         idHoja
           ? supabase
+              .schema("opendata")
               .from("despiece_perfiles_hoja")
               .select("*")
               .eq("id_hoja", idHoja)
           : null,
         idInterior
           ? supabase
-              .from("despiece_perfiles_interior")
+              .schema("opendata")
+              .from("despiece_cruces")
               .select("*")
-              .eq("id_interior", idInterior)
+              .eq("id_cruces", idInterior)
           : null,
         idInterior
           ? supabase
+              .schema("opendata")
               .from("despiece_perfiles_contravidrio")
               .select("*")
-              .eq("id_interior", idInterior)
+              .eq("id_contravidrio", idInterior)
           : null,
         idInterior
           ? supabase
+              .schema("opendata")
               .from("despiece_perfiles_contravidrio_ext")
               .select("*")
-              .eq("id_interior", idInterior)
+              .eq("id_contravidrio", idInterior)
           : null,
         idInterior
           ? supabase
+              .schema("opendata")
               .from("despiece_perfiles_vidrio_repartido")
               .select("*")
-              .eq("id_interior", idInterior)
+              .eq("id_vr", idInterior)
           : null,
       ]);
 
       return {
         dpMarco: rMarco?.data ?? [],
         dpHoja: rHoja?.data ?? [],
-        dpInt: rInt?.data ?? [],
+        dpCruces: rCruces?.data ?? [],
         dpCV: rCV?.data ?? [],
         dpCVE: rCVE?.data ?? [],
         dpVR: rVR?.data ?? [],
@@ -107,15 +118,15 @@ export function useDespiece(
     lkHoja ||
     rulesLoading;
 
-  // 3. Ejecución en caliente del Motor de Despiece por cada cambio en el panel
   const memoResult = useMemo(() => {
     if (!tipologia || !detalle || !despieceRules) {
       return { resultado: null, error: null, configurado: false };
     }
 
-    if (!detalle.marco || !detalle.hoja) {
+    if (!detalle.marco) {
       return { resultado: null, error: null, configurado: false };
     }
+
     try {
       const cantidadHojasEfectiva = productoHoja?.cantidad ?? 0;
 
@@ -129,18 +140,21 @@ export function useDespiece(
       };
 
       const datos: DatosProducto = {
-        // Buscamos las entidades de cabecera en los catálogos
         marco: perfiles.find((x) => x.id === idMarco),
         hoja: perfiles.find((x) => x.id === idHoja),
         interior: perfiles.find((x) => x.id === idInterior),
 
-        // Inyectamos las reglas recuperadas desde Supabase
         rules_perfiles_marco: despieceRules.dpMarco,
         rules_perfiles_hoja: despieceRules.dpHoja,
-        rules_perfiles_interior: despieceRules.dpInt,
-        rules_perfiles_contravidrio: despieceRules.dpCV,
+        rules_cruces: despieceRules.dpCruces as DespieceCruce[],
 
-        // Resolutores dinámicos analógicos a la base de datos
+        // Unificamos ambos arrays para pasarlos limpios a la interfaz
+        rules_perfiles_contravidrio: [
+          ...despieceRules.dpCV,
+          ...despieceRules.dpCVE,
+        ] as DespiecePerfilContravidrio[],
+
+        // Función estricta: Si no lo encuentra, tira un error (que luego ataja el motor)
         find_despiece_contravidrio: (idContravidrio) => {
           const cv =
             despieceRules.dpCV.find(
@@ -149,11 +163,13 @@ export function useDespiece(
             despieceRules.dpCVE.find(
               (x: any) => x.id_contravidrio === idContravidrio,
             );
-          if (!cv)
+
+          if (!cv) {
             throw new Error(
               `Regla no encontrada para contravidrio: ${idContravidrio}`,
             );
-          return cv;
+          }
+          return cv as DespiecePerfilContravidrio;
         },
 
         catalog_perfiles: perfiles,

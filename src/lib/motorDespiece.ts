@@ -1,9 +1,3 @@
-/**
- * motorDespiece.ts — VERSIÓN FINAL ADAPTADA AL MODELO DE BASE DE DATOS STRICT
- * * Resuelve la geometría de la abertura usando los cruces de ObraTipologia u ObraDetalle,
- * mapea las columnas físicas de rellenado (_1 a _4) y optimiza las barras de aluminio.
- */
-
 import {
   calcularCantidad,
   calcularMedida,
@@ -20,6 +14,7 @@ import type {
   Tratamiento,
   DespiecePerfil,
   DespiecePerfilContravidrio,
+  DespieceCruce,
 } from "@/types";
 
 // ─── Interfaces de Comunicación del Hook ──────────────────────────────────────
@@ -33,6 +28,7 @@ export interface EntradaCalculo {
   cant_hojas_calculo: number;
 }
 
+// 🌟 Interfaz Estricta implementada
 export interface DatosProducto {
   marco?: Perfil;
   hoja?: Perfil;
@@ -40,7 +36,7 @@ export interface DatosProducto {
 
   rules_perfiles_marco: DespiecePerfil[];
   rules_perfiles_hoja: DespiecePerfil[];
-  rules_perfiles_interior: DespiecePerfil[];
+  rules_cruces: DespieceCruce[];
   rules_perfiles_contravidrio: DespiecePerfilContravidrio[];
 
   find_despiece_contravidrio: (id: number) => DespiecePerfilContravidrio;
@@ -137,7 +133,6 @@ export function calcularDespiece(
   let posVef: number[] = [];
 
   if (tipo_cruce === 2) {
-    // Cruces Variables: Se priorizan las columnas de ObraDetalle. Si está ligado, cae a la Tipología
     const h1 =
       detalle.horizontal_1 ??
       (detalle.ligado_alto_tipologia ? tipologia.hor_1 : null);
@@ -170,7 +165,6 @@ export function calcularDespiece(
       (n): n is number => n !== null && n !== undefined && n > 0,
     );
   } else if (tipo_cruce === 1) {
-    // Cruces Centrados Equidistantes automáticos
     const c_h = detalle.cant_centrados_horizontal ?? 0;
     const c_v = detalle.cant_centrados_vertical ?? 0;
     posHef = Array.from({ length: c_h }, (_, i) =>
@@ -181,7 +175,6 @@ export function calcularDespiece(
     );
   }
 
-  // Descomponer el espacio en celdas físicas/geométricas
   const filasAltos =
     posHef.length > 0 ? obtenerSegmentosDeCruces(alto, posHef) : [alto];
   const colsAnchos =
@@ -234,20 +227,90 @@ export function calcularDespiece(
     });
   }
 
-  // ── 2. Procesar Estructuras Perimetrales (Marco y Hoja) ─────────────────────
-  if (detalle.marco) {
+  // ── 2. Procesar Estructuras Perimetrales
+  if (detalle.marco)
     datos.rules_perfiles_marco.forEach((dp) => addCorte("Marco", dp, ctxBase));
-  }
-  if (detalle.hoja) {
+  if (detalle.hoja)
     datos.rules_perfiles_hoja.forEach((dp) => addCorte("Hoja", dp, ctxBase));
+
+  // ── 3. Procesar Cruces Físicos
+  if (
+    (posHef.length > 0 || posVef.length > 0) &&
+    datos.rules_cruces.length > 0
+  ) {
+    const ruleCruce = datos.rules_cruces[0]!;
+    if (ruleCruce.id_perfil) {
+      const perfilCruce = lkPerfil(ruleCruce.id_perfil);
+      if (perfilCruce) {
+        const medidaCruceH = calcularMedida(
+          ruleCruce.formula_ancho_entero || "ancho",
+          ctxBase,
+        );
+        const medidaCruceV = calcularMedida(
+          ruleCruce.formula_alto_entero || "alto",
+          ctxBase,
+        );
+
+        if (posHef.length > 0) {
+          cortes.push({
+            id: cortId++,
+            nivel: "Cruces",
+            nro_perfil: perfilCruce.nro_perfil?.toString() ?? "CRUCE",
+            descripcion_perfil: perfilCruce.descri ?? "Perfil Divisor",
+            angulo: ruleCruce.angulo ?? "90°/90°",
+            cantidad: posHef.length,
+            medida_mm: medidaCruceH,
+            total_mm: medidaCruceH * posHef.length,
+            kg:
+              ((perfilCruce.peso_metro ?? 0) / 1000) *
+              medidaCruceH *
+              posHef.length,
+            precio_unitario:
+              (perfilCruce.precio_kg ?? 0) *
+              ((perfilCruce.peso_metro ?? 0) / 1000) *
+              medidaCruceH,
+            precio_total:
+              (perfilCruce.precio_kg ?? 0) *
+              (((perfilCruce.peso_metro ?? 0) / 1000) *
+                medidaCruceH *
+                posHef.length),
+          });
+        }
+        if (posVef.length > 0) {
+          cortes.push({
+            id: cortId++,
+            nivel: "Cruces",
+            nro_perfil: perfilCruce.nro_perfil?.toString() ?? "CRUCE",
+            descripcion_perfil: perfilCruce.descri ?? "Perfil Divisor",
+            angulo: ruleCruce.angulo ?? "90°/90°",
+            cantidad: posVef.length,
+            medida_mm: medidaCruceV,
+            total_mm: medidaCruceV * posVef.length,
+            kg:
+              ((perfilCruce.peso_metro ?? 0) / 1000) *
+              medidaCruceV *
+              posVef.length,
+            precio_unitario:
+              (perfilCruce.precio_kg ?? 0) *
+              ((perfilCruce.peso_metro ?? 0) / 1000) *
+              medidaCruceV,
+            precio_total:
+              (perfilCruce.precio_kg ?? 0) *
+              (((perfilCruce.peso_metro ?? 0) / 1000) *
+                medidaCruceV *
+                posVef.length),
+          });
+        }
+      }
+    }
   }
 
-  // ── 3. Barrido de Rellenos del Paño 1 al Paño 4 (Columnas Indexadas DB) ──────
+  // ── 4. Barrido de Rellenos y Contravidrios
   let pañoIndex = 1;
 
   for (let fila = 0; fila < filasAltos.length; fila++) {
     for (let col = 0; col < colsAnchos.length; col++) {
-      if (pañoIndex > 4) break; // Límite estructural de celdas planas en la DB
+      if (pañoIndex > 4) break;
 
       const tipoInterior = (detalle as any)[`interior_${pañoIndex}`] as
         | "VIDRIO"
@@ -262,22 +325,91 @@ export function calcularDespiece(
         alto: altoMod,
       };
 
-      if (tipoInterior && datos.rules_perfiles_interior.length > 0) {
-        const ruleInt = datos.rules_perfiles_interior[0]!; // Regla maestra de descuentos de luz libre
+      if (tipoInterior) {
+        let anchoInt = anchoMod;
+        let altoInt = altoMod;
 
-        const anchoInt = calcularMedida(
-          (ruleInt as any).formula_ancho_interior ?? "ancho",
-          ctxMod,
-        );
-        const altoInt = calcularMedida(
-          (ruleInt as any).formula_alto_interior ?? "alto",
-          ctxMod,
-        );
+        // Descuentos de Vidrio según Cruces
+        if (datos.rules_cruces && datos.rules_cruces.length > 0) {
+          const ruleCruce = datos.rules_cruces[0]!;
+          const descVidrio = ruleCruce.descuento_vidrio ?? 0;
+          anchoInt = ruleCruce.formula_ancho_entero
+            ? calcularMedida(ruleCruce.formula_ancho_entero, ctxMod)
+            : anchoMod - descVidrio;
+          altoInt = ruleCruce.formula_alto_entero
+            ? calcularMedida(ruleCruce.formula_alto_entero, ctxMod)
+            : altoMod - descVidrio;
+        }
+
         const area = (anchoInt / 1000) * (altoInt / 1000);
         const labelModulo = `Paño ${pañoIndex} (F${fila + 1}-C${col + 1})`;
 
+        // Procesamiento Estricto de Contravidrios
+        const idCv = (detalle as any)[`contravidrio`] ?? detalle.interior;
+        if (idCv) {
+          try {
+            // 🌟 Al ser estricto, no validamos si es null, confiamos en la interfaz. Si falla, el catch lo atrapa.
+            const ruleCv = datos.find_despiece_contravidrio(Number(idCv));
+
+            const cantH = calcularCantidad(
+              (ruleCv as any).formula_cantidad_ancho ?? "2",
+              ctxMod,
+            );
+            const cantV = calcularCantidad(
+              (ruleCv as any).formula_cantidad_alto ?? "2",
+              ctxMod,
+            );
+            const medH = calcularMedida(
+              (ruleCv as any).formula_ancho ?? "ancho",
+              ctxMod,
+            );
+            const medV = calcularMedida(
+              (ruleCv as any).formula_alto ?? "alto",
+              ctxMod,
+            );
+
+            const perfilCv = lkPerfil(ruleCv.id_perfil ?? 0);
+            if (perfilCv) {
+              if (medH > 0 && cantH > 0) {
+                cortes.push({
+                  id: cortId++,
+                  nivel: "Contravid. Int.",
+                  nro_perfil: perfilCv.nro_perfil?.toString() ?? "CV",
+                  descripcion_perfil: perfilCv.descri ?? "Contravidrio",
+                  angulo: ruleCv.angulo ?? "90°/90°",
+                  cantidad: cantH,
+                  medida_mm: medH,
+                  total_mm: medH * cantH,
+                  kg: ((perfilCv.peso_metro ?? 0) / 1000) * medH * cantH,
+                  precio_unitario: 0,
+                  precio_total: 0,
+                });
+              }
+              if (medV > 0 && cantV > 0) {
+                cortes.push({
+                  id: cortId++,
+                  nivel: "Contravid. Int.",
+                  nro_perfil: perfilCv.nro_perfil?.toString() ?? "CV",
+                  descripcion_perfil: perfilCv.descri ?? "Contravidrio",
+                  angulo: ruleCv.angulo ?? "90°/90°",
+                  cantidad: cantV,
+                  medida_mm: medV,
+                  total_mm: medV * cantV,
+                  kg: ((perfilCv.peso_metro ?? 0) / 1000) * medV * cantV,
+                  precio_unitario: 0,
+                  precio_total: 0,
+                });
+              }
+            }
+          } catch (error) {
+            console.warn(
+              `[Despiece] Paño ${pañoIndex} - Contravidrio omitido:`,
+              error,
+            );
+          }
+        }
+
         if (tipoInterior === "VIDRIO") {
-          // El código del vidrio viene de la columna dvh_X_1
           const idVidrio = (detalle as any)[`dvh_${pañoIndex}_1`]?.toString();
           if (idVidrio) {
             const vid = datos.catalog_vidrios.find(
@@ -296,19 +428,17 @@ export function calcularDespiece(
             }
           }
         } else if (tipoInterior === "REVESTIMIENTO") {
-          // Revestimiento usando las columnas exactas de la DB: revest_X y direcc_X
           const idPerfilRevest = (detalle as any)[`revest_${pañoIndex}`];
           const orientacion = (detalle as any)[`direcc_${pañoIndex}`] ?? "H";
 
           if (idPerfilRevest) {
             const perfilRevest = lkPerfil(Number(idPerfilRevest));
             if (perfilRevest) {
-              const pasoTablilla = 100; // 100mm de solape estándar de carpintería
+              const pasoTablilla = 100;
               const cantidadTablillas =
                 orientacion === "H"
                   ? Math.ceil(altoInt / pasoTablilla)
                   : Math.ceil(anchoInt / pasoTablilla);
-
               const medidaCorteTablilla =
                 orientacion === "H" ? anchoInt : altoInt;
               const kgCorte =
@@ -316,7 +446,6 @@ export function calcularDespiece(
                 medidaCorteTablilla *
                 cantidadTablillas;
 
-              // Agregamos las tablillas al listado general de perfiles para que entren en la optimización de barras
               cortes.push({
                 id: cortId++,
                 nivel: "Interior",
@@ -352,7 +481,7 @@ export function calcularDespiece(
     }
   }
 
-  // ── 4. Afectar cantidades por el multiplicador global de Tipologías ──────────
+  // ── 5. Afectar cantidades y 6. Optimización ──────────────────────────────────
   const mult = cantidad_tipologias ?? 1;
   cortes.forEach((c) => {
     c.cantidad *= mult;
@@ -366,7 +495,6 @@ export function calcularDespiece(
     i.precio *= mult;
   });
 
-  // ── 5. Agrupamiento e Invocación del Algoritmo de Optimización de Tiras ──────
   const mapPerfiles = new Map<
     string,
     { perfil: Perfil | undefined; lista: any[] }
@@ -380,11 +508,13 @@ export function calcularDespiece(
         lista: [],
       });
     }
-    mapPerfiles.get(c.nro_perfil)!.lista.push({
-      medida_mm: c.medida_mm,
-      cantidad: c.cantidad,
-      angulo: c.angulo,
-    });
+    mapPerfiles
+      .get(c.nro_perfil)!
+      .lista.push({
+        medida_mm: c.medida_mm,
+        cantidad: c.cantidad,
+        angulo: c.angulo,
+      });
   }
 
   const resumenes: ResumenPerfil[] = [];

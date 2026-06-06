@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
-import type { ObraDespiece, ObraDetalle } from "@/types";
+import type { ObraDespiece } from "@/types";
 import {
   Modal,
   ModalContent,
@@ -19,6 +19,7 @@ import {
   useObraDespieceByTipologia,
 } from "@/hooks/obra/useObraDespiece";
 import { useTipologiasByObra } from "@/hooks/obra/useObrasTipologias";
+import { useObraDetallesByTipologia } from "@/hooks/obra/useObraDetalles";
 
 interface DespieceModalProps {
   idTipologia: number;
@@ -40,16 +41,17 @@ const DespieceModal = ({
     useSaveObraDespiece();
   const { data: despieceExistente, isLoading: isLoadingExistente } =
     useObraDespieceByTipologia(idObra, idTipologia);
+  const { data: obraDetalles = [], isLoading: isLoadingDetalles } =
+    useObraDetallesByTipologia(idTipologia);
 
   // Encontrar la tipología y su detalle correspondiente
   const tipologia = useMemo(() => {
     return tipologias.find((t) => t.id === idTipologia) ?? null;
   }, [tipologias, idTipologia]);
 
-  // Asumiendo que tu tipología trae el detalle embebido o relacionado
   const detalle = useMemo(() => {
-    return ((tipologia as any)?.obra_detalles?.[0] as ObraDetalle) ?? null;
-  }, [tipologia]);
+    return obraDetalles[0] ?? null;
+  }, [obraDetalles]);
 
   // ─── EJECUCIÓN DEL MOTOR LOCAL INTEGRADO ───────────────────────────────────
   const { resultado, error, isLoading, configurado } = useDespiece(
@@ -184,7 +186,7 @@ const DespieceModal = ({
         </ModalHeader>
 
         <ModalBody className="py-4 bg-zinc-50/50 dark:bg-zinc-900/20">
-          {isLoading || isLoadingExistente ? (
+          {isLoading || isLoadingExistente || isLoadingDetalles ? (
             <div className="h-96 flex flex-col items-center justify-center gap-3">
               <Spinner
                 color="amber"
