@@ -20,6 +20,30 @@ export function useTratamientos() {
   });
 }
 
+export function useTratamientoById(id: number | undefined) {
+  return useQuery({
+    queryKey: [TABLE, id],
+
+    queryFn: async () => {
+      if (!id)
+        throw new Error("ID requerido para consultar el tratamiento de obra");
+
+      const { data, error } = await supabase
+        .schema(SQUEMA)
+        .from(TABLE)
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      return data as Tratamiento | null;
+    },
+
+    enabled: !!id,
+  });
+}
+
 // --- 2. CREAR (insert) ---
 export function useCreateTratamiento() {
   const queryClient = useQueryClient();

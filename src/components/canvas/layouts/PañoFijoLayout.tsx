@@ -1,49 +1,42 @@
-import { Group, Rect, Line } from "react-konva";
-import { ObraDetalle, ObraTipologia } from "@/types";
-import { RenderContravidrio } from "../components/RenderContravidrios";
-import RenderCruces from "../components/RenderCruces";
-import { RenderFoco } from "../components/FocoRender";
+import { Group, Line } from "react-konva";
+import type { ObraDetalle, Vidrio } from "@/types";
+import { RenderCrucesCentrados } from "../components/RenderCrucesCentrados";
+import WarningAlertDesign from "../components/WarningAlertDesign";
+import { RenderCelda } from "../components/RenderCelda";
 
 interface LayoutProps {
   drawW: number;
   drawH: number;
   scale: number;
-  tipologia: ObraTipologia;
-  config: ObraDetalle;
-  hojas: number;
-  isFocused: boolean;
-  focusedHoja: number;
+  detalles: ObraDetalle;
   colors: {
-    colorDeAluminio: string;
-    vidrio: string;
+    aluminio: string;
+    catalogVidrios: Vidrio[];
     contorno: string;
     lineasCotas: string;
   };
-  onContextMenu?: (e: any, index: number) => void;
 }
 
 export const PañoFijoLayout = ({
   drawW,
   drawH,
   scale,
-  config,
-  isFocused,
+  detalles,
   colors,
-  onContextMenu,
 }: LayoutProps) => {
-  const { colorDeAluminio, vidrio, contorno } = colors;
+  const { aluminio, contorno } = colors;
 
-  // Grosor del perfil de marco
+  // --- CONFIGURACIÓN DE PERFILES TÉCNICOS ESCALADOS ---
+  const perfilDeMarco = 42.5 * scale; // Marco perimetral fijo
+  const perfilDeCruce = 57.8 * scale; // Travesaño intermedio (Cruce Modena T)
 
-  const perfilDeMarco = 42.5 * scale; //jambas, umbral y dintel de marco
+  // Dimensiones libres del hueco interior neto que deja el marco
+  const marcoInteriorW = drawW - perfilDeMarco * 2;
+  const marcoInteriorH = drawH - perfilDeMarco * 2;
 
-  // Dimensiones de las hojas
-  const hojaW = drawW - perfilDeMarco * 2;
-  const hojaH = drawH - perfilDeMarco * 2;
-
-  // Grosor del perfil de cruces
-  const contravidrioThick = 17 * scale; //perfil de cruces
-  const perfilDeCruces = 57.8 * scale; //perfil de cruces
+  // Comprobación flexible del campo de tratamiento según tu base de datos
+  const tieneTratamiento =
+    detalles.color != null || (detalles as any).tratamiento != null;
 
   const RenderMarco = () => (
     <Group>
@@ -60,7 +53,7 @@ export const PañoFijoLayout = ({
           perfilDeMarco,
         ]}
         closed
-        fill={colorDeAluminio}
+        fill={aluminio}
         stroke={contorno}
         strokeWidth={1}
       />
@@ -77,7 +70,7 @@ export const PañoFijoLayout = ({
           drawH,
         ]}
         closed
-        fill={colorDeAluminio}
+        fill={aluminio}
         stroke={contorno}
         strokeWidth={1}
       />
@@ -90,12 +83,11 @@ export const PañoFijoLayout = ({
           perfilDeMarco,
           perfilDeMarco,
           drawH - perfilDeMarco,
-
           0,
           drawH,
         ]}
         closed
-        fill={colorDeAluminio}
+        fill={aluminio}
         stroke={contorno}
         strokeWidth={1}
       />
@@ -112,56 +104,67 @@ export const PañoFijoLayout = ({
           drawH - perfilDeMarco,
         ]}
         closed
-        fill={colorDeAluminio}
+        fill={aluminio}
         stroke={contorno}
         strokeWidth={1}
       />
     </Group>
   );
 
-  const RenderHoja = ({ width, height }: { width: number; height: number }) => (
-    <Group>
-      {/* ÁREA DE VIDRIO E INTERACCIÓN */}
-      <Group onContextMenu={(e) => onContextMenu?.(e, 0)}>
-        {/* Render Vidrio */}
-        <Rect
-          width={width}
-          height={height}
-          fill={vidrio}
-          stroke={contorno}
-          strokeWidth={1}
-        />
+  const renderContenidoMarco = () => {
+    const cantH = Number(detalles.cant_centrados_horizontal ?? 0);
+    const cantV = Number(detalles.cant_centrados_vertical ?? 0);
+    const tipoCruce = Number(detalles.tipo_cruce ?? 0);
 
-        {/* FOCO DE SELECCIÓN */}
-        {isFocused && <RenderFoco width={width} height={height} />}
-
-        {/* contravidrios  */}
-        <RenderContravidrio
-          hojaW={width}
-          hojaH={height}
-          contravidrioThick={contravidrioThick}
+    // Activamos el módulo si hay divisiones cuantitativas cargadas en la BD
+    if (cantH > 0 || cantV > 0 || tipoCruce > 0) {
+      return (
+        <RenderCrucesCentrados
+          interiorW={marcoInteriorW}
+          interiorH={marcoInteriorH}
+          sizePerfilCruce={perfilDeCruce}
+          scale={scale}
           colors={colors}
+          detalles={detalles}
         />
+      );
+    }
 
-        {/* DIVISIONES (Travesaños/Parantes) */}
-        <RenderCruces
-          width={width}
-          height={height}
-          config={config}
-          espesoPerfilCruce={perfilDeCruces}
-          contravidrioThick={contravidrioThick}
-          colors={colors}
-        />
-      </Group>
-    </Group>
-  );
+    // Si no tiene cruces intermedios, renderiza el paño unificado normal
+    return (
+      <RenderCelda
+        filaId={1}
+        ancho={marcoInteriorW}
+        alto={marcoInteriorH}
+        scale={scale}
+        colors={colors}
+        detalles={detalles}
+      />
+    );
+  };
 
   return (
     <Group>
+      {/* 1. Estructura de aluminio de la abertura */}
       <RenderMarco />
+
+      {/* 2. Vidrios o paneles internos divididos */}
       <Group x={perfilDeMarco} y={perfilDeMarco}>
-        <RenderHoja width={hojaW} height={hojaH} />
+        {renderContenidoMarco()}
       </Group>
+
+      {/* 3. Capa superior de Advertencia si falta el tratamiento de color */}
+      {!tieneTratamiento && (
+        <WarningAlertDesign
+          x={0}
+          y={0}
+          width={drawW}
+          height={drawH}
+          scale={scale}
+        />
+      )}
     </Group>
   );
 };
+
+export default PañoFijoLayout;

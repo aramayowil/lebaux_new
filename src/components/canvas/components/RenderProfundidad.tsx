@@ -3,25 +3,18 @@ import { Line } from "react-konva";
 interface Props {
   hojaW: number;
   hojaH: number;
-  contravidrioThick: number;
+  scale: number;
   colors: {
-    colorDeAluminio: string;
-    vidrio: string;
+    aluminio: string;
     contorno: string;
-    lineasCotas: string;
   };
 }
 
-export const RenderContravidrio = ({
-  hojaW,
-  hojaH,
-  contravidrioThick,
-  colors,
-}: Props) => {
+export const RenderProfundidad = ({ hojaW, hojaH, scale, colors }: Props) => {
+  const contravidrioThick = 15 * scale;
   return (
     <>
-      {/* CONTRAVIDRIO */}
-      {/* PERFIL SUPERIOR*/}
+      {/* PERFIL SUPERIOR */}
       <Line
         points={[
           0,
@@ -33,13 +26,13 @@ export const RenderContravidrio = ({
           contravidrioThick,
           contravidrioThick,
         ]}
-        closed={true}
-        fill={colors.colorDeAluminio}
+        closed
+        fill={colors.aluminio}
         stroke={colors.contorno}
         strokeWidth={1}
       />
 
-      {/*  PERFIL IZQUIERDO*/}
+      {/* PERFIL IZQUIERDO */}
       <Line
         points={[
           0,
@@ -51,13 +44,13 @@ export const RenderContravidrio = ({
           0,
           hojaH,
         ]}
-        closed={true}
-        fill={colors.colorDeAluminio}
+        closed
+        fill={colors.aluminio}
         stroke={colors.contorno}
         strokeWidth={1}
       />
 
-      {/*  PERFIL  DERECHO*/}
+      {/* PERFIL DERECHO */}
       <Line
         points={[
           hojaW - contravidrioThick,
@@ -69,13 +62,13 @@ export const RenderContravidrio = ({
           hojaW - contravidrioThick,
           hojaH - contravidrioThick,
         ]}
-        closed={true}
-        fill={colors.colorDeAluminio}
+        closed
+        fill={colors.aluminio}
         stroke={colors.contorno}
         strokeWidth={1}
       />
 
-      {/*  PERFIL INFERIOR*/}
+      {/* PERFIL INFERIOR */}
       <Line
         points={[
           0,
@@ -87,8 +80,8 @@ export const RenderContravidrio = ({
           hojaW,
           hojaH,
         ]}
-        closed={true}
-        fill={colors.colorDeAluminio}
+        closed
+        fill={colors.aluminio}
         stroke={colors.contorno}
         strokeWidth={1}
       />
