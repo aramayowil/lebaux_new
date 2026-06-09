@@ -139,7 +139,7 @@ const DespieceModal = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      size="5xl"
+      size="full"
       scrollBehavior="inside"
       backdrop="blur"
     >
@@ -221,7 +221,7 @@ const DespieceModal = ({
           )}
         </ModalBody>
 
-        <ModalFooter className="border-t border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+        <ModalFooter className="border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20">
           <Button
             variant="ghost"
             size="sm"
@@ -231,9 +231,8 @@ const DespieceModal = ({
             Cerrar Vista
           </Button>
           <Button
-            color="amber"
             size="sm"
-            className="rounded-xl font-medium text-white shadow-md shadow-amber-500/10"
+            className="rounded-xl font-medium text-white shadow-md bg-amber-400/20 shadow-amber-500/10"
             onClick={handleSaveToDB}
             isLoading={isSaving}
             disabled={!hasItemsCalculados}

@@ -267,7 +267,7 @@ export default function ObraEditorPage() {
         ancho: datos.ancho,
         alto: datos.alto,
 
-        relleno_por_panel: false,
+        mismo_relleno_panel: false,
         difiere_en_ancho: false,
         difiere_en_alto: false,
         ligado_ancho_tipologia: false,
@@ -308,7 +308,6 @@ export default function ObraEditorPage() {
         costo_item_manual: null,
         moneda_item_manual: null,
       };
-
       await upsertDetalle(nuevoDetalle);
       setSelectedId(t.id);
     } catch (error) {
@@ -818,13 +817,13 @@ export default function ObraEditorPage() {
       />
 
       {/* MODAL DE DESPIECE TÉCNICO COMPLETO */}
-      {/* {selectedId && (
+      {selectedId && (
         <DespieceModal
           idTipologia={selectedId}
           isOpen={showDespieceModal}
           onClose={() => setShowDespieceModal(false)}
         />
-      )} */}
+      )}
     </div>
   );
 }

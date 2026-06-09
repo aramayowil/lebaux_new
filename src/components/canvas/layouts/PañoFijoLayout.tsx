@@ -3,6 +3,7 @@ import type { ObraDetalle, Vidrio } from "@/types";
 import { RenderCrucesCentrados } from "../components/RenderCrucesCentrados";
 import WarningAlertDesign from "../components/WarningAlertDesign";
 import { RenderCelda } from "../components/RenderCelda";
+import { RenderCrucesVariables } from "../components/RenderCrucesVariables";
 
 interface LayoutProps {
   drawW: number;
@@ -117,7 +118,7 @@ export const PañoFijoLayout = ({
     const tipoCruce = Number(detalles.tipo_cruce ?? 0);
 
     // Activamos el módulo si hay divisiones cuantitativas cargadas en la BD
-    if (cantH > 0 || cantV > 0 || tipoCruce > 0) {
+    if (tipoCruce === 1 && (cantH > 0 || cantV > 0)) {
       return (
         <RenderCrucesCentrados
           interiorW={marcoInteriorW}
@@ -127,6 +128,34 @@ export const PañoFijoLayout = ({
           colors={colors}
           detalles={detalles}
         />
+      );
+    }
+
+    const tieneCrucesVariables = [
+      detalles.horizontal_1,
+      detalles.horizontal_2,
+      detalles.horizontal_3,
+      detalles.vertical_1,
+      detalles.vertical_2,
+      detalles.vertical_3,
+      detalles.vertical_4,
+      detalles.vertical_5,
+    ].some((v) => typeof v === "number" && v > 0);
+
+    if (tipoCruce === 2 && tieneCrucesVariables) {
+      return (
+        <>
+          <RenderCrucesVariables
+            windowH={drawH}
+            windowW={drawW}
+            interiorHojaH={marcoInteriorH}
+            interiorHojaW={marcoInteriorW}
+            sizePerfilCruce={perfilDeCruce}
+            scale={scale}
+            colors={colors}
+            detalles={detalles}
+          />
+        </>
       );
     }
 

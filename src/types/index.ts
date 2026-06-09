@@ -455,7 +455,7 @@ export interface ObraDetalle {
   alto: number | null;
 
   // Booleanos estrictos (NOT NULL DEFAULT FALSE en DB)
-  relleno_por_panel: boolean;
+  mismo_relleno_panel: boolean;
   difiere_en_ancho: boolean;
   difiere_en_alto: boolean;
   ligado_ancho_tipologia: boolean;

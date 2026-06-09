@@ -9,6 +9,7 @@ import { useVidrios } from "@/hooks/catalogo/useVidrios";
 import { useTipoById } from "@/hooks/obra/useTipos";
 import { useHojasById } from "@/hooks/productos/useHojas";
 import PañoFijoLayout from "./layouts/PañoFijoLayout";
+import CorredizaLayout from "./layouts/CorredizaLayout";
 
 interface Props {
   tipologia: ObraTipologia;
@@ -25,9 +26,7 @@ export default function TipologiaCanvas({
   height,
   onReady,
 }: Props) {
-  // ─── 1. PRIMERO: ABSOLUTAMENTE TODOS LOS HOOKS (SIN SUB DIVISIONES NI RETURNS EN MEDIO) ───
-
-  // Queries de Base de Datos
+  // ─── 1. HOOKS DE CONSULTA DE DATOS (React Query) ───
   const {
     data: tipo,
     isPending: pendingTipo,
@@ -52,7 +51,7 @@ export default function TipologiaCanvas({
     error: errorVidrios,
   } = useVidrios();
 
-  // Refs y States
+  // ─── 2. REFS Y ESTADOS LOCALES ───
   const stageRef = useRef<any>(null);
 
   const [menu, setMenu] = useState<{
@@ -63,80 +62,34 @@ export default function TipologiaCanvas({
     relativeY: number;
   } | null>(null);
 
-  // Variables base para el Layout técnico
+  // Dimensiones nominales de la abertura
   const A = detalles.ancho ?? 0;
   const H = detalles.alto ?? 0;
 
-  // useMemo para cálculos matemáticos responsivos
+  // ─── 3. CÁLCULOS MATEMÁTICOS DE ESCALA Y CENTRADO ───
   const layout = useMemo(() => {
     if (width === 0 || height === 0 || A === 0 || H === 0) {
-      return {
-        scale: 0.1,
-        drawW: 0,
-        drawH: 0,
-        ox: 0,
-        oy: 0,
-        espesoPerfil: 0,
-        innerH: 0,
-        posH: [],
-        posV: [],
-      };
+      return { scale: 0.1, drawW: 0, drawH: 0, ox: 0, oy: 0 };
     }
 
     const padding = 80;
     const availableWidth = width - padding;
     const availableHeight = height - padding;
+
+    // Factor de escala adaptativo limitando el zoom máximo a 0.55
     const scale = Math.min(availableWidth / A, availableHeight / H, 0.55);
 
     const drawW = A * scale;
     const drawH = H * scale;
+
+    // Coordenadas de desfase para centrar el canvas en el contenedor
     const ox = (width - drawW) / 2;
     const oy = (height - drawH) / 2;
 
-    const realFrameWidth = 45;
-    const espesoPerfil = realFrameWidth * scale;
-    const innerH = drawH - espesoPerfil * 2;
+    return { scale, drawW, drawH, ox, oy };
+  }, [A, H, width, height]);
 
-    const cantH = detalles.cant_centrados_horizontal ?? 0;
-    let posH: number[] = [];
-    if (cantH > 0) {
-      posH = Array.from({ length: cantH }, (_, i) => {
-        const pasoH = innerH / (cantH + 1);
-        return innerH - pasoH * (i + 1);
-      });
-    } else {
-      const crucesHorizontalesDb = [
-        detalles.horizontal_1,
-        detalles.horizontal_2,
-        detalles.horizontal_3,
-      ].filter((x): x is number => typeof x === "number" && x > 0);
-      posH = crucesHorizontalesDb
-        .sort((a, b) => a - b)
-        .map((mm) => innerH - mm * scale);
-    }
-
-    const cantV = detalles.cant_centrados_vertical ?? 0;
-    let posV: number[] = [];
-    if (cantV > 0) {
-      posV = Array.from({ length: cantV }, (_, i) => {
-        const pasoV = drawW / (cantV + 1);
-        return pasoV * (i + 1);
-      });
-    } else {
-      const crucesVerticalesDb = [
-        detalles.vertical_1,
-        detalles.vertical_2,
-        detalles.vertical_3,
-        detalles.vertical_4,
-        detalles.vertical_5,
-      ].filter((x): x is number => typeof x === "number" && x > 0);
-      posV = crucesVerticalesDb.sort((a, b) => a - b).map((mm) => mm * scale);
-    }
-
-    return { scale, drawW, drawH, ox, oy, espesoPerfil, innerH, posH, posV };
-  }, [A, H, width, height, detalles]);
-
-  // Effects recurrentes
+  // Manejador del menú contextual global
   useEffect(() => {
     const handleClose = () => setMenu(null);
     window.addEventListener("click", handleClose);
@@ -145,10 +98,11 @@ export default function TipologiaCanvas({
 
   const tieneHojaValida =
     typeof detalles.hoja === "number" && detalles.hoja > 0;
-  const n_hojas = tieneHojaValida && hoja_detalle ? hoja_detalle.cantidad : 0;
+  const n_hojas =
+    tieneHojaValida && hoja_detalle ? Number(hoja_detalle.cantidad ?? 2) : 2;
 
+  // ─── 4. DISPARADOR DE CAPTURA TÉCNICA (ON READY) ───
   useEffect(() => {
-    // Añadimos la protección "&& tipo" para evitar capturas vacías durante la carga
     if (onReady && stageRef.current && tipo) {
       const timer = setTimeout(() => {
         if (stageRef.current) {
@@ -158,10 +112,17 @@ export default function TipologiaCanvas({
       }, 400);
       return () => clearTimeout(timer);
     }
-  }, [onReady, layout, tipo, detalles, n_hojas]);
+  }, [
+    onReady,
+    layout.scale,
+    layout.drawW,
+    layout.drawH,
+    tipo,
+    detalles,
+    n_hojas,
+  ]);
 
-  // ─── 2. SEGUNDO: EVALUACIONES DE CARGA Y LOGIC CONTROL (ABAJO DE LOS HOOKS) ───
-
+  // ─── 5. CONTROL DE FLUJO Y LOGIC CONTROL ───
   const tieneColorValido =
     typeof detalles.color === "number" && detalles.color > 0;
 
@@ -187,17 +148,6 @@ export default function TipologiaCanvas({
       </div>
     );
   }
-
-  //  if (isPendingGlobal) {
-  //   return (
-  //     <div className="flex flex-col items-center justify-center h-64 space-y-2 text-muted-foreground animate-pulse">
-  //       <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-  //       <p className="text-sm font-medium">
-  //         Cargando componentes técnicos y vidrios...
-  //       </p>
-  //     </div>
-  //   );
-  // }
 
   if (errorGlobal) {
     return (
@@ -239,8 +189,7 @@ export default function TipologiaCanvas({
     );
   }
 
-  // ─── 3. TERCERO: RESOLUCIÓN ESTÉTICA Y RENDER COMPLETO DEL CANVAS ───
-
+  // ─── 6. RESOLUCIÓN DE COLOR Y PALETAS GRÁFICAS ───
   const colorAluminioBase =
     tieneColorValido && tratamiento?.color ? tratamiento.color : "#FFFCFC";
 
@@ -264,22 +213,27 @@ export default function TipologiaCanvas({
       drawW: layout.drawW,
       drawH: layout.drawH,
       scale: layout.scale,
-      espesoPerfil: layout.espesoPerfil,
-      posH: layout.posH,
-      posV: layout.posV,
+      ox: layout.ox,
+      oy: layout.oy,
       detalles: detalles,
       tipologia: tipologia,
-      hojas: n_hojas,
+      cantHojas: n_hojas,
       colors: colors,
     };
 
+    // De momento canaliza hacia el layout modularizado de Paños Fijos
     if (formaTipoStr.includes("paño fijo")) {
       return <PañoFijoLayout {...commonProps} />;
+    }
+
+    if (formaTipoStr.includes("corrediza")) {
+      return <CorredizaLayout {...commonProps} />;
     }
 
     return <PañoFijoLayout {...commonProps} />;
   };
 
+  // ─── 7. RENDER COMPLETO DEL ESCENARIO KONVA ───
   return (
     <div
       className="relative select-none bg-stone-50/50 dark:bg-stone-950/20 rounded-xl overflow-hidden"
@@ -292,10 +246,12 @@ export default function TipologiaCanvas({
         onContextMenu={handleStageContextMenu}
       >
         <Layer>
+          {/* El contenedor principal se posiciona en las coordenadas de centrado (ox, oy) */}
           <Group x={layout.ox} y={layout.oy}>
             {renderSelectedLayout()}
           </Group>
 
+          {/* Las cotas se dibujan por encima del marco tomando los límites escalados */}
           <RenderCotas
             ox={layout.ox}
             oy={layout.oy}
