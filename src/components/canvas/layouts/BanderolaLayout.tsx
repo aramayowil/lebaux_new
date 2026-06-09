@@ -1,61 +1,61 @@
 import { Group, Rect, Line } from "react-konva";
-import { ObraDetalle, ObraTipologia } from "@/types";
-import { RenderContravidrio } from "../components/RenderProfundidad";
-import RenderCruces from "../components/RenderCruces";
-import { RenderFoco } from "../components/FocoRender";
+import type { ObraDetalle, ObraTipologia, Vidrio } from "@/types";
+import { RenderCelda } from "../components/RenderCelda";
+import { RenderCrucesCentrados } from "../components/RenderCrucesCentrados";
+import { RenderCrucesVariables } from "../components/RenderCrucesVariables";
+import WarningAlertDesign from "../components/WarningAlertDesign";
 
 interface LayoutProps {
   drawW: number;
   drawH: number;
   scale: number;
   tipologia: ObraTipologia;
-  config: ObraDetalle;
-  hojas: number;
-  isFocused: boolean;
-  focusedHoja: number;
+  detalles: ObraDetalle;
+  cantHojas: number;
   colors: {
-    colorDeAluminio: string;
-    vidrio: string;
+    aluminio: string;
+    catalogVidrios: Vidrio[];
     contorno: string;
     lineasCotas: string;
+    revestimiento?: string;
   };
-  onContextMenu?: (e: any, index: number) => void;
 }
 
 export const BanderolaLayout = ({
   drawW,
   drawH,
   scale,
-  config,
-  isFocused,
+  detalles,
   colors,
-  onContextMenu,
 }: LayoutProps) => {
-  const { colorDeAluminio, vidrio, contorno } = colors;
+  const { aluminio, contorno, lineasCotas } = colors;
 
+  // --- CONFIGURACIÓN DE PERFILES TÉCNICOS ESCALADOS ---
   // Grosor del perfil de marco
+  const perfilDeMarco = 42.5 * scale; // jambas, umbral y dintel de marco
 
-  const perfilDeMarco = 42.5 * scale; //jambas, umbral y dintel de marco
-
-  // Dimensiones de las hojas
+  // Dimensiones de la hoja
   const hojaW = drawW - perfilDeMarco * 2;
   const hojaH = drawH - perfilDeMarco * 2;
 
-  //Grosor perfil de hoja
+  // Grosor perfil de hoja
   const perfilDeHoja = (59.2 / 2) * scale; // jambas, zocalo y cabezal de hoja
 
   // Grosor del perfil de cruces
-  const contravidrioThick = 17 * scale; //perfil de cruces
-  const perfilDeCruces = 57.8 * scale; //perfil de cruces
+  const perfilCruce = 57.8 * scale;
 
-  //ACESORIOS
-  // BISAGRAS SUPERIORES
+  // ACCESORIOS
+  // Bisagras Inferiores (en Banderola suelen ir abajo y abrir hacia adentro/afuera)
   const bisagraW = 90 * scale;
   const bisagraH = 20 * scale;
   const colorBisagras = "#595959";
-  //BOTON TIRANTE
+  // Botón Tirante / Cierre
   const botonTirante = 45 * scale;
 
+  const tieneTratamiento =
+    detalles.color != null || (detalles as any).tratamiento != null;
+
+  // --- RENDER DEL MARCO PRINCIPAL EXTERIOR ---
   const RenderMarco = () => (
     <Group>
       {/* DINTEL DE MARCO */}
@@ -71,7 +71,7 @@ export const BanderolaLayout = ({
           perfilDeMarco,
         ]}
         closed
-        fill={colorDeAluminio}
+        fill={aluminio}
         stroke={contorno}
         strokeWidth={1}
       />
@@ -88,7 +88,7 @@ export const BanderolaLayout = ({
           drawH,
         ]}
         closed
-        fill={colorDeAluminio}
+        fill={aluminio}
         stroke={contorno}
         strokeWidth={1}
       />
@@ -101,12 +101,11 @@ export const BanderolaLayout = ({
           perfilDeMarco,
           perfilDeMarco,
           drawH - perfilDeMarco,
-
           0,
           drawH,
         ]}
         closed
-        fill={colorDeAluminio}
+        fill={aluminio}
         stroke={contorno}
         strokeWidth={1}
       />
@@ -123,147 +122,184 @@ export const BanderolaLayout = ({
           drawH - perfilDeMarco,
         ]}
         closed
-        fill={colorDeAluminio}
+        fill={aluminio}
         stroke={contorno}
         strokeWidth={1}
       />
     </Group>
   );
 
-  const RenderHoja = ({ width, height }: { width: number; height: number }) => (
-    <>
-      {/* CABEZAL DE HOJA */}
-      <Rect
-        x={perfilDeHoja}
-        width={width - perfilDeHoja}
-        height={perfilDeHoja}
-        fill={colorDeAluminio}
-        stroke={contorno}
-        strokeWidth={1}
-      />
-      {/* ZOCALO DE HOJA */}
-      <Rect
-        x={0}
-        y={height - perfilDeHoja}
-        width={width - perfilDeHoja}
-        height={perfilDeHoja}
-        fill={colorDeAluminio}
-        stroke={contorno}
-        strokeWidth={1}
-      />
-      {/* JAMBAS IZQUIERDA DE HOJA */}
-      <Rect
-        width={perfilDeHoja}
-        height={height - perfilDeHoja}
-        fill={colorDeAluminio}
-        stroke={contorno}
-        strokeWidth={1}
-      />
-      {/* JAMBAS DERECHA DE HOJA */}
-      <Rect
-        x={width - perfilDeHoja}
-        width={perfilDeHoja}
-        height={height}
-        fill={colorDeAluminio}
-        stroke={contorno}
-        strokeWidth={1}
-      />
+  // --- ORQUESTADOR MODULAR DEL CONTENIDO INTERNO DE LA HOJA ---
+  const renderContenidoInternoHoja = (interiorW: number, interiorH: number) => {
+    const cantH = Number(detalles.cant_centrados_horizontal ?? 0);
+    const cantV = Number(detalles.cant_centrados_vertical ?? 0);
+    const tipoCruce = Number(detalles.tipo_cruce ?? 0);
 
-      {/*   INTERIOR DE HOJA */}
-      <Group x={perfilDeHoja} y={perfilDeHoja}>
-        {renderInteriorHoja(
-          width - perfilDeHoja * 2,
-          height - perfilDeHoja * 2,
-        )}
-      </Group>
+    // CASO 1: Cruces Centrados
+    if (tipoCruce === 1 && (cantH > 0 || cantV > 0)) {
+      return (
+        <RenderCrucesCentrados
+          interiorW={interiorW}
+          interiorH={interiorH}
+          sizePerfilCruce={perfilCruce}
+          scale={scale}
+          colors={colors}
+          detalles={detalles}
+        />
+      );
+    }
 
-      {/* Lineas de Apertura */}
-      <Line
-        points={[perfilDeHoja, height - perfilDeHoja, width / 2, perfilDeHoja]}
-        stroke={colors.lineasCotas}
-        dash={[6, 6]}
-        strokeWidth={0.6}
-      />
+    // Comprobamos si existen cruces variables cargados
+    const tieneCrucesVariables = [
+      detalles.horizontal_1,
+      detalles.horizontal_2,
+      detalles.horizontal_3,
+      detalles.vertical_1,
+      detalles.vertical_2,
+      detalles.vertical_3,
+      detalles.vertical_4,
+      detalles.vertical_5,
+    ].some((v) => typeof v === "number" && v > 0);
 
-      <Line
-        points={[
-          width - perfilDeHoja,
-          height - perfilDeHoja,
-          width / 2,
-          perfilDeHoja,
-        ]}
-        stroke={colors.lineasCotas}
-        dash={[6, 6]}
-        strokeWidth={0.6}
-      />
-      {/*BOTON TIRANTE*/}
-      <Rect
-        x={width / 2 - botonTirante / 2}
-        y={perfilDeHoja - botonTirante}
-        width={botonTirante}
-        height={botonTirante}
-        fill={colorDeAluminio}
-        stroke={contorno}
-        strokeWidth={1}
-      />
-      {/* BISAGRAS INTERIORES */}
-      <Rect
-        x={perfilDeHoja + bisagraW}
-        y={height - bisagraH}
-        width={bisagraW}
-        height={bisagraH}
-        fill={colorBisagras}
-        stroke={contorno}
-        strokeWidth={1}
-      />
-      <Rect
-        x={width - perfilDeHoja - bisagraW * 2}
-        y={height - bisagraH}
-        width={bisagraW}
-        height={bisagraH}
-        fill={colorBisagras}
-        stroke={contorno}
-        strokeWidth={1}
-      />
-    </>
-  );
+    // CASO 2: Cruces Variables
+    if (tipoCruce === 2 && tieneCrucesVariables) {
+      // Cálculo del inicio real para ajustar la matriz
+      const inicioXVidrioGlobal = perfilDeMarco + perfilDeHoja;
+      const windowWFicticia = interiorW + inicioXVidrioGlobal * 2;
 
-  const renderInteriorHoja = (width: number, height: number) => (
-    <Group>
-      {/* ÁREA DE VIDRIO E INTERACCIÓN */}
-      <Group onContextMenu={(e) => onContextMenu?.(e, 0)}>
-        {/* Render Vidrio */}
+      return (
+        <RenderCrucesVariables
+          windowW={windowWFicticia}
+          windowH={drawH}
+          interiorHojaW={interiorW}
+          interiorHojaH={interiorH}
+          sizePerfilCruce={perfilCruce}
+          scale={scale}
+          colors={colors}
+          detalles={detalles}
+        />
+      );
+    }
+
+    // CASO POR DEFECTO: Celda entera de vidrio
+    return (
+      <RenderCelda
+        filaId={1}
+        ancho={interiorW}
+        alto={interiorH}
+        scale={scale}
+        colors={colors}
+        detalles={detalles}
+      />
+    );
+  };
+
+  // --- RENDER DE LA HOJA ---
+  const RenderHoja = ({ width, height }: { width: number; height: number }) => {
+    const interiorW = width - perfilDeHoja * 2;
+    const interiorH = height - perfilDeHoja * 2;
+
+    return (
+      <>
+        {/* CABEZAL DE HOJA */}
         <Rect
-          width={width}
+          x={perfilDeHoja}
+          width={width - perfilDeHoja}
+          height={perfilDeHoja}
+          fill={aluminio}
+          stroke={contorno}
+          strokeWidth={1}
+        />
+        {/* ZOCALO DE HOJA */}
+        <Rect
+          x={0}
+          y={height - perfilDeHoja}
+          width={width - perfilDeHoja}
+          height={perfilDeHoja}
+          fill={aluminio}
+          stroke={contorno}
+          strokeWidth={1}
+        />
+        {/* JAMBA IZQUIERDA DE HOJA */}
+        <Rect
+          width={perfilDeHoja}
+          height={height - perfilDeHoja}
+          fill={aluminio}
+          stroke={contorno}
+          strokeWidth={1}
+        />
+        {/* JAMBA DERECHA DE HOJA */}
+        <Rect
+          x={width - perfilDeHoja}
+          width={perfilDeHoja}
           height={height}
-          fill={vidrio}
+          fill={aluminio}
           stroke={contorno}
           strokeWidth={1}
         />
 
-        {/* FOCO DE SELECCIÓN */}
-        {isFocused && <RenderFoco width={width} height={height} />}
+        {/* INTERIOR DE HOJA (Orquestador) */}
+        <Group x={perfilDeHoja} y={perfilDeHoja}>
+          {renderContenidoInternoHoja(interiorW, interiorH)}
+        </Group>
 
-        {/* contravidrios  */}
-        <RenderContravidrio
-          hojaW={width}
-          hojaH={height}
-          contravidrioThick={contravidrioThick}
-          colors={colors}
+        {/* Líneas de Apertura Técnicas (Vértices al centro superior en banderola) */}
+        <Line
+          points={[
+            perfilDeHoja,
+            height - perfilDeHoja,
+            width / 2,
+            perfilDeHoja,
+          ]}
+          stroke={lineasCotas}
+          dash={[6, 6]}
+          strokeWidth={0.6}
+        />
+        <Line
+          points={[
+            width - perfilDeHoja,
+            height - perfilDeHoja,
+            width / 2,
+            perfilDeHoja,
+          ]}
+          stroke={lineasCotas}
+          dash={[6, 6]}
+          strokeWidth={0.6}
         />
 
-        {/* DIVISIONES (Travesaños/Parantes) */}
-        <RenderCruces
-          width={width}
-          height={height}
-          config={config}
-          espesoPerfilCruce={perfilDeCruces}
-          contravidrioThick={contravidrioThick}
-          colors={colors}
+        {/* Botón Tirante / Cierre (Superior) */}
+        <Rect
+          x={width / 2 - botonTirante / 2}
+          y={perfilDeHoja - botonTirante}
+          width={botonTirante}
+          height={botonTirante}
+          fill={aluminio}
+          stroke={contorno}
+          strokeWidth={1}
         />
-      </Group>
-    </Group>
-  );
+
+        {/* Bisagras (Inferiores) */}
+        <Rect
+          x={perfilDeHoja + bisagraW}
+          y={height - bisagraH}
+          width={bisagraW}
+          height={bisagraH}
+          fill={colorBisagras}
+          stroke={contorno}
+          strokeWidth={1}
+        />
+        <Rect
+          x={width - perfilDeHoja - bisagraW * 2}
+          y={height - bisagraH}
+          width={bisagraW}
+          height={bisagraH}
+          fill={colorBisagras}
+          stroke={contorno}
+          strokeWidth={1}
+        />
+      </>
+    );
+  };
 
   return (
     <Group>
@@ -271,6 +307,19 @@ export const BanderolaLayout = ({
       <Group x={perfilDeMarco} y={perfilDeMarco}>
         <RenderHoja width={hojaW} height={hojaH} />
       </Group>
+
+      {/* Capa superior de Advertencia si falta el tratamiento de color */}
+      {!tieneTratamiento && (
+        <WarningAlertDesign
+          x={0}
+          y={0}
+          width={drawW}
+          height={drawH}
+          scale={scale}
+        />
+      )}
     </Group>
   );
 };
+
+export default BanderolaLayout;

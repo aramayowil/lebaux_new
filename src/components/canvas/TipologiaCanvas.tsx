@@ -10,6 +10,13 @@ import { useTipoById } from "@/hooks/obra/useTipos";
 import { useHojasById } from "@/hooks/productos/useHojas";
 import PañoFijoLayout from "./layouts/PañoFijoLayout";
 import CorredizaLayout from "./layouts/CorredizaLayout";
+import { OscilobatienteLayout } from "./layouts/OscilobatienteLayout";
+import VentiluzLayout from "./layouts/VentiluzLayaout";
+import VentanaDeAbrirLayout from "./layouts/ventanaDeAbrir";
+import BanderolaLayout from "./layouts/BanderolaLayout";
+import PuertaRebatibleLayout from "./layouts/PuertaRebatible";
+import ProjectanteLayout from "./layouts/ProjectanteLayout";
+import { FallbackLayout } from "./layouts/FallbackLayout";
 
 interface Props {
   tipologia: ObraTipologia;
@@ -230,7 +237,30 @@ export default function TipologiaCanvas({
       return <CorredizaLayout {...commonProps} />;
     }
 
-    return <PañoFijoLayout {...commonProps} />;
+    if (formaTipoStr.includes("oscilobatiente")) {
+      return <OscilobatienteLayout {...commonProps} />;
+    }
+
+    if (formaTipoStr.includes("ventiluz")) {
+      return <VentiluzLayout {...commonProps} />;
+    }
+
+    if (formaTipoStr.includes("ventana de abrir")) {
+      return <VentanaDeAbrirLayout {...commonProps} />;
+    }
+    if (formaTipoStr.includes("banderola")) {
+      return <BanderolaLayout {...commonProps} />;
+    }
+
+    if (formaTipoStr.includes("puerta rebatible")) {
+      return <PuertaRebatibleLayout {...commonProps} />;
+    }
+
+    if (formaTipoStr.includes("proyectante")) {
+      return <ProjectanteLayout {...commonProps} />;
+    }
+
+    return <FallbackLayout {...commonProps} />;
   };
 
   // ─── 7. RENDER COMPLETO DEL ESCENARIO KONVA ───

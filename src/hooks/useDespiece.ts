@@ -48,7 +48,7 @@ export function useDespiece(
   const idHoja = detalle?.hoja;
   const idInterior = detalle?.interior;
 
-  // 🌟 Capturamos el contravidrio específico o usamos el fallback de interior
+  // Capturamos el contravidrio específico o usamos el fallback de interior
   const idContravidrioEspecifico = detalle?.contravidrios ?? idInterior;
 
   const { data: despieceRules, isLoading: rulesLoading } = useQuery({

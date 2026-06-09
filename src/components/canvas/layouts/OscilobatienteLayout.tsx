@@ -1,70 +1,67 @@
 import { Group, Rect, Line } from "react-konva";
-import { ObraDetalle, ObraTipologia } from "@/types";
-import { RenderContravidrio } from "../components/RenderProfundidad";
-import RenderCruces from "../components/RenderCruces";
-import { RenderFoco } from "../components/FocoRender";
+import type { ObraDetalle, ObraTipologia, Vidrio } from "@/types";
+import { RenderCelda } from "../components/RenderCelda";
+import { RenderCrucesCentrados } from "../components/RenderCrucesCentrados";
+import { RenderCrucesVariables } from "../components/RenderCrucesVariables";
+import WarningAlertDesign from "../components/WarningAlertDesign";
 
 interface LayoutProps {
   drawW: number;
   drawH: number;
   scale: number;
   tipologia: ObraTipologia;
-  config: ObraDetalle;
-  hojas: number;
-  isFocused: boolean;
-  focusedHoja: number;
+  detalles: ObraDetalle;
+  cantHojas: number;
   colors: {
-    colorDeAluminio: string;
-    vidrio: string;
+    aluminio: string;
+    catalogVidrios: Vidrio[];
     contorno: string;
     lineasCotas: string;
+    revestimiento?: string;
   };
-  onContextMenu?: (e: any, index: number) => void;
 }
 
 export const OscilobatienteLayout = ({
   drawW,
   drawH,
   scale,
-  config,
-  hojas,
-  isFocused,
-  focusedHoja,
+  detalles,
+  cantHojas,
   colors,
-  onContextMenu,
 }: LayoutProps) => {
-  const { colorDeAluminio, vidrio, contorno, lineasCotas } = colors;
+  const { aluminio, contorno, lineasCotas } = colors;
 
+  // --- CONFIGURACIÓN DE PERFILES TÉCNICOS ESCALADOS ---
   // Perfiles del marco
   const jamba_Umbral_DintelDeMarco = 47.5 * scale;
-  const encuentroCentral = 20 * scale; //perfil de encuentro cuando son 2 hojas
+  const encuentroCentral = 20 * scale; // Perfil de encuentro cuando son 2 hojas
 
   // Dimensiones de las hojas
   const hojaW = drawW - jamba_Umbral_DintelDeMarco * 2;
-  //Ancho de cada hoja
   const anchoHojaIndividual =
-    hojas === 2 ? (hojaW - encuentroCentral) / 2 : hojaW;
+    cantHojas === 2 ? (hojaW - encuentroCentral) / 2 : hojaW;
   const hojaH = drawH - jamba_Umbral_DintelDeMarco * 2;
 
-  //Perfiles de la hoja
+  // Perfiles de la hoja
   const jamba_Zocalo_CabezalDeHoja = 59.2 * scale;
 
-  // Grosor del perfil de cruces
-  const contravidrioThick = 17 * scale;
+  // Grosor del perfil de cruces y contravidrio
+  const perfilCruce = 61 * scale;
 
-  //Bisagras de la hoja
+  // Bisagras de la hoja
   const bisagrasH = 90 * scale;
   const bisagrasW = 20 * scale;
   const colorBisagras = "#595959";
 
-  //Color de Cerradura
+  // Cerradura
   const cerraduraW = 20 * scale;
   const cerraduraH = 130 * scale;
   const colorCerradura = "#595959";
 
-  //perfil de cruce
-  const perfilCruce = 61 * scale;
+  const tieneTratamiento =
+    detalles.color != null || (detalles as any).tratamiento != null;
 
+  // --- RENDER DEL MARCO PRINCIPAL EXTERIOR ---
   const RenderMarco = () => (
     <Group>
       {/* Dintel a 45 */}
@@ -80,7 +77,7 @@ export const OscilobatienteLayout = ({
           jamba_Umbral_DintelDeMarco,
         ]}
         closed
-        fill={colorDeAluminio}
+        fill={aluminio}
         stroke={contorno}
         strokeWidth={1}
       />
@@ -97,7 +94,7 @@ export const OscilobatienteLayout = ({
           jamba_Umbral_DintelDeMarco,
         ]}
         closed
-        fill={colorDeAluminio}
+        fill={aluminio}
         stroke={contorno}
         strokeWidth={1}
       />
@@ -114,7 +111,7 @@ export const OscilobatienteLayout = ({
           jamba_Umbral_DintelDeMarco,
         ]}
         closed
-        fill={colorDeAluminio}
+        fill={aluminio}
         stroke={contorno}
         strokeWidth={1}
       />
@@ -125,38 +122,35 @@ export const OscilobatienteLayout = ({
           drawH,
           drawW,
           drawH,
-
           drawW - jamba_Umbral_DintelDeMarco,
           drawH - jamba_Umbral_DintelDeMarco,
-
           jamba_Umbral_DintelDeMarco,
           drawH - jamba_Umbral_DintelDeMarco,
         ]}
         closed
-        fill={colorDeAluminio}
+        fill={aluminio}
         stroke={contorno}
         strokeWidth={1}
       />
 
-      {hojas === 2 && (
+      {cantHojas === 2 && (
         <Rect
           x={drawW / 2 - encuentroCentral / 2}
           y={jamba_Umbral_DintelDeMarco}
           width={encuentroCentral}
           height={hojaH}
-          fill={colorDeAluminio}
+          fill={aluminio}
           stroke={contorno}
           strokeWidth={1}
         />
       )}
 
-      {/* Lineas a 45 grados */}
+      {/* Lineas a 45 grados para uniones */}
       <Line
         points={[0, 0, jamba_Umbral_DintelDeMarco, jamba_Umbral_DintelDeMarco]}
         stroke={contorno}
         strokeWidth={1}
       />
-
       <Line
         points={[
           drawW,
@@ -170,6 +164,76 @@ export const OscilobatienteLayout = ({
     </Group>
   );
 
+  // --- ORQUESTADOR MODULAR DEL CONTENIDO INTERNO DE LA HOJA ---
+  const renderContenidoInternoHoja = (
+    xPosGlobal: number,
+    interiorW: number,
+    interiorH: number,
+  ) => {
+    const cantH = Number(detalles.cant_centrados_horizontal ?? 0);
+    const cantV = Number(detalles.cant_centrados_vertical ?? 0);
+    const tipoCruce = Number(detalles.tipo_cruce ?? 0);
+
+    // CASO 1: Cruces Centrados
+    if (tipoCruce === 1 && (cantH > 0 || cantV > 0)) {
+      return (
+        <RenderCrucesCentrados
+          interiorW={interiorW}
+          interiorH={interiorH}
+          sizePerfilCruce={perfilCruce}
+          scale={scale}
+          colors={colors}
+          detalles={detalles}
+        />
+      );
+    }
+
+    // Comprobamos si existen cruces variables cargados
+    const tieneCrucesVariables = [
+      detalles.horizontal_1,
+      detalles.horizontal_2,
+      detalles.horizontal_3,
+      detalles.vertical_1,
+      detalles.vertical_2,
+      detalles.vertical_3,
+      detalles.vertical_4,
+      detalles.vertical_5,
+    ].some((v) => typeof v === "number" && v > 0);
+
+    // CASO 2: Cruces Variables
+    if (tipoCruce === 2 && tieneCrucesVariables) {
+      const inicioXVidrioGlobal =
+        jamba_Umbral_DintelDeMarco + xPosGlobal + jamba_Zocalo_CabezalDeHoja;
+      const windowWFicticia = interiorW + inicioXVidrioGlobal * 2;
+
+      return (
+        <RenderCrucesVariables
+          windowW={windowWFicticia}
+          windowH={drawH}
+          interiorHojaW={interiorW}
+          interiorHojaH={interiorH}
+          sizePerfilCruce={perfilCruce}
+          scale={scale}
+          colors={colors}
+          detalles={detalles}
+        />
+      );
+    }
+
+    // CASO POR DEFECTO: Celda entera de vidrio
+    return (
+      <RenderCelda
+        filaId={1}
+        ancho={interiorW}
+        alto={interiorH}
+        scale={scale}
+        colors={colors}
+        detalles={detalles}
+      />
+    );
+  };
+
+  // --- RENDER DE CADA HOJA INDIVIDUAL ---
   const RenderHoja = ({
     width,
     height,
@@ -179,7 +243,6 @@ export const OscilobatienteLayout = ({
     height: number;
     index: number;
   }) => {
-    // Si es la segunda hoja (index 1), se desplaza el ancho de la primera + el encuentro
     const xPos = index === 0 ? 0 : width + encuentroCentral;
     const esHojaDerecha = index === 1;
 
@@ -188,8 +251,8 @@ export const OscilobatienteLayout = ({
 
     return (
       <Group x={xPos}>
-        {/* Perfiles de la hoja (se mantienen igual) */}
-        <Line /* Perfil superior */
+        {/* PERFILES DE LA HOJA */}
+        <Line /* Cabezal */
           points={[
             0,
             0,
@@ -201,11 +264,11 @@ export const OscilobatienteLayout = ({
             jamba_Zocalo_CabezalDeHoja,
           ]}
           closed
-          fill={colorDeAluminio}
+          fill={aluminio}
           stroke={contorno}
           strokeWidth={1}
         />
-        <Line /* Perfil izquierdo */
+        <Line /* Jamba Izquierda */
           points={[
             0,
             0,
@@ -217,11 +280,11 @@ export const OscilobatienteLayout = ({
             height,
           ]}
           closed
-          fill={colorDeAluminio}
+          fill={aluminio}
           stroke={contorno}
           strokeWidth={1}
         />
-        <Line /* Perfil derecho */
+        <Line /* Jamba Derecha */
           points={[
             width,
             0,
@@ -233,7 +296,7 @@ export const OscilobatienteLayout = ({
             jamba_Zocalo_CabezalDeHoja,
           ]}
           closed
-          fill={colorDeAluminio}
+          fill={aluminio}
           stroke={contorno}
           strokeWidth={1}
         />
@@ -242,12 +305,12 @@ export const OscilobatienteLayout = ({
           y={height - jamba_Zocalo_CabezalDeHoja}
           width={width - jamba_Zocalo_CabezalDeHoja * 2}
           height={jamba_Zocalo_CabezalDeHoja}
-          fill={colorDeAluminio}
+          fill={aluminio}
           stroke={contorno}
           strokeWidth={1}
         />
 
-        {/* BISAGRAS: Se espejan si es la hoja derecha */}
+        {/* BISAGRAS */}
         <Group x={esHojaDerecha ? width : -bisagrasW}>
           <Rect
             y={jamba_Zocalo_CabezalDeHoja}
@@ -257,7 +320,6 @@ export const OscilobatienteLayout = ({
             stroke={contorno}
             strokeWidth={1}
           />
-
           <Rect
             y={height - jamba_Zocalo_CabezalDeHoja - bisagrasH}
             width={bisagrasW}
@@ -268,17 +330,15 @@ export const OscilobatienteLayout = ({
           />
         </Group>
 
-        {/* INTERIORES */}
+        {/* ÁREA INTERNA COMPARTIDA Y DE INTERACCIÓN (Orquestador) */}
         <Group x={jamba_Zocalo_CabezalDeHoja} y={jamba_Zocalo_CabezalDeHoja}>
-          {RenderInteriores({
-            width: anchoInternoHoja,
-            height: altoInternoHoja,
-            index,
-          })}
+          {renderContenidoInternoHoja(xPos, anchoInternoHoja, altoInternoHoja)}
+
+          {/* Si usás un contravidrio superpuesto extra, podrías volver a renderizarlo acá encima del orquestador */}
         </Group>
 
-        {/* CERRADURA */}
-        {index === 0 && hojas === 1 && (
+        {/* CERRADURAS */}
+        {index === 0 && cantHojas === 1 && (
           <Rect
             x={width - jamba_Zocalo_CabezalDeHoja + cerraduraW}
             y={height / 2 - cerraduraH / 2}
@@ -289,8 +349,7 @@ export const OscilobatienteLayout = ({
             strokeWidth={1}
           />
         )}
-
-        {index === 1 && hojas === 2 && (
+        {index === 1 && cantHojas === 2 && (
           <Rect
             x={jamba_Zocalo_CabezalDeHoja - cerraduraW * 2}
             y={height / 2 - cerraduraH / 2}
@@ -302,9 +361,8 @@ export const OscilobatienteLayout = ({
           />
         )}
 
-        {/* LÍNEAS DE APERTURA: Se espejan según la hoja */}
-        {/*Apertura de Giro (Triángulo lateral) */}
-        <Line
+        {/* LÍNEAS TÉCNICAS DE APERTURA (Giro y Tilt) */}
+        <Line /* Apertura de Giro (Triángulo lateral) */
           points={
             !esHojaDerecha
               ? [
@@ -328,71 +386,42 @@ export const OscilobatienteLayout = ({
           strokeWidth={0.8}
           dash={[5, 5]}
         />
-        {/* Apertura de Tilt/Ventilación (Triángulo superior) */}
-        {esHojaDerecha && (
-          <Line
-            points={[
-              jamba_Zocalo_CabezalDeHoja,
-              height - jamba_Zocalo_CabezalDeHoja,
-              anchoHojaIndividual / 2,
-              jamba_Zocalo_CabezalDeHoja,
-              anchoHojaIndividual - jamba_Zocalo_CabezalDeHoja,
-              height - jamba_Zocalo_CabezalDeHoja,
-            ]}
-            stroke={lineasCotas}
-            strokeWidth={0.8}
-            dash={[5, 5]}
-          />
-        )}
-      </Group>
-    );
-  };
-
-  const RenderInteriores = ({
-    width,
-    height,
-    index, // Agregamos el índice de la hoja
-  }: {
-    width: number;
-    height: number;
-    index: number;
-  }) => {
-    // Determinamos si esta hoja específica es la que tiene el foco
-    const estaEnFoco = isFocused && focusedHoja === index;
-
-    return (
-      <Group onContextMenu={(e) => onContextMenu?.(e, index)}>
-        {/* Vidrio de hoja */}
-        <Rect width={width} height={height} fill={vidrio} />
-
-        {/* FOCO DE SELECCIÓN: Ahora solo se activa si coincide el índice */}
-        {estaEnFoco && <RenderFoco width={width} height={height} />}
-
-        <RenderContravidrio
-          hojaW={width}
-          hojaH={height}
-          contravidrioThick={contravidrioThick}
-          colors={colors}
-        />
-
-        <RenderCruces
-          width={width}
-          height={height}
-          config={config}
-          espesoPerfilCruce={perfilCruce}
-          contravidrioThick={contravidrioThick}
-          colors={colors}
+        {/* Apertura de Tilt/Ventilación (Triángulo superior) - Siempre arriba */}
+        <Line
+          points={
+            !esHojaDerecha
+              ? [
+                  jamba_Zocalo_CabezalDeHoja,
+                  height - jamba_Zocalo_CabezalDeHoja,
+                  anchoHojaIndividual / 2,
+                  jamba_Zocalo_CabezalDeHoja,
+                  anchoHojaIndividual - jamba_Zocalo_CabezalDeHoja,
+                  height - jamba_Zocalo_CabezalDeHoja,
+                ]
+              : [
+                  jamba_Zocalo_CabezalDeHoja,
+                  height - jamba_Zocalo_CabezalDeHoja,
+                  anchoHojaIndividual / 2,
+                  jamba_Zocalo_CabezalDeHoja,
+                  anchoHojaIndividual - jamba_Zocalo_CabezalDeHoja,
+                  height - jamba_Zocalo_CabezalDeHoja,
+                ]
+          }
+          stroke={lineasCotas}
+          strokeWidth={0.8}
+          dash={[5, 5]}
         />
       </Group>
     );
   };
+
   return (
     <Group>
       <RenderMarco />
 
-      {(hojas === 1 || hojas === 2) && (
+      {(cantHojas === 1 || cantHojas === 2) && (
         <Group x={jamba_Umbral_DintelDeMarco} y={jamba_Umbral_DintelDeMarco}>
-          {Array.from({ length: hojas }).map((_, index) => (
+          {Array.from({ length: cantHojas }).map((_, index) => (
             <RenderHoja
               key={index}
               width={anchoHojaIndividual}
@@ -402,6 +431,19 @@ export const OscilobatienteLayout = ({
           ))}
         </Group>
       )}
+
+      {/* Capa superior de Advertencia si falta el tratamiento de color */}
+      {!tieneTratamiento && (
+        <WarningAlertDesign
+          x={0}
+          y={0}
+          width={drawW}
+          height={drawH}
+          scale={scale}
+        />
+      )}
     </Group>
   );
 };
+
+export default OscilobatienteLayout;
