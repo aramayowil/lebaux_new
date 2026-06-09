@@ -45,55 +45,49 @@ export default function ProductosPage() {
   const renderPanel = () => {
     if (isLoading) {
       return (
-        <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-6 animate-pulse w-full">
-          {/* Caja del Icono Simulado */}
-          <div className="relative flex items-center justify-center w-20 h-20">
-            {/* Caja contenedora base */}
-            <Skeleton className="w-20 h-20 rounded-2xl" />
-
-            {/* Silueta interna que emula al icono de Layers */}
-            <div className="absolute inset-0 flex items-center justify-center z-10">
-              <div className="w-9 h-9 bg-white/20 dark:bg-zinc-900/30 rounded-lg backdrop-blur-sm border border-white/10" />
-            </div>
-
-            {/* Mini indicador absoluto simulando el MousePointer en la esquina */}
-            <div className="absolute -bottom-2 -right-2 bg-white dark:bg-zinc-950 p-1.5 rounded-full border border-zinc-100 dark:border-zinc-800 shadow-md z-20">
-              <Skeleton className="w-5 h-5 rounded-full" />
+        <div className="flex-1 flex flex-col items-center justify-center gap-5 h-full animate-pulse">
+          {/* Icon placeholder */}
+          <div className="relative flex items-center justify-center w-16 h-16">
+            <Skeleton className="w-16 h-16 rounded-2xl" />
+            <div className="absolute -bottom-1.5 -right-1.5 bg-white dark:bg-zinc-900 p-1 rounded-full border border-zinc-100 dark:border-zinc-800 shadow-sm z-10">
+              <Skeleton className="w-4 h-4 rounded-full" />
             </div>
           </div>
-
-          {/* Bloques de Texto del Párrafo Simulado */}
-          <div className="text-center space-y-3 w-full max-w-[280px] flex flex-col items-center">
-            {/* Simula: Título (Configurador de Tipologías) */}
-            <Skeleton className="h-5 w-48 rounded-md" />
-
-            {/* Simula: Renglón 1 del párrafo de ayuda */}
+          {/* Text placeholder */}
+          <div className="flex flex-col items-center gap-2 w-full max-w-[240px]">
+            <Skeleton className="h-4 w-44 rounded-md" />
             <Skeleton className="h-3 w-full rounded" />
-
-            {/* Simula: Renglón 2 del párrafo de ayuda */}
-            <Skeleton className="h-3 w-4/5 rounded" />
+            <Skeleton className="h-3 w-3/4 rounded" />
           </div>
         </div>
       );
     }
+
     if (!selection) {
       return (
-        <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-6 animate-in fade-in zoom-in-95 duration-500">
+        <div className="flex-1 flex flex-col items-center justify-center gap-5 h-full animate-in fade-in zoom-in-95 duration-400">
+          {/* Icon cluster */}
           <div className="relative">
-            <Layers
-              className="w-20 h-20 text-zinc-300 dark:text-zinc-700 opacity-90"
-              strokeWidth={1}
-            />
-            <div className="absolute -bottom-2 -right-2 bg-white dark:bg-zinc-900 p-1.5 rounded-full shadow-md border border-zinc-100 dark:border-zinc-800">
-              <MousePointer2 className="w-5 h-5 text-amber-500 animate-bounce" />
+            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700">
+              <Layers
+                className="w-8 h-8 text-zinc-400 dark:text-zinc-500"
+                strokeWidth={1.5}
+              />
+            </div>
+            <div className="absolute -bottom-1.5 -right-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-full shadow-md border border-zinc-100 dark:border-zinc-800">
+              <MousePointer2
+                className="w-4 h-4 text-lebaux-amber animate-bounce"
+                strokeWidth={2}
+              />
             </div>
           </div>
 
-          <div className="text-center space-y-2">
-            <h3 className="font-sans text-xl font-bold text-zinc-600 dark:text-zinc-300">
+          {/* Copy */}
+          <div className="text-center space-y-1.5">
+            <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-200 tracking-tight">
               Configurador de Tipologías
             </h3>
-            <p className="font-sans text-sm max-w-[280px] mx-auto leading-relaxed text-zinc-500 dark:text-zinc-400">
+            <p className="text-xs max-w-[240px] mx-auto leading-relaxed text-zinc-400 dark:text-zinc-500">
               Seleccioná un elemento del árbol o creá un nuevo producto para
               comenzar el despice.
             </p>
@@ -104,15 +98,17 @@ export default function ProductosPage() {
 
     const getContent = () => {
       switch (selection.level) {
-        case "producto":
+        case "producto": {
           const p = productos.find((x) => x.id === selection.id);
           return p ? <ProductoPanel producto={p} /> : null;
-        case "marco":
+        }
+        case "marco": {
           const m = marcos.find((x) => x.id === selection.id);
           return m ? (
             <MarcoPanel marco={m} id_producto={selection.id_producto} />
           ) : null;
-        case "hoja":
+        }
+        case "hoja": {
           const h = hojas.find((x) => x.id === selection.id);
           return h ? (
             <HojaPanel
@@ -122,7 +118,8 @@ export default function ProductosPage() {
               onSelect={setSelection}
             />
           ) : null;
-        case "interior":
+        }
+        case "interior": {
           const i = interiores.find((x) => x.id === selection.id);
           return i ? (
             <InteriorPanel
@@ -132,6 +129,7 @@ export default function ProductosPage() {
               idProducto={selection.id_producto}
             />
           ) : null;
+        }
         default:
           return null;
       }
@@ -145,17 +143,31 @@ export default function ProductosPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-56px)] -m-6 overflow-hidden bg-zinc-50 dark:bg-zinc-950">
-      {/* Sidebar */}
-      <aside className="w-72 shrink-0 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 flex flex-col shadow-sm z-10">
-        <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700">
+    // h-full fills the white card container that AppLayout provides via <Outlet>
+    <div className="flex h-full overflow-hidden">
+      {/* ── Tree sidebar ── */}
+      <aside className="w-64 shrink-0 flex flex-col border-r border-zinc-100 dark:border-zinc-800 rounded-tl-lg bg-white dark:bg-zinc-900">
+        {/* Sidebar sticky header */}
+        <div className="shrink-0 flex items-center gap-2 px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
+          <div className="flex items-center justify-center w-5 h-5 rounded-md bg-lebaux-amber/10">
+            <Layers className="w-3 h-3 text-lebaux-amber" strokeWidth={2} />
+          </div>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            Productos
+          </span>
+        </div>
+
+        {/* Tree scroll area */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-800">
           <ProductTree selection={selection} onSelect={setSelection} />
         </div>
       </aside>
 
-      {/* Editor Principal */}
-      <main className="flex-1 overflow-y-auto bg-transparent relative">
-        <div className="p-8 max-w-4xl mx-auto">{renderPanel()}</div>
+      {/* ── Main editor area — same zinc-50 tint as OpcionesPage scroll area ── */}
+      <main className="flex-1 overflow-y-auto border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-800">
+        <div className="p-6 max-w-4xl mx-auto min-h-full flex flex-col">
+          {renderPanel()}
+        </div>
       </main>
     </div>
   );

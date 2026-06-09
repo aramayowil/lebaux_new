@@ -48,18 +48,39 @@ const INITIAL_FORM_STATE: Partial<Opciones> = {
   tiempo_mosquitero_minutos: 10,
 };
 
+// Unified input style aligned with AppLayout zinc/steel palette
 const inputBase = {
   label:
-    "font-bold text-[11px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1",
+    "font-bold text-[11px] text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1",
   inputWrapper: [
     "border-zinc-200 dark:border-zinc-800",
-    "bg-white dark:bg-zinc-900/50",
-    "hover:border-amber-500",
-    "focus-within:!border-amber-500",
+    "bg-white dark:bg-zinc-900",
+    "hover:border-lebaux-amber/60 dark:hover:border-lebaux-amber/40",
+    "focus-within:!border-lebaux-amber",
     "rounded-xl transition-colors shadow-none",
   ].join(" "),
   input: "text-sm font-medium text-zinc-800 dark:text-zinc-200",
 };
+
+// Unified section header used in every card block
+function SectionHeader({
+  icon: Icon,
+  title,
+}: {
+  icon: React.ElementType;
+  title: string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+      <div className="flex items-center justify-center w-6 h-6 rounded-md bg-lebaux-amber/10">
+        <Icon className="w-3.5 h-3.5 text-lebaux-amber" strokeWidth={2} />
+      </div>
+      <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
+        {title}
+      </h3>
+    </div>
+  );
+}
 
 export default function OpcionesPage() {
   const { data: opciones, isLoading } = useOpciones();
@@ -107,15 +128,14 @@ export default function OpcionesPage() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* HEADER STICKY */}
-      <header className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-steel-900">
+      {/* ── Sticky Header ── */}
+      <header className="sticky top-0 z-10 flex items-center justify-between px-6 py-2 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-steel-900 shrink-0">
         <div>
-          <h2 className="text-lg font-extrabold text-zinc-800 dark:text-zinc-100 tracking-tight">
+          <h2 className="text-2xl font-extrabold text-zinc-800 dark:text-zinc-100 tracking-tight">
             Configuración del Sistema
           </h2>
-          <p className="text-zinc-400 dark:text-zinc-500 text-[11px] mt-0.5 font-medium">
-            Ajustes técnicos globales, coeficientes de ganancia y cómputos de
-            taller.
+          <p className="text-zinc-400 dark:text-zinc-500 text-xs mt-0.5 font-medium">
+            Ajustes globales, coeficientes de ganancia y cómputos de taller.
           </p>
         </div>
 
@@ -124,17 +144,18 @@ export default function OpcionesPage() {
         ) : (
           <Button
             onPress={handleSave}
+            size="sm"
             startContent={
               saved ? (
-                <Check className="w-4 h-4" strokeWidth={2.5} />
+                <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
               ) : (
-                <Save className="w-4 h-4" strokeWidth={2.5} />
+                <Save className="w-3.5 h-3.5" strokeWidth={2.5} />
               )
             }
-            className={`font-bold px-5 rounded-xl text-xs shrink-0 shadow-none transition-all ${
+            className={`font-bold px-4 rounded-xl text-xs shrink-0 shadow-none transition-all ${
               saved
                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                : "bg-amber-500 hover:bg-amber-600 text-white"
+                : "bg-lebaux-amber hover:bg-amber-500 text-white"
             }`}
           >
             {saved ? "Cambios guardados" : "Guardar todo"}
@@ -142,114 +163,107 @@ export default function OpcionesPage() {
         )}
       </header>
 
-      {/* CONTENIDO SCROLLEABLE */}
-      <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-7xl mx-auto space-y-6 pb-12">
+      {/* ── Scrollable content area — matches AppLayout zinc-50 tint ── */}
+      <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-zinc-950 p-5">
+        <div className="max-w-7xl mx-auto space-y-5 pb-10">
           {isLoading || !form ? (
             <OpcionesPageSkeleton />
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-              {/* Columna Izquierda y Central (Ancha): Datos e Impuestos */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Bloque 1: Identidad Institucional */}
-                <Card className="border border-zinc-200 dark:border-zinc-800 shadow-none bg-white dark:bg-zinc-900">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+              {/* ── Left + Center column (2/3 width) ── */}
+              <div className="lg:col-span-2 space-y-5">
+                {/* Block 1: Identidad Institucional */}
+                <Card className="border border-zinc-200 dark:border-zinc-800 shadow-none bg-white dark:bg-zinc-900 rounded-xl">
                   <CardBody className="p-5 space-y-5">
-                    <div className="flex items-center gap-2 px-5 py-3 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 rounded-t-xl">
-                      <Building2 className="w-4 h-4 text-amber-500" />
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
-                        Identidad de Empresa y Documentos
-                      </h3>
-                    </div>
-                    <div className="p-5 space-y-5">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <SectionHeader
+                      icon={Building2}
+                      title="Identidad de Empresa y Documentos"
+                    />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Input
+                        label="Razón Social"
+                        labelPlacement="outside"
+                        placeholder="Nombre comercial"
+                        variant="bordered"
+                        value={form.nombre}
+                        onValueChange={(v: string) => handleChange("nombre", v)}
+                        classNames={inputBase}
+                      />
+                      <Input
+                        label="Teléfono de contacto"
+                        labelPlacement="outside"
+                        placeholder="Ej: +54 381..."
+                        variant="bordered"
+                        value={form.telefono}
+                        onValueChange={(v: string) =>
+                          handleChange("telefono", v)
+                        }
+                        classNames={inputBase}
+                      />
+                      <Input
+                        label="Dirección Comercial"
+                        labelPlacement="outside"
+                        placeholder="Calle, número, planta comercial..."
+                        variant="bordered"
+                        className="md:col-span-2"
+                        value={form.direccion}
+                        onValueChange={(v: string) =>
+                          handleChange("direccion", v)
+                        }
+                        classNames={inputBase}
+                      />
+                      <Input
+                        label="Correo Electrónico"
+                        labelPlacement="outside"
+                        type="email"
+                        placeholder="administracion@empresa.com"
+                        variant="bordered"
+                        className="md:col-span-2"
+                        value={form.email}
+                        onValueChange={(v: string) => handleChange("email", v)}
+                        classNames={inputBase}
+                      />
+
+                      {/* PDF document fields — subtle divider */}
+                      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-zinc-100 dark:border-zinc-800">
                         <Input
-                          label="Razón Social"
+                          label="Encabezado (Presupuesto PDF)"
                           labelPlacement="outside"
-                          placeholder="Nombre comercial"
                           variant="bordered"
-                          value={form.nombre}
+                          placeholder="Encabezado del documento técnico"
+                          startContent={
+                            <ReceiptText className="w-3.5 h-3.5 text-zinc-400" />
+                          }
+                          value={form.encabezado_pto}
                           onValueChange={(v: string) =>
-                            handleChange("nombre", v)
+                            handleChange("encabezado_pto", v)
                           }
                           classNames={inputBase}
                         />
                         <Input
-                          label="Teléfono de contacto"
+                          label="Pie de Página (Presupuesto PDF)"
                           labelPlacement="outside"
-                          placeholder="Ej: +54 381..."
                           variant="bordered"
-                          value={form.telefono}
+                          placeholder="Cláusulas comerciales por defecto"
+                          value={form.pie_pto}
                           onValueChange={(v: string) =>
-                            handleChange("telefono", v)
+                            handleChange("pie_pto", v)
                           }
                           classNames={inputBase}
                         />
-                        <Input
-                          label="Dirección Comercial"
-                          labelPlacement="outside"
-                          placeholder="Calle, número, planta comercial..."
-                          variant="bordered"
-                          className="md:col-span-2"
-                          value={form.direccion}
-                          onValueChange={(v: string) =>
-                            handleChange("direccion", v)
-                          }
-                          classNames={inputBase}
-                        />
-                        <Input
-                          label="Correo Electrónico"
-                          labelPlacement="outside"
-                          type="email"
-                          placeholder="administracion@empresa.com"
-                          variant="bordered"
-                          className="md:col-span-2"
-                          value={form.email}
-                          onValueChange={(v: string) =>
-                            handleChange("email", v)
-                          }
-                          classNames={inputBase}
-                        />
-                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-zinc-100 dark:border-zinc-800/40">
-                          <Input
-                            label="Texto Encabezado (Presupuesto PDF)"
-                            labelPlacement="outside"
-                            variant="bordered"
-                            placeholder="Encabezado del documento técnico"
-                            startContent={
-                              <ReceiptText className="w-3.5 h-3.5 text-zinc-400" />
-                            }
-                            value={form.encabezado_pto}
-                            onValueChange={(v: string) =>
-                              handleChange("encabezado_pto", v)
-                            }
-                            classNames={inputBase}
-                          />
-                          <Input
-                            label="Texto Pie (Presupuesto PDF)"
-                            labelPlacement="outside"
-                            variant="bordered"
-                            placeholder="Cláusulas comerciales por defecto"
-                            value={form.pie_pto}
-                            onValueChange={(v: string) =>
-                              handleChange("pie_pto", v)
-                            }
-                            classNames={inputBase}
-                          />
-                        </div>
                       </div>
                     </div>
                   </CardBody>
                 </Card>
 
-                {/* Bloque 2: Márgenes y Reglas de Negocio */}
-                <Card className="border border-zinc-200/60 dark:border-zinc-800/60 shadow-none bg-white dark:bg-zinc-900/50">
+                {/* Block 2: Márgenes y Reglas de Negocio */}
+                <Card className="border border-zinc-200 dark:border-zinc-800 shadow-none bg-white dark:bg-zinc-900 rounded-xl">
                   <CardBody className="p-5 space-y-4">
-                    <div className="flex items-center gap-2 pb-2 border-b border-zinc-100 dark:border-zinc-800/60">
-                      <Percent className="w-4 h-4 text-amber-500" />
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                        Márgenes de Utilidad y Coeficientes Impositivos
-                      </h3>
-                    </div>
+                    <SectionHeader
+                      icon={Percent}
+                      title="Márgenes de Utilidad y Coeficientes Impositivos"
+                    />
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
                       {[
@@ -270,10 +284,7 @@ export default function OpcionesPage() {
                           id: "porcentaje_sobre_pinturas",
                           label: "Margen Pinturas",
                         },
-                        {
-                          id: "porcentaje_sobre_telas",
-                          label: "Margen Telas",
-                        },
+                        { id: "porcentaje_sobre_telas", label: "Margen Telas" },
                         {
                           id: "porcentaje_sobre_mano",
                           label: "Margen Mano Obra",
@@ -304,9 +315,9 @@ export default function OpcionesPage() {
                           }
                           classNames={{
                             label:
-                              "font-bold text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-tight mb-1.5",
+                              "font-bold text-[10px] text-zinc-500 dark:text-zinc-400 uppercase tracking-tight mb-1.5",
                             inputWrapper:
-                              "border-zinc-200 dark:border-zinc-800 focus-within:!border-amber-500 rounded-xl bg-zinc-50/50 dark:bg-zinc-950/20 h-9 shadow-none",
+                              "border-zinc-200 dark:border-zinc-800 hover:border-lebaux-amber/60 focus-within:!border-lebaux-amber rounded-xl bg-zinc-50 dark:bg-zinc-950/40 h-9 shadow-none transition-colors",
                             input:
                               "text-center font-mono font-bold text-xs text-zinc-800 dark:text-zinc-200",
                           }}
@@ -317,29 +328,26 @@ export default function OpcionesPage() {
                 </Card>
               </div>
 
-              {/* Columna Derecha (Estrecha): Costos y Tiempos de Fabricación */}
-              <div className="space-y-6">
-                {/* Bloque 3: Costos Operativos Básicos */}
-                <Card className="border border-zinc-200/60 dark:border-zinc-800/60 shadow-none bg-white dark:bg-zinc-900/50">
+              {/* ── Right column (1/3 width) — Costs & Time ── */}
+              <div className="space-y-5">
+                {/* Block 3: Costo Operativo */}
+                <Card className="border border-zinc-200 dark:border-zinc-800 shadow-none bg-white dark:bg-zinc-900 rounded-xl">
                   <CardBody className="p-5 space-y-4">
-                    <div className="flex items-center gap-2 pb-2 border-b border-zinc-100 dark:border-zinc-800/60">
-                      <DollarSign className="w-4 h-4 text-amber-500" />
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                        Costo de Mano de Obra
-                      </h3>
-                    </div>
+                    <SectionHeader
+                      icon={DollarSign}
+                      title="Costo de Mano de Obra"
+                    />
 
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950/40 border border-zinc-200/60 dark:border-zinc-800/60">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-100 dark:border-zinc-800">
                       <div className="space-y-0.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
-                          {" "}
-                          Valor Hora Taller{" "}
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">
+                          Valor Hora Taller
                         </span>
-                        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                        <span className="text-xs text-zinc-400 dark:text-zinc-500">
                           Tasa operativa base
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-950 px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                      <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 focus-within:border-lebaux-amber transition-colors">
                         <span className="text-xs font-bold text-zinc-400 font-mono">
                           $
                         </span>
@@ -349,24 +357,22 @@ export default function OpcionesPage() {
                           onChange={(e) =>
                             handleChange("costo_hora_taller", e.target.value)
                           }
-                          className="bg-transparent font-mono text-sm font-bold text-zinc-800 dark:text-zinc-100 w-16 outline-none text-center"
+                          className="bg-transparent font-mono text-sm font-bold text-zinc-800 dark:text-zinc-100 w-16 outline-none text-center focus:text-lebaux-amber transition-colors"
                         />
                       </div>
                     </div>
                   </CardBody>
                 </Card>
 
-                {/* Bloque 4: Tiempos Estructurales */}
-                <Card className="border border-zinc-200/60 dark:border-zinc-800/60 shadow-none bg-white dark:bg-zinc-900/50">
+                {/* Block 4: Tiempos Estructurales */}
+                <Card className="border border-zinc-200 dark:border-zinc-800 shadow-none bg-white dark:bg-zinc-900 rounded-xl">
                   <CardBody className="p-5 space-y-4">
-                    <div className="flex items-center gap-2 pb-2 border-b border-zinc-100 dark:border-zinc-800/60">
-                      <Clock className="w-4 h-4 text-amber-500" />
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                        Matriz de Tiempos (Taller)
-                      </h3>
-                    </div>
+                    <SectionHeader
+                      icon={Clock}
+                      title="Matriz de Tiempos (Taller)"
+                    />
 
-                    <div className="grid grid-cols-1 gap-3">
+                    <div className="grid grid-cols-1 gap-2">
                       {[
                         [
                           "Cómputo Marco",
@@ -401,13 +407,13 @@ export default function OpcionesPage() {
                       ].map(([label, kh, km]) => (
                         <div
                           key={label}
-                          className="p-4 rounded-xl border border-zinc-200/60 dark:border-zinc-800/50 bg-zinc-50/20 dark:bg-zinc-950/10 flex items-center justify-between group hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+                          className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-950/30 hover:border-zinc-200 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-950/60 transition-all group"
                         >
-                          <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                          <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
                             {label}
                           </span>
 
-                          <div className="flex items-center gap-2 bg-white dark:bg-zinc-950 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shrink-0">
+                          <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:border-zinc-300 dark:group-hover:border-zinc-700 transition-colors shrink-0">
                             <div className="flex flex-col items-center">
                               <input
                                 type="number"
@@ -419,14 +425,14 @@ export default function OpcionesPage() {
                                     e.target.value,
                                   )
                                 }
-                                className="w-12 text-center font-mono text-sm sm:text-base font-bold bg-transparent outline-none text-zinc-800 dark:text-zinc-100 focus:text-amber-500"
+                                className="w-10 text-center font-mono text-sm font-bold bg-transparent outline-none text-zinc-700 dark:text-zinc-200 focus:text-lebaux-amber transition-colors"
                               />
-                              <span className="text-[8px] text-zinc-400 dark:text-zinc-500 font-black tracking-wider mt-0.5">
-                                HORAS
+                              <span className="text-[8px] text-zinc-400 dark:text-zinc-600 font-black tracking-wider">
+                                HS
                               </span>
                             </div>
 
-                            <span className="text-zinc-300 dark:text-zinc-700 font-bold text-base mb-4">
+                            <span className="text-zinc-300 dark:text-zinc-700 font-bold text-sm pb-3">
                               :
                             </span>
 
@@ -442,10 +448,10 @@ export default function OpcionesPage() {
                                     e.target.value,
                                   )
                                 }
-                                className="w-12 text-center font-mono text-sm sm:text-base font-bold bg-transparent outline-none text-zinc-800 dark:text-zinc-100 focus:text-amber-500"
+                                className="w-10 text-center font-mono text-sm font-bold bg-transparent outline-none text-zinc-700 dark:text-zinc-200 focus:text-lebaux-amber transition-colors"
                               />
-                              <span className="text-[8px] text-zinc-400 dark:text-zinc-500 font-black tracking-wider mt-0.5">
-                                MINS
+                              <span className="text-[8px] text-zinc-400 dark:text-zinc-600 font-black tracking-wider">
+                                MIN
                               </span>
                             </div>
                           </div>

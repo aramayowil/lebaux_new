@@ -212,8 +212,8 @@ export default function AppLayout() {
 
             <DropdownMenu
               aria-label="User actions"
-              variant="flat"
-              className="w-56 dark:bg-steel-900 border border-steel-100 dark:border-steel-800 rounded-xl"
+              variant="bordered"
+              className="w-56 rounded-xl"
             >
               <DropdownItem
                 key="profile-header"
@@ -257,7 +257,6 @@ export default function AppLayout() {
 
               <DropdownItem
                 key="feedback"
-                className="border-t border-steel-100 dark:border-steel-800/50"
                 startContent={<MessageSquare className="w-4 h-4" />}
               >
                 Feedback
@@ -271,7 +270,7 @@ export default function AppLayout() {
 
               <DropdownItem
                 key="logout"
-                className="text-danger border-t border-steel-100 dark:border-steel-800/50"
+                className="text-danger"
                 color="danger"
                 startContent={<LogOut className="w-4 h-4" />}
                 onPress={logout}
@@ -283,14 +282,8 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      {/* ── Contenido principal sin topbar ── */}
-      {/* <main className="flex-1 overflow-hidden p-3">
-        <div className="w-full h-full bg-white dark:bg-zinc-900 rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.08),0_4px_16px_rgba(0,0,0,0.06)] border border-zinc-200/80 dark:border-zinc-700/50 overflow-auto scrollbar-thin">
-          <Outlet />
-        </div>
-      </main> */}
       <main className="flex-1 overflow-hidden pt-3">
-        <div className="w-full h-full bg-white dark:bg-steel-900 rounded-lg shadow-sm overflow-auto scrollbar-thin">
+        <div className="w-full h-full bg-white dark:bg-steel-900 border-t border-l border-steel-100 dark:border-steel-800 rounded-tl-lg shadow-sm overflow-auto scrollbar-thin">
           <Outlet />
         </div>
       </main>

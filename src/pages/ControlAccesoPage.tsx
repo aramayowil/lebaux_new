@@ -94,6 +94,20 @@ const coloresRoles: Record<
   Consultor: "default",
 };
 
+// Alineado con el objeto inputBase de ObrasPage
+const inputBase = {
+  label:
+    "font-bold text-[11px] text-zinc-500 dark:text-zinc-400 uppercase tracking-wider",
+  inputWrapper: [
+    "border-zinc-200 dark:border-zinc-800",
+    "bg-white dark:bg-zinc-900",
+    "hover:border-lebaux-amber/60",
+    "focus-within:!border-lebaux-amber",
+    "rounded-xl h-11 transition-colors shadow-none",
+  ].join(" "),
+  input: "text-sm text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400",
+};
+
 export default function ControlAccesoPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>(usuariosIniciales);
   const [busqueda, setBusqueda] = useState("");
@@ -109,14 +123,14 @@ export default function ControlAccesoPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12 px-4 md:px-0 animate-in fade-in duration-400">
-      {/* ── Header Profesional SIN GRADIENTE ────────────────────────────────────────────── */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/50">
+    <div className="max-w-7xl mx-auto space-y-6 pb-12 px-4 md:px-0 animate-in fade-in duration-400 bg-zinc-50 dark:bg-zinc-950">
+      {/* ── Header Rediseñado Estilo Obras ───────────────────────────────── */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-steel-900 px-4 py-2 border-b border-zinc-100 dark:border-zinc-800">
         <div>
-          <h2 className="text-3xl font-extrabold text-zinc-800 dark:text-zinc-100 tracking-tight flex items-center gap-2.5">
+          <h2 className="text-2xl font-black text-zinc-800 dark:text-zinc-100 tracking-tight">
             Control de Acceso
           </h2>
-          <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1 font-medium leading-relaxed">
+          <p className="text-zinc-400 dark:text-zinc-500 text-xs mt-1 font-medium">
             Administrá las credenciales de personal, asignación de roles de
             taller y auditoría de permisos.
           </p>
@@ -124,21 +138,21 @@ export default function ControlAccesoPage() {
         <Button
           size="md"
           startContent={<UserPlus size={16} strokeWidth={2.5} />}
-          className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-none h-11 self-start sm:self-center px-6"
+          className="font-bold bg-lebaux-amber hover:bg-amber-500 text-white px-5 rounded-xl shadow-none h-11 transition-colors text-xs uppercase tracking-wider self-start sm:self-center"
         >
           Nuevo Usuario
         </Button>
       </header>
 
       {/* ── Layout Asimétrico 2:1 ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start px-6">
         {/* Columna Izquierda (Ancha): Buscador y Tabla de Operadores */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border border-zinc-200/60 dark:border-zinc-800/60 shadow-none bg-white dark:bg-zinc-900/50">
+          <Card className="border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 shadow-none">
             <CardBody className="p-6 space-y-6">
               {/* Paso 1: Filtros de Operadores */}
               <div className="space-y-2">
-                <label className="font-bold text-[11px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">
+                <label className={inputBase.label}>
                   1. Filtrar y Buscar Operadores
                 </label>
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -147,25 +161,20 @@ export default function ControlAccesoPage() {
                     placeholder="Buscar por operador o correo electrónico..."
                     size="sm"
                     startContent={
-                      <Search
-                        size={15}
-                        className="text-zinc-400 dark:text-zinc-500"
-                      />
+                      <Search size={15} className="text-zinc-400" />
                     }
                     value={busqueda}
                     onValueChange={setBusqueda}
                     className="w-full"
                     classNames={{
                       trigger: "h-11",
-                      inputWrapper:
-                        "h-11 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 hover:border-zinc-300 dark:hover:border-zinc-700 data-[focus=true]:border-amber-500 rounded-xl shadow-none transition-all",
-                      input:
-                        "text-sm font-medium text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-600",
+                      inputWrapper: inputBase.inputWrapper,
+                      input: inputBase.input,
                     }}
                   />
                   <Button
-                    variant="bordered"
-                    className="h-11 text-xs font-bold text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900/50 rounded-xl px-5 shrink-0"
+                    variant="flat"
+                    className="h-11 text-xs font-bold text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 bg-zinc-50 dark:bg-zinc-950/60 rounded-xl px-5 shrink-0 transition-colors"
                     startContent={<Filter size={14} />}
                   >
                     Filtros avanzados
@@ -175,17 +184,23 @@ export default function ControlAccesoPage() {
 
               {/* Paso 2: Grilla / Tabla de Personal */}
               <div className="space-y-2">
-                <label className="font-bold text-[11px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">
+                <label className={inputBase.label}>
                   2. Personal Autorizado en el Sistema
                 </label>
 
-                <div className="border border-zinc-200 dark:border-zinc-800/60 rounded-2xl overflow-hidden bg-zinc-50/30 dark:bg-zinc-950/10">
+                <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
                   <Table
                     aria-label="Tabla de gestión de usuarios"
                     removeWrapper
                     classNames={{
-                      th: "bg-zinc-100/50 dark:bg-zinc-900/40 text-zinc-400 dark:text-zinc-500 font-bold text-[10px] uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-800 h-12 px-4",
-                      td: "py-3.5 px-4 border-b border-zinc-200/60 dark:border-zinc-800/40 text-xs font-medium text-zinc-800 dark:text-zinc-300 vertical-middle",
+                      th: [
+                        "bg-zinc-50 dark:bg-zinc-950/60",
+                        "text-[11px] font-bold uppercase tracking-widest",
+                        "text-zinc-400 dark:text-zinc-500",
+                        "border-b border-zinc-100 dark:border-zinc-800",
+                        "h-12 px-4",
+                      ].join(" "),
+                      td: "py-3.5 px-4 border-b border-zinc-100 dark:border-zinc-800/50 text-xs font-medium text-zinc-800 dark:text-zinc-300 vertical-middle",
                     }}
                   >
                     <TableHeader>
@@ -206,12 +221,12 @@ export default function ControlAccesoPage() {
                       {usuariosFiltrados.map((usuario) => (
                         <TableRow
                           key={usuario.id}
-                          className="hover:bg-zinc-100/30 dark:hover:bg-zinc-900/20 transition-colors group"
+                          className="group hover:bg-zinc-50 dark:hover:bg-zinc-950/50 transition-colors"
                         >
                           <TableCell>
                             <User
                               name={
-                                <span className="font-bold text-zinc-700 dark:text-zinc-200 text-xs group-hover:text-amber-500 dark:group-hover:text-amber-500 transition-colors">
+                                <span className="font-bold text-zinc-800 dark:text-zinc-200 text-xs group-hover:text-lebaux-amber transition-colors">
                                   {usuario.nombre}
                                 </span>
                               }
@@ -252,7 +267,11 @@ export default function ControlAccesoPage() {
                                 />
                               )}
                               <span
-                                className={`text-xs font-semibold ${usuario.estado === "Activo" ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400 dark:text-zinc-500"}`}
+                                className={`text-xs font-semibold ${
+                                  usuario.estado === "Activo"
+                                    ? "text-emerald-600 dark:text-emerald-400"
+                                    : "text-zinc-400 dark:text-zinc-500"
+                                }`}
                               >
                                 {usuario.estado}
                               </span>
@@ -267,8 +286,8 @@ export default function ControlAccesoPage() {
                                 <Button
                                   isIconOnly
                                   size="sm"
-                                  variant="light"
-                                  className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 rounded-lg h-8 w-8"
+                                  variant="flat"
+                                  className="w-7 h-7 min-w-7 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 bg-zinc-50 dark:bg-zinc-950/60 transition-colors"
                                 >
                                   <MoreVertical size={16} />
                                 </Button>
@@ -296,7 +315,7 @@ export default function ControlAccesoPage() {
                                   key="eliminar"
                                   color="danger"
                                   startContent={<Trash2 size={14} />}
-                                  className="text-xs font-semibold px-2 text-red-500"
+                                  className="text-xs font-semibold px-2 text-red-500 hover:text-red-600"
                                   onPress={() =>
                                     handleEliminarUsuario(usuario.id)
                                   }
@@ -318,10 +337,10 @@ export default function ControlAccesoPage() {
 
         {/* Columna Derecha (Estrecha): Políticas de Seguridad */}
         <div className="space-y-6">
-          <Card className="border border-zinc-200/60 dark:border-zinc-800/60 shadow-none bg-white dark:bg-zinc-900/50">
+          <Card className="border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 shadow-none">
             <CardBody className="p-5 space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b border-zinc-100 dark:border-zinc-800/60">
-                <HelpCircle className="w-4 h-4 text-amber-500" />
+              <div className="flex items-center gap-2 pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                <HelpCircle className="w-4 h-4 text-lebaux-amber" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
                   Políticas de Seguridad
                 </h3>
@@ -362,7 +381,7 @@ export default function ControlAccesoPage() {
                     size="sm"
                     variant="flat"
                     startContent={<ShieldAlert size={14} />}
-                    className="w-full font-bold bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700/60 text-zinc-700 dark:text-zinc-300 rounded-xl text-[11px] h-9"
+                    className="w-full font-bold bg-zinc-50 dark:bg-zinc-950/60 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl text-[11px] h-9 transition-colors"
                   >
                     Ver Logs de Conexión
                   </Button>
