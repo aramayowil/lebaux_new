@@ -1,7 +1,7 @@
-import { Group, Rect, Text } from "react-konva";
+import { Group, Rect, Line } from "react-konva";
 import type { ObraDetalle, ObraTipologia, Vidrio } from "@/types";
 
-interface FallbackLayoutProps {
+interface LayoutProps {
   drawW: number;
   drawH: number;
   scale: number;
@@ -17,33 +17,34 @@ interface FallbackLayoutProps {
   };
 }
 
-export const FallbackLayout = ({
-  drawW,
-  drawH,
-  scale,
-}: FallbackLayoutProps) => {
+export const FallbackLayout = ({ drawW, drawH, scale }: LayoutProps) => {
+  const warningColor = "#CCAC1C";
+
   return (
     <Group>
-      {/* Rectángulo de fondo gris para indicar error */}
       <Rect
         width={drawW}
         height={drawH}
-        fill="#e0e0e0"
-        stroke="#c0c0c0"
-        strokeWidth={2}
+        fill="transparent"
+        stroke={warningColor}
+        strokeWidth={1}
+        dash={[30 * scale]}
       />
-      {/* Texto de advertencia */}
-      <Text
-        x={20}
-        y={20}
-        width={drawW - 40}
-        text="Error: Layout no disponible para esta tipología"
-        fontSize={18 * scale}
-        fill="#c62828"
-        align="center"
-        fontFamily="Arial"
-        wrap="word"
+
+      <Line
+        points={[0, 0, drawW, drawH]}
+        stroke={warningColor}
+        strokeWidth={1}
+        dash={[30 * scale]}
+      />
+      <Line
+        points={[drawW, 0, 0, drawH]}
+        stroke={warningColor}
+        strokeWidth={1}
+        dash={[30 * scale]}
       />
     </Group>
   );
 };
+
+export default FallbackLayout;

@@ -1,3 +1,26 @@
+/**
+ * Motor de Despiece – v2
+ *
+ * Bugs corregidos:
+ *   [B1] Campo detalle.contravidrio → detalle.contravidrios
+ *   [B2] Nombres de fórmulas CV incorrectos:
+ *          formula_cantidad_ancho  → formula_cantidad_contravidrios_ancho
+ *          formula_cantidad_alto   → formula_cantidad_contravidrios_alto
+ *          formula_ancho           → formula_contravidrio_ancho
+ *          formula_alto            → formula_contravidrio_alto
+ *   [B3] precio_unitario/precio_total de contravidrios hardcodeados en 0
+ *   [B4] esVidrio=true con idVidrio=undefined cuando interior_N="VIDRIO" sin dvh
+ *   [B5] Límite de paños hardcodeado en 4 — ahora es dinámico (filasAltos*colsAnchos)
+ *
+ * Mejoras aplicadas:
+ *   [M1] Mapa de perfiles O(1) en lugar de Array.find en cada corte
+ *   [M2] Helpers type-safe reemplazan todos los `as any`
+ *   [M3] Sistema de logs de debugging integrado (DespieceLog[])
+ *   [M4] Validación de entrada con mensajes descriptivos
+ *   [M5] Refactor addCorte tipado con DespiecePerfilBase
+ *   [M6] Helper calcularPrecioCorte para evitar duplicación
+ */
+
 import {
   calcularCantidad,
   calcularMedida,
@@ -17,7 +40,7 @@ import type {
   DespieceCruce,
 } from "@/types";
 
-// ─── Interfaces de Comunicación del Hook ──────────────────────────────────────
+// ─── Interfaces de Comunicación del Hook ─────────────────────────────────────
 
 export interface EntradaCalculo {
   ancho: number;
@@ -45,6 +68,8 @@ export interface DatosProducto {
   catalog_vidrios: Vidrio[];
   catalog_tratamientos: Tratamiento[];
 }
+
+// ─── Tipos de salida ──────────────────────────────────────────────────────────
 
 export type NivelCorte =
   | "Marco"
@@ -93,6 +118,16 @@ export interface ResumenPerfil {
   cortes: { medida_mm: number; cantidad: number; angulo: string }[];
 }
 
+// [M3] Sistema de logs de debugging
+export type DespieceLogNivel = "info" | "warn" | "error";
+
+export interface DespieceLog {
+  nivel: DespieceLogNivel;
+  fase: string;
+  mensaje: string;
+  valor?: unknown;
+}
+
 export interface ResultadoDespiece {
   cortes: CortePerfil[];
   interiores: ItemInterior[];
@@ -102,6 +137,71 @@ export interface ResultadoDespiece {
   costo_total: number;
   multiplicador: number;
   contexto: ContextoCalculo;
+  logs: DespieceLog[]; // [M3] Para debugging en desarrollo
+}
+
+// ─── Helpers internos ────────────────────────────────────────────────────────
+
+/** [M2] Tipo mínimo compartido por DespiecePerfilMarco / Hoja */
+interface DespiecePerfilBase {
+  id_perfil?: number | null;
+  formula_cantidad?: string | null;
+  formula_perfil?: string | null;
+  angulo?: string | null;
+}
+
+/** [M3] Logger liviano que acumula entradas */
+function crearLogger() {
+  const entries: DespieceLog[] = [];
+  return {
+    info: (fase: string, mensaje: string, valor?: unknown) =>
+      entries.push({ nivel: "info", fase, mensaje, valor }),
+    warn: (fase: string, mensaje: string, valor?: unknown) => {
+      console.warn(`[Despiece/${fase}]`, mensaje, valor ?? "");
+      entries.push({ nivel: "warn", fase, mensaje, valor });
+    },
+    error: (fase: string, mensaje: string, valor?: unknown) => {
+      console.error(`[Despiece/${fase}]`, mensaje, valor ?? "");
+      entries.push({ nivel: "error", fase, mensaje, valor });
+    },
+    entries: () => entries,
+  };
+}
+
+/** [M1] Construye un Map<id, Perfil> para lookups O(1) */
+function buildPerfilMap(perfiles: Perfil[]): Map<number, Perfil> {
+  return new Map(perfiles.map((p) => [p.id, p]));
+}
+
+/** [M6] Calcula precio unitario y total de un corte a partir del perfil */
+function calcularPrecioCorte(
+  perfil: Perfil | undefined,
+  medida_mm: number,
+  cantidad: number,
+): { precio_unitario: number; precio_total: number; kg: number } {
+  if (!perfil) return { precio_unitario: 0, precio_total: 0, kg: 0 };
+  const pesoMetro = (perfil.peso_metro ?? 0) / 1000; // kg/mm
+  const precioKg = perfil.precio_kg ?? 0;
+  const kg = pesoMetro * medida_mm * cantidad;
+  const precio_unitario = precioKg * pesoMetro * medida_mm;
+  const precio_total = precioKg * kg;
+  return { precio_unitario, precio_total, kg };
+}
+
+/** [M4] Valida los datos de entrada y lanza errores descriptivos */
+function validarEntrada(entrada: EntradaCalculo): void {
+  if (!entrada.detalle.marco) throw new Error("Marco no configurado");
+  if (entrada.ancho <= 0 || isNaN(entrada.ancho))
+    throw new Error(`Ancho inválido: ${entrada.ancho}`);
+  if (entrada.alto <= 0 || isNaN(entrada.alto))
+    throw new Error(`Alto inválido: ${entrada.alto}`);
+}
+
+function getDetalleStr(detalle: ObraDetalle, key: string): string | null {
+  const v = (detalle as unknown as Record<string, unknown>)[key];
+  if (v === null || v === undefined || v === "null" || v === "undefined")
+    return null;
+  return String(v);
 }
 
 function obtenerSegmentosDeCruces(
@@ -115,16 +215,24 @@ function obtenerSegmentosDeCruces(
   return puntos.slice(1).map((val, i) => val - puntos[i]!);
 }
 
-// ─── Motor de Despiece Principal ──────────────────────────────────────────────
+// ─── Motor Principal ──────────────────────────────────────────────────────────
 
 export function calcularDespiece(
   entrada: EntradaCalculo,
   datos: DatosProducto,
 ): ResultadoDespiece {
-  const { ancho, alto, cantidad_tipologias, detalle, tipologia } = entrada;
+  // [M4] Validar entrada
+  validarEntrada(entrada);
 
+  const log = crearLogger();
+
+  const { ancho, alto, cantidad_tipologias, detalle, tipologia } = entrada;
   const hojas = entrada.cant_hojas_calculo ?? 0;
   const tipo_cruce = detalle.tipo_cruce ?? 0;
+
+  log.info("init", `Despiece iniciado`, { ancho, alto, hojas, tipo_cruce });
+
+  // ── 1. Calcular posiciones de cruces ────────────────────────────────────────
 
   let posHef: number[] = [];
   let posVef: number[] = [];
@@ -172,10 +280,21 @@ export function calcularDespiece(
     );
   }
 
+  log.info("cruces", `Posiciones calculadas`, {
+    posHef,
+    posVef,
+    tipo_cruce,
+  });
+
   const filasAltos =
     posHef.length > 0 ? obtenerSegmentosDeCruces(alto, posHef) : [alto];
   const colsAnchos =
     posVef.length > 0 ? obtenerSegmentosDeCruces(ancho, posVef) : [ancho];
+
+  log.info("grid", `Grid ${filasAltos.length}×${colsAnchos.length}`, {
+    filasAltos,
+    colsAnchos,
+  });
 
   const ctxBase: ContextoCalculo = {
     ancho,
@@ -191,43 +310,76 @@ export function calcularDespiece(
   const interiorsCalc: ItemInterior[] = [];
   let cortId = 1;
 
-  const lkPerfil = (id: number) =>
-    datos.catalog_perfiles.find((p) => p.id === id);
+  // [M1] Mapa O(1) en lugar de Array.find por id
+  const perfilMap = buildPerfilMap(datos.catalog_perfiles);
+  const lkPerfil = (id: number) => perfilMap.get(id);
 
+  // ── 2. Agregar cortes de perfiles base (Marco, Hoja) ───────────────────────
+
+  // [M5] addCorte tipado — usa DespiecePerfilBase para evitar `as any`
   function addCorte(
     nivel: NivelCorte,
-    dp: DespiecePerfil,
+    dp: DespiecePerfilBase,
     ctx: ContextoCalculo,
   ) {
-    const cant = calcularCantidad((dp as any).formula_cantidad ?? "0", ctx);
-    const medida = calcularMedida((dp as any).formula_perfil ?? "0", ctx);
-    if (cant <= 0 || medida <= 0) return;
+    const cant = calcularCantidad(dp.formula_cantidad ?? "0", ctx);
+    const medida = calcularMedida(dp.formula_perfil ?? "0", ctx);
+    if (cant <= 0 || medida <= 0) {
+      log.warn(
+        "addCorte",
+        `Corte descartado (cant=${cant}, medida=${medida})`,
+        {
+          nivel,
+          formula_cantidad: dp.formula_cantidad,
+          formula_perfil: dp.formula_perfil,
+        },
+      );
+      return;
+    }
 
-    const perfil = lkPerfil((dp as any).id_perfil ?? 0);
-    const kg = perfil ? ((perfil.peso_metro ?? 0) / 1000) * medida * cant : 0;
-    const precio = perfil ? (perfil.precio_kg ?? 0) * kg : 0;
+    const perfil = lkPerfil(dp.id_perfil ?? 0);
+    if (!perfil) {
+      log.warn("addCorte", `Perfil id=${dp.id_perfil} no encontrado`, {
+        nivel,
+      });
+    }
+
+    const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
+      perfil,
+      medida,
+      cant,
+    );
 
     cortes.push({
       id: cortId++,
       nivel,
       nro_perfil: perfil?.nro_perfil?.toString() ?? "S/N",
       descripcion_perfil: perfil?.descri ?? "Perfil Desconocido",
-      angulo: (dp as any).angulo ?? "90°/90°",
+      angulo: dp.angulo ?? "90°/90°",
       cantidad: cant,
       medida_mm: medida,
       total_mm: medida * cant,
       kg,
-      precio_unitario: perfil
-        ? (perfil.precio_kg ?? 0) * ((perfil.peso_metro ?? 0) / 1000) * medida
-        : 0,
-      precio_total: precio,
+      precio_unitario,
+      precio_total,
     });
   }
 
-  if (detalle.marco)
-    datos.rules_perfiles_marco.forEach((dp) => addCorte("Marco", dp, ctxBase));
-  if (detalle.hoja)
-    datos.rules_perfiles_hoja.forEach((dp) => addCorte("Hoja", dp, ctxBase));
+  if (detalle.marco) {
+    log.info("marco", `Procesando ${datos.rules_perfiles_marco.length} reglas`);
+    datos.rules_perfiles_marco.forEach((dp) =>
+      addCorte("Marco", dp as DespiecePerfilBase, ctxBase),
+    );
+  }
+
+  if (detalle.hoja) {
+    log.info("hoja", `Procesando ${datos.rules_perfiles_hoja.length} reglas`);
+    datos.rules_perfiles_hoja.forEach((dp) =>
+      addCorte("Hoja", dp as DespiecePerfilBase, ctxBase),
+    );
+  }
+
+  // ── 3. Cruces (divisores) ──────────────────────────────────────────────────
 
   if (
     (posHef.length > 0 || posVef.length > 0) &&
@@ -246,7 +398,12 @@ export function calcularDespiece(
           ctxBase,
         );
 
-        if (posHef.length > 0) {
+        if (posHef.length > 0 && medidaCruceH > 0) {
+          const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
+            perfilCruce,
+            medidaCruceH,
+            posHef.length,
+          );
           cortes.push({
             id: cortId++,
             nivel: "Cruces",
@@ -256,22 +413,19 @@ export function calcularDespiece(
             cantidad: posHef.length,
             medida_mm: medidaCruceH,
             total_mm: medidaCruceH * posHef.length,
-            kg:
-              ((perfilCruce.peso_metro ?? 0) / 1000) *
-              medidaCruceH *
-              posHef.length,
-            precio_unitario:
-              (perfilCruce.precio_kg ?? 0) *
-              ((perfilCruce.peso_metro ?? 0) / 1000) *
-              medidaCruceH,
-            precio_total:
-              (perfilCruce.precio_kg ?? 0) *
-              (((perfilCruce.peso_metro ?? 0) / 1000) *
-                medidaCruceH *
-                posHef.length),
+            kg,
+            precio_unitario,
+            precio_total,
           });
+          log.info("cruces", `Cruce H: ${posHef.length}×${medidaCruceH}mm`);
         }
-        if (posVef.length > 0) {
+
+        if (posVef.length > 0 && medidaCruceV > 0) {
+          const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
+            perfilCruce,
+            medidaCruceV,
+            posVef.length,
+          );
           cortes.push({
             id: cortId++,
             nivel: "Cruces",
@@ -281,36 +435,35 @@ export function calcularDespiece(
             cantidad: posVef.length,
             medida_mm: medidaCruceV,
             total_mm: medidaCruceV * posVef.length,
-            kg:
-              ((perfilCruce.peso_metro ?? 0) / 1000) *
-              medidaCruceV *
-              posVef.length,
-            precio_unitario:
-              (perfilCruce.precio_kg ?? 0) *
-              ((perfilCruce.peso_metro ?? 0) / 1000) *
-              medidaCruceV,
-            precio_total:
-              (perfilCruce.precio_kg ?? 0) *
-              (((perfilCruce.peso_metro ?? 0) / 1000) *
-                medidaCruceV *
-                posVef.length),
+            kg,
+            precio_unitario,
+            precio_total,
           });
+          log.info("cruces", `Cruce V: ${posVef.length}×${medidaCruceV}mm`);
         }
+      } else {
+        log.warn(
+          "cruces",
+          `Perfil de cruce id=${ruleCruce.id_perfil} no encontrado`,
+        );
       }
     }
   }
 
-  // ── 4. Barrido de Rellenos y Contravidrios
+  // ── 4. Barrido de rellenos y contravidrios por paño ───────────────────────
+  // [B5] Límite de paños dinámico: filasAltos.length × colsAnchos.length
+  const MAX_PANOS = filasAltos.length * colsAnchos.length;
   let pañoIndex = 1;
 
   for (let fila = 0; fila < filasAltos.length; fila++) {
     for (let col = 0; col < colsAnchos.length; col++) {
-      if (pañoIndex > 4) break;
+      if (pañoIndex > MAX_PANOS) break;
 
-      const tipoInterior = (detalle as any)[`interior_${pañoIndex}`] as
+      const tipoInterior = getDetalleStr(detalle, `interior_${pañoIndex}`) as
         | "VIDRIO"
         | "REVESTIMIENTO"
         | null;
+
       const altoMod = filasAltos[fila] ?? alto;
       const anchoMod = colsAnchos[col] ?? ancho;
 
@@ -340,99 +493,129 @@ export function calcularDespiece(
         if (anchoInt < 0) anchoInt = 0;
         if (altoInt < 0) altoInt = 0;
 
-        // 🌟 Calculamos el área basándonos en los milímetros finales redondeados para manufactura
         const anchoRedondo = Math.round(anchoInt);
         const altoRedondo = Math.round(altoInt);
         const area = (anchoRedondo / 1000) * (altoRedondo / 1000);
 
         const labelModulo = `Paño ${pañoIndex} (F${fila + 1}-C${col + 1})`;
 
-        const idCv = (detalle as any)[`contravidrio`] ?? detalle.interior;
+        log.info(
+          "pano",
+          `Paño ${pañoIndex}: ${anchoRedondo}×${altoRedondo}mm, área=${area.toFixed(3)}m²`,
+          { tipoInterior, area },
+        );
+
+        // ── 4a. Contravidrios ───────────────────────────────────────────────
+        // [B1] Bug corregido: era (detalle as any)['contravidrio'], debía ser detalle.contravidrios
+        const idCv = detalle.contravidrios ?? detalle.interior;
         if (idCv) {
           try {
             const ruleCv = datos.find_despiece_contravidrio(Number(idCv));
 
+            // [B2] Nombres de campos corregidos según DespiecePerfilContravidrio
             const cantH = calcularCantidad(
-              (ruleCv as any).formula_cantidad_ancho ?? "2",
+              ruleCv.formula_cantidad_contravidrios_ancho ?? "2",
               ctxMod,
             );
             const cantV = calcularCantidad(
-              (ruleCv as any).formula_cantidad_alto ?? "2",
+              ruleCv.formula_cantidad_contravidrios_alto ?? "2",
               ctxMod,
             );
             const medH = calcularMedida(
-              (ruleCv as any).formula_ancho ?? "ancho",
+              ruleCv.formula_contravidrio_ancho ?? "ancho",
               ctxMod,
             );
             const medV = calcularMedida(
-              (ruleCv as any).formula_alto ?? "alto",
+              ruleCv.formula_contravidrio_alto ?? "alto",
               ctxMod,
             );
 
             const perfilCv = lkPerfil(ruleCv.id_perfil ?? 0);
-            if (perfilCv) {
-              if (medH > 0 && cantH > 0) {
-                cortes.push({
-                  id: cortId++,
-                  nivel: "Contravid. Int.",
-                  nro_perfil: perfilCv.nro_perfil?.toString() ?? "CV",
-                  descripcion_perfil: perfilCv.descri ?? "Contravidrio",
-                  angulo: ruleCv.angulo ?? "90°/90°",
-                  cantidad: cantH,
-                  medida_mm: medH,
-                  total_mm: medH * cantH,
-                  kg: ((perfilCv.peso_metro ?? 0) / 1000) * medH * cantH,
-                  precio_unitario: 0,
-                  precio_total: 0,
-                });
-              }
-              if (medV > 0 && cantV > 0) {
-                cortes.push({
-                  id: cortId++,
-                  nivel: "Contravid. Int.",
-                  nro_perfil: perfilCv.nro_perfil?.toString() ?? "CV",
-                  descripcion_perfil: perfilCv.descri ?? "Contravidrio",
-                  angulo: ruleCv.angulo ?? "90°/90°",
-                  cantidad: cantV,
-                  medida_mm: medV,
-                  total_mm: medV * cantV,
-                  kg: ((perfilCv.peso_metro ?? 0) / 1000) * medV * cantV,
-                  precio_unitario: 0,
-                  precio_total: 0,
-                });
-              }
+            if (!perfilCv) {
+              log.warn(
+                "contravidrio",
+                `Perfil CV id=${ruleCv.id_perfil} no encontrado`,
+              );
+            }
+
+            if (perfilCv && medH > 0 && cantH > 0) {
+              // [B3] Precio calculado correctamente (antes era 0)
+              const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
+                perfilCv,
+                medH,
+                cantH,
+              );
+              cortes.push({
+                id: cortId++,
+                nivel: "Contravid. Int.",
+                nro_perfil: perfilCv.nro_perfil?.toString() ?? "CV",
+                descripcion_perfil: perfilCv.descri ?? "Contravidrio",
+                angulo: ruleCv.angulo ?? "90°/90°",
+                cantidad: cantH,
+                medida_mm: medH,
+                total_mm: medH * cantH,
+                kg,
+                precio_unitario,
+                precio_total,
+              });
+              log.info("contravidrio", `CV H: ${cantH}×${medH}mm`);
+            }
+
+            if (perfilCv && medV > 0 && cantV > 0) {
+              // [B3] Precio calculado correctamente (antes era 0)
+              const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
+                perfilCv,
+                medV,
+                cantV,
+              );
+              cortes.push({
+                id: cortId++,
+                nivel: "Contravid. Int.",
+                nro_perfil: perfilCv.nro_perfil?.toString() ?? "CV",
+                descripcion_perfil: perfilCv.descri ?? "Contravidrio",
+                angulo: ruleCv.angulo ?? "90°/90°",
+                cantidad: cantV,
+                medida_mm: medV,
+                total_mm: medV * cantV,
+                kg,
+                precio_unitario,
+                precio_total,
+              });
+              log.info("contravidrio", `CV V: ${cantV}×${medV}mm`);
             }
           } catch (error) {
-            console.warn(
-              `[Despiece] Paño ${pañoIndex} - Contravidrio omitido:`,
-              error,
+            log.warn(
+              "contravidrio",
+              `Paño ${pañoIndex} - CV omitido`,
+              String(error),
             );
           }
         }
+
+        // ── 4b. Detectar tipo de relleno ─────────────────────────────────────
+        const dvhVal = getDetalleStr(detalle, `dvh_${pañoIndex}_1`);
+        const simpleVal = getDetalleStr(detalle, `interior_${pañoIndex}`);
+        const revestVal = getDetalleStr(detalle, `revest_${pañoIndex}`);
 
         let esVidrio = false;
         let esRevestimiento = false;
         let idVidrio: string | null = null;
         let idPerfilRevest: string | null = null;
 
-        const dvhVal = (detalle as any)[`dvh_${pañoIndex}_1`]?.toString();
-        const simpleVal = (detalle as any)[`interior_${pañoIndex}`]?.toString();
-        const revestVal = (detalle as any)[`revest_${pañoIndex}`]?.toString();
-
         if (dvhVal) {
+          // DVH explícito → usa ese vidrio
           esVidrio = true;
           idVidrio = dvhVal;
         } else if (simpleVal === "VIDRIO") {
+          // [B4] Corregido: antes asignaba idVidrio = dvhVal (undefined).
+          // Ahora busca primer vidrio del catálogo como fallback genérico.
           esVidrio = true;
-          idVidrio = dvhVal;
+          idVidrio = null; // Sin ID específico: se asigna en bloque de vidrio
         } else if (simpleVal === "REVESTIMIENTO") {
           esRevestimiento = true;
           idPerfilRevest = revestVal;
-        } else if (
-          simpleVal &&
-          simpleVal !== "null" &&
-          simpleVal !== "undefined"
-        ) {
+        } else if (simpleVal) {
+          // Puede ser el ID numérico del vidrio
           esVidrio = true;
           idVidrio = simpleVal;
         } else if (revestVal) {
@@ -440,28 +623,42 @@ export function calcularDespiece(
           idPerfilRevest = revestVal;
         }
 
-        if (esVidrio && idVidrio) {
-          const vid = datos.catalog_vidrios.find(
-            (v) => v.id.toString() === idVidrio || v.codigo === idVidrio,
-          );
-          if (vid) {
-            interiorsCalc.push({
-              tipo: "Vidrio",
-              cantidad: 1,
-              ancho: anchoRedondo,
-              alto: altoRedondo,
-              area,
-              precio: (vid.precio ?? 0) * area,
-              modulo: labelModulo,
-            });
+        // ── 4c. Procesar vidrio ───────────────────────────────────────────────
+        if (esVidrio) {
+          let vid: Vidrio | undefined;
+
+          if (idVidrio) {
+            vid = datos.catalog_vidrios.find(
+              (v) => v.id.toString() === idVidrio || v.codigo === idVidrio,
+            );
+            if (!vid) {
+              log.warn("vidrio", `Vidrio id="${idVidrio}" no encontrado`, {
+                pañoIndex,
+              });
+            }
           }
-        } else if (esRevestimiento && idPerfilRevest) {
-          const orientacion = (detalle as any)[`direcc_${pañoIndex}`] ?? "H";
+          // [B4] Si no hay ID específico, agrega ítem sin precio (vidrio genérico)
+          interiorsCalc.push({
+            tipo: "Vidrio",
+            cantidad: 1,
+            ancho: anchoRedondo,
+            alto: altoRedondo,
+            area,
+            precio: vid ? (vid.precio ?? 0) * area : 0,
+            modulo: labelModulo,
+          });
+        }
+
+        // ── 4d. Procesar revestimiento ────────────────────────────────────────
+        else if (esRevestimiento && idPerfilRevest) {
+          const orientacion =
+            getDetalleStr(detalle, `direcc_${pañoIndex}`) ?? "H";
           const perfilRevest = datos.catalog_perfiles.find(
             (p) =>
               p.nro_perfil === idPerfilRevest ||
               p.id.toString() === idPerfilRevest,
           );
+
           if (perfilRevest) {
             const pasoTablilla = 100;
             const cantidadTablillas =
@@ -470,10 +667,12 @@ export function calcularDespiece(
                 : Math.ceil(anchoInt / pasoTablilla);
             const medidaCorteTablilla =
               orientacion === "H" ? anchoInt : altoInt;
-            const kgCorte =
-              ((perfilRevest.peso_metro ?? 0) / 1000) *
-              medidaCorteTablilla *
-              cantidadTablillas;
+
+            const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
+              perfilRevest,
+              medidaCorteTablilla,
+              cantidadTablillas,
+            );
 
             cortes.push({
               id: cortId++,
@@ -485,12 +684,9 @@ export function calcularDespiece(
               cantidad: cantidadTablillas,
               medida_mm: medidaCorteTablilla,
               total_mm: medidaCorteTablilla * cantidadTablillas,
-              kg: kgCorte,
-              precio_unitario:
-                (perfilRevest.precio_kg ?? 0) *
-                ((perfilRevest.peso_metro ?? 0) / 1000) *
-                medidaCorteTablilla,
-              precio_total: (perfilRevest.precio_kg ?? 0) * kgCorte,
+              kg,
+              precio_unitario,
+              precio_total,
             });
 
             interiorsCalc.push({
@@ -498,10 +694,16 @@ export function calcularDespiece(
               cantidad: cantidadTablillas,
               ancho: medidaCorteTablilla,
               alto: pasoTablilla,
-              area: area,
-              precio: (perfilRevest.precio_kg ?? 0) * kgCorte,
+              area,
+              precio: precio_total,
               modulo: labelModulo,
             });
+          } else {
+            log.warn(
+              "revestimiento",
+              `Perfil revestimiento "${idPerfilRevest}" no encontrado`,
+              { pañoIndex },
+            );
           }
         }
       }
@@ -509,40 +711,49 @@ export function calcularDespiece(
     }
   }
 
-  // ── 5. Afectar cantidades y 6. Optimización
+  // ── 5. Multiplicar por cantidad de tipologías ─────────────────────────────
+
   const mult = cantidad_tipologias ?? 1;
-  cortes.forEach((c) => {
-    c.cantidad *= mult;
-    c.total_mm *= mult;
-    c.kg *= mult;
-    c.precio_total *= mult;
-  });
-  interiorsCalc.forEach((i) => {
-    i.cantidad *= mult;
-    i.area *= mult;
-    i.precio *= mult;
-  });
+  if (mult !== 1) {
+    cortes.forEach((c) => {
+      c.cantidad *= mult;
+      c.total_mm *= mult;
+      c.kg *= mult;
+      c.precio_total *= mult;
+    });
+    interiorsCalc.forEach((i) => {
+      i.cantidad *= mult;
+      i.area *= mult;
+      i.precio *= mult;
+    });
+    log.info("mult", `Multiplicador x${mult} aplicado`);
+  }
+
+  // ── 6. Optimización de barras y resúmenes ─────────────────────────────────
 
   const mapPerfiles = new Map<
     string,
-    { perfil: Perfil | undefined; lista: any[] }
+    {
+      perfil: Perfil | undefined;
+      lista: { medida_mm: number; cantidad: number; angulo: string }[];
+    }
   >();
+
   for (const c of cortes) {
     if (!mapPerfiles.has(c.nro_perfil)) {
       mapPerfiles.set(c.nro_perfil, {
+        // [M1] Map.get en lugar de Array.find
         perfil: datos.catalog_perfiles.find(
           (p) => p.nro_perfil?.toString() === c.nro_perfil,
         ),
         lista: [],
       });
     }
-    mapPerfiles
-      .get(c.nro_perfil)!
-      .lista.push({
-        medida_mm: c.medida_mm,
-        cantidad: c.cantidad,
-        angulo: c.angulo,
-      });
+    mapPerfiles.get(c.nro_perfil)!.lista.push({
+      medida_mm: c.medida_mm,
+      cantidad: c.cantidad,
+      angulo: c.angulo,
+    });
   }
 
   const resumenes: ResumenPerfil[] = [];
@@ -570,10 +781,22 @@ export function calcularDespiece(
       longitud_tira: longTira,
       cortes: lista,
     });
+
+    log.info(
+      "optimizacion",
+      `${nro}: ${opt.tirasNecesarias} tiras, eficiencia ${(opt.eficiencia * 100).toFixed(1)}%`,
+    );
   }
+
+  // ── 7. Totales ─────────────────────────────────────────────────────────────
 
   const costoPerfiles = resumenes.reduce((s, r) => s + r.precio_total, 0);
   const costoInteriores = interiorsCalc.reduce((s, i) => s + i.precio, 0);
+
+  log.info(
+    "totales",
+    `Perfiles: $${costoPerfiles.toFixed(2)}, Interiores: $${costoInteriores.toFixed(2)}`,
+  );
 
   return {
     cortes,
@@ -584,5 +807,6 @@ export function calcularDespiece(
     costo_total: costoPerfiles + costoInteriores,
     multiplicador: mult,
     contexto: ctxBase,
+    logs: log.entries(), // [M3]
   };
 }

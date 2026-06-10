@@ -14,7 +14,7 @@ import type {
   DespiecePerfilContravidrio,
 } from "@/types";
 
-// Catálogos Generales
+// Catálogos generales
 import { usePerfiles } from "./catalogo/usePerfiles";
 import { useAccesorios } from "./catalogo/useAccesorios";
 import { useVidrios } from "./catalogo/useVidrios";
@@ -48,7 +48,7 @@ export function useDespiece(
   const idHoja = detalle?.hoja;
   const idInterior = detalle?.interior;
 
-  // Capturamos el contravidrio específico o usamos el fallback de interior
+  // Contravidrio específico o fallback al interior
   const idContravidrioEspecifico = detalle?.contravidrios ?? idInterior;
 
   const { data: despieceRules, isLoading: rulesLoading } = useQuery({
@@ -62,7 +62,7 @@ export function useDespiece(
     queryFn: async () => {
       if (!idMarco && !idHoja) return null;
 
-      // Consolidamos los IDs únicos para la cláusula de búsqueda (evita duplicados si son iguales)
+      // Consolidar IDs únicos para evitar duplicados (interior y contravidrio pueden coincidir)
       const idsCV = Array.from(
         new Set(
           [Number(idInterior), Number(idContravidrioEspecifico)].filter(
@@ -93,7 +93,7 @@ export function useDespiece(
               .select("*")
               .eq("id_cruces", idInterior)
           : null,
-        // 🌟 Reemplazamos .eq por .in para traer de un solo viaje el ID del interior y el del contravidrio (ID 16)
+        // .in() para traer en un solo viaje tanto int como CV específico
         idsCV.length > 0
           ? supabase
               .schema("opendata")
@@ -137,6 +137,17 @@ export function useDespiece(
     lkHoja ||
     rulesLoading;
 
+  // [M4] Mapa de contravidrios construido una sola vez por useMemo
+  // Evita linear search O(n) en find_despiece_contravidrio dentro del motor
+  const cvMap = useMemo<Map<number, DespiecePerfilContravidrio>>(() => {
+    if (!despieceRules) return new Map();
+    const allCV = [
+      ...(despieceRules.dpCV as DespiecePerfilContravidrio[]),
+      ...(despieceRules.dpCVE as DespiecePerfilContravidrio[]),
+    ];
+    return new Map(allCV.map((cv) => [cv.id_contravidrio, cv]));
+  }, [despieceRules]);
+
   const memoResult = useMemo(() => {
     if (!tipologia || !detalle || !despieceRules) {
       return { resultado: null, error: null, configurado: false };
@@ -153,8 +164,8 @@ export function useDespiece(
         ancho: detalle.ancho ?? tipologia.ancho ?? 0,
         alto: detalle.alto ?? tipologia.alto ?? 0,
         cantidad_tipologias: tipologia.cantidad ?? 1,
-        detalle: detalle,
-        tipologia: tipologia,
+        detalle,
+        tipologia,
         cant_hojas_calculo: cantidadHojasEfectiva,
       };
 
@@ -172,21 +183,15 @@ export function useDespiece(
           ...despieceRules.dpCVE,
         ] as DespiecePerfilContravidrio[],
 
+        // [M4] Lookup O(1) usando Map preconstruido
         find_despiece_contravidrio: (idContravidrio) => {
-          const cv =
-            despieceRules.dpCV.find(
-              (x: any) => x.id_contravidrio === idContravidrio,
-            ) ??
-            despieceRules.dpCVE.find(
-              (x: any) => x.id_contravidrio === idContravidrio,
-            );
-
+          const cv = cvMap.get(idContravidrio);
           if (!cv) {
             throw new Error(
               `Regla no encontrada para contravidrio: ${idContravidrio}`,
             );
           }
-          return cv as DespiecePerfilContravidrio;
+          return cv;
         },
 
         catalog_perfiles: perfiles,
@@ -196,6 +201,26 @@ export function useDespiece(
       };
 
       const resultado = calcularDespiece(entrada, datos);
+
+      // Mostrar warns/errors del motor en consola de dev (Vite: import.meta.env.DEV)
+      const isDev =
+        (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV ??
+        false;
+      if (isDev) {
+        const problemas = resultado.logs.filter(
+          (l) => l.nivel === "warn" || l.nivel === "error",
+        );
+        if (problemas.length > 0) {
+          console.groupCollapsed(
+            `[useDespiece] ${problemas.length} avisos en despiece (detalle #${detalle.id})`,
+          );
+          problemas.forEach((l) =>
+            console.warn(`[${l.fase}]`, l.mensaje, l.valor ?? ""),
+          );
+          console.groupEnd();
+        }
+      }
+
       return { resultado, error: null, configurado: true };
     } catch (e) {
       console.error("Error en motor de despiece:", e);
@@ -206,6 +231,7 @@ export function useDespiece(
     tipologia?.cantidad,
     detalle,
     despieceRules,
+    cvMap,
     perfiles,
     accesorios,
     vidrios,

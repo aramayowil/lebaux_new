@@ -252,7 +252,7 @@ export default function TipologiaCanvas({
       return <BanderolaLayout {...commonProps} />;
     }
 
-    if (formaTipoStr.includes("puerta rebatible")) {
+    if (formaTipoStr.includes("puerta")) {
       return <PuertaRebatibleLayout {...commonProps} />;
     }
 
