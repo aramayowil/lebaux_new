@@ -14,7 +14,6 @@ import type {
   DespiecePerfilContravidrio,
   DespiecePerfilHoja,
   DespiecePerfilMarco,
-  DespieceInterior,
 } from "@/types";
 
 // Catálogos generales
@@ -65,7 +64,6 @@ export function useDespiece(
       idHoja,
       idInterior,
       idContravidrioEspecifico,
-      idCruce,
     ],
     queryFn: async () => {
       if (!idMarco && !idHoja) return null;
@@ -132,13 +130,13 @@ export function useDespiece(
         ]);
 
       return {
-        dpMarco: (rMarco?.data ?? []) as DespiecePerfilMarco[],
-        dpHoja: (rHoja?.data ?? []) as DespiecePerfilHoja[],
+        dpMarco: rMarco?.data ?? [],
+        dpHoja: rHoja?.data ?? [],
         dpMosquitero: rMosquitero?.data ?? [],
-        dpInterior: (rInterior?.data?.[0] ?? null) as DespieceInterior | null,
-        dpCruces: (rCruce?.data?.[0] ?? null) as DespieceCruce | null,
-        dpCV: (rCV?.data ?? []) as DespiecePerfilContravidrio[],
-        dpCVE: (rCVE?.data ?? []) as DespiecePerfilContravidrio[],
+        dpInterior: rInterior?.data ?? [],
+        dpCruces: rCruce?.data ?? null,
+        dpCV: rCV?.data ?? [],
+        dpCVE: rCVE?.data ?? [],
         dpVR: rVR?.data ?? [],
       };
     },
@@ -155,7 +153,8 @@ export function useDespiece(
     lkHoja ||
     rulesLoading;
 
-  // Mapa de contravidrios para lookup O(1)
+  // [M4] Mapa de contravidrios construido una sola vez por useMemo
+  // Evita linear search O(n) en find_despiece_contravidrio dentro del motor
   const cvMap = useMemo<Map<number, DespiecePerfilContravidrio>>(() => {
     if (!despieceRules) return new Map();
     const allCV = [
@@ -191,17 +190,16 @@ export function useDespiece(
         hoja: perfiles.find((x) => x.id === idHoja),
         interior: perfiles.find((x) => x.id === idInterior),
 
-        rules_perfiles_marco: despieceRules.dpMarco,
-        rules_perfiles_hoja: despieceRules.dpHoja,
-        rules_interior: despieceRules.dpInterior,
-        rules_cruces: despieceRules.dpCruces,
+        rules_perfiles_marco: despieceRules.dpMarco as DespiecePerfilMarco[],
+        rules_perfiles_hoja: despieceRules.dpHoja as DespiecePerfilHoja[],
+        rules_cruces: despieceRules.dpCruces as DespieceCruce[],
 
         rules_perfiles_contravidrio: [
           ...despieceRules.dpCV,
           ...despieceRules.dpCVE,
         ] as DespiecePerfilContravidrio[],
 
-        // Lookup O(1) usando Map preconstruido
+        // [M4] Lookup O(1) usando Map preconstruido
         find_despiece_contravidrio: (idContravidrio) => {
           const cv = cvMap.get(idContravidrio);
           if (!cv) {
@@ -220,7 +218,7 @@ export function useDespiece(
 
       const resultado = calcularDespiece(entrada, datos);
 
-      // Mostrar warns/errors del motor en consola de dev
+      // Mostrar warns/errors del motor en consola de dev (Vite: import.meta.env.DEV)
       const isDev =
         (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV ??
         false;

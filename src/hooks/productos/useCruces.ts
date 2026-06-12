@@ -5,6 +5,21 @@ import type { Cruce } from "@/types";
 const TABLE = "cruces";
 const SQUEMA = "opendata";
 
+export function useCruces() {
+  return useQuery({
+    queryKey: [TABLE, "cruces"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .schema(SQUEMA)
+        .from(TABLE)
+        .select("*");
+
+      if (error) throw error;
+      return data as Cruce[];
+    },
+  });
+}
+
 export function useCrucesByInterior(idInterior: number | undefined) {
   return useQuery({
     queryKey: [TABLE, "cruces", idInterior],

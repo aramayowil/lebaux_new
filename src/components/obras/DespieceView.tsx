@@ -57,7 +57,15 @@ export default function DespieceView({ resultado, titulo }: Props) {
     costo_perfiles = 0,
     costo_interiores = 0,
     multiplicador = 1,
-    contexto = { ancho: 0, alto: 0, hojas: 0, cruces_h: 0, cruces_v: 0, pos_h: [], pos_v: [] },
+    contexto = {
+      ancho: 0,
+      alto: 0,
+      hojas: 0,
+      cruces_h: 0,
+      cruces_v: 0,
+      pos_h: [],
+      pos_v: [],
+    },
   } = resultado || {};
 
   // Los accesorios ahora viajan como cortes de nivel "Cruces" o están contemplados en el costo perimetral.
@@ -65,10 +73,10 @@ export default function DespieceView({ resultado, titulo }: Props) {
   const costoAccesoriosEfectivo = 0;
 
   // Aplicación de márgenes comerciales parametrizados
-  const margenPerf = 1 + ((opciones?.porcentaje_sobre_perfiles ?? 0) / 100);
-  const margenAcc = 1 + ((opciones?.porcentaje_sobre_accesorios ?? 0) / 100);
-  const margenVid = 1 + ((opciones?.porcentaje_sobre_vidrios ?? 0) / 100);
-  const iva = 1 + ((opciones?.iva ?? 0) / 100);
+  const margenPerf = 1 + (opciones?.porcentaje_sobre_perfiles ?? 0) / 100;
+  const margenAcc = 1 + (opciones?.porcentaje_sobre_accesorios ?? 0) / 100;
+  const margenVid = 1 + (opciones?.porcentaje_sobre_vidrios ?? 0) / 100;
+  const iva = 1 + (opciones?.iva ?? 0) / 100;
 
   const subtotal =
     costo_perfiles * margenPerf +
@@ -220,7 +228,10 @@ export default function DespieceView({ resultado, titulo }: Props) {
                         <td />
                         <td className="text-right font-mono text-xs py-2">
                           {(
-                            resumenes.reduce((s, r) => s + (r.total_mm || 0), 0) / 1000
+                            resumenes.reduce(
+                              (s, r) => s + (r.total_mm || 0),
+                              0,
+                            ) / 1000
                           ).toFixed(2)}{" "}
                           m
                         </td>

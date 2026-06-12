@@ -250,6 +250,11 @@ export default function ObraEditorPage() {
       id_hoja?: number | null;
       id_interior?: number | null;
       id_tipo?: number | null;
+      id_cruce?: number | null;
+      id_contravidrio?: number | null;
+      id_contravidrio_ext?: number | null;
+      id_mosquitero?: number | null;
+      id_tela?: number | null;
     },
   ) {
     try {
@@ -284,11 +289,12 @@ export default function ObraEditorPage() {
         marco: config.id_marco ?? null,
         hoja: config.id_hoja ?? null,
         mano: null,
+
         interior: config.id_interior ?? null,
-        contravidrios: null,
-        contravidrios_ext: null,
-        cruce: null,
-        mosquitero: null,
+        contravidrios: config.id_contravidrio ?? null,
+        contravidrios_ext: config.id_contravidrio_ext ?? null,
+        cruce: config.id_cruce ?? null,
+        mosquitero: config.id_mosquitero ?? null,
         tela: null,
 
         tipo_cruce: 0,

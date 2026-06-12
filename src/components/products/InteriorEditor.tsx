@@ -967,28 +967,32 @@ function CrucesForm({
     );
   }
 
-  const ANGULOS = ["45", "90", "0", ""];
+  const ANGULOS = ["45", "90", "0", "-"];
 
   async function updDC(data: Partial<DespieceCruces>) {
     if (!perfiles || perfiles.length === 0) {
       console.warn("Intentando actualizar sin perfiles cargados");
       return;
     }
-    let d = dc;
+    try {
+      let d = dc;
 
-    if (!d)
-      d = await addDespieceCruces({
-        id_cruces: cruces.id,
-        id_perfil: perfiles[0]?.id ?? 0,
-        formula_cantidad: "1",
-        formula_ancho_entero: "ancho - 20",
-        formula_alto_entero: "alto - 20",
-        descuento_vidrio: 0,
-        descuento_de_si_mismo: 0,
-        angulo: "90",
-      });
+      if (!d)
+        d = await addDespieceCruces({
+          id_cruces: cruces.id,
+          id_perfil: perfiles[0]?.id ?? 0,
+          formula_cantidad: "1",
+          formula_ancho_entero: "ancho - 20",
+          formula_alto_entero: "alto - 20",
+          descuento_vidrio: 0,
+          descuento_de_si_mismo: 0,
+          angulo: "90",
+        });
 
-    updateDespieceCruces({ id: d.id, data: data });
+      updateDespieceCruces({ id: d.id, data: data });
+    } catch (e) {
+      console.log("error al actualizar");
+    }
   }
 
   return (
@@ -1007,24 +1011,24 @@ function CrucesForm({
           <FieldGroup title="Perfil del cruce">
             <div className="flex gap-2">
               <select
-                value={dc?.id_perfil ?? ""}
-                onChange={(e) => updDC({ id_perfil: parseInt(e.target.value) })}
+                value={dc.id_perfil}
+                onChange={(e) => updDC({ id_perfil: Number(e.target.value) })}
                 className="flex-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400"
               >
                 {perfiles.map((p) => (
-                  <option key={p.nro_perfil} value={p.nro_perfil ?? ""}>
+                  <option key={p.id} value={p.id}>
                     {p.nro_perfil} — {p.descri}
                   </option>
                 ))}
               </select>
               <select
-                value={dc?.angulo ?? "90"}
+                value={dc.angulo}
                 onChange={(e) => updDC({ angulo: e.target.value })}
                 className="w-16 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-400"
               >
                 {ANGULOS.map((a) => (
                   <option key={a} value={a}>
-                    {a || "—"}
+                    {a}
                   </option>
                 ))}
               </select>
@@ -1034,19 +1038,19 @@ function CrucesForm({
             <div className="grid grid-cols-3 gap-3">
               <FormulaInput
                 label="Cantidad"
-                value={dc?.formula_cantidad ?? "1"}
+                value={dc.formula_cantidad}
                 onChange={(v) => updDC({ formula_cantidad: v })}
                 description="ej: 1"
               />
               <FormulaInput
                 label="Largo horizontal"
-                value={dc?.formula_ancho_entero ?? ""}
+                value={dc.formula_ancho_entero}
                 onChange={(v) => updDC({ formula_ancho_entero: v })}
                 description="ej: ancho - 20"
               />
               <FormulaInput
                 label="Largo vertical"
-                value={dc?.formula_alto_entero ?? ""}
+                value={dc.formula_alto_entero}
                 onChange={(v) => updDC({ formula_alto_entero: v })}
                 description="ej: alto - 20"
               />
@@ -1057,9 +1061,9 @@ function CrucesForm({
               <Input
                 label="Desc. de sí mismo"
                 type="number"
-                value={String(dc?.descuento_de_si_mismo ?? 0)}
+                value={String(dc.descuento_de_si_mismo)}
                 onValueChange={(v: string) =>
-                  updDC({ descuento_de_si_mismo: parseFloat(v) || 0 })
+                  updDC({ descuento_de_si_mismo: parseFloat(v) })
                 }
                 size="sm"
                 endContent={
@@ -1071,9 +1075,9 @@ function CrucesForm({
               <Input
                 label="Desc. de vidrio"
                 type="number"
-                value={String(dc?.descuento_de_vidrio ?? 0)}
+                value={String(dc.descuento_vidrio)}
                 onValueChange={(v: string) =>
-                  updDC({ descuento_vidrio: parseFloat(v) || 0 })
+                  updDC({ descuento_vidrio: parseFloat(v) })
                 }
                 size="sm"
                 endContent={
@@ -1398,7 +1402,11 @@ function VidRepartidoForm({
                 <DescInput
                   value={(dv as any)[field] as number}
                   label={label}
-                  onChange={(v) => updDV({ [field]: v } as Partial<DespiecePerfilVidrioRepartido>)}
+                  onChange={(v) =>
+                    updDV({
+                      [field]: v,
+                    } as Partial<DespiecePerfilVidrioRepartido>)
+                  }
                 />
               </div>
             ))}

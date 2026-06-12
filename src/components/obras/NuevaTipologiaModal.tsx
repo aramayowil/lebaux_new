@@ -20,6 +20,10 @@ import { useMarcos } from "@/hooks/productos/useMarco";
 import { useProductos } from "@/hooks/productos/useProducto";
 import { NumberInput } from "@heroui/react";
 import { Progress } from "@heroui/react";
+import { useCruces } from "@/hooks/productos/useCruces";
+import { useContravidrios } from "@/hooks/productos/useContravidrios";
+import { useContravidriosExt } from "@/hooks/productos/useContravidriosExt";
+import { useMosquiteros } from "@/hooks/productos/useMosquiteros";
 
 const TW_SM = {
   trigger:
@@ -90,6 +94,27 @@ export default function NuevaTipologiaModal({
     isError: isErrorInteriores,
   } = useInteriores();
   const {
+    data: crucesRaw,
+    isLoading: isLoadingCruces,
+    isError: isErrorCruces,
+  } = useCruces();
+  const {
+    data: contravidriosRaw,
+    isLoading: isLoadingContravidrios,
+    isError: isErrorContravidrios,
+  } = useContravidrios();
+  const {
+    data: contravidrios_extRaw,
+    isLoading: isLoadingContravidriosExt,
+    isError: isErrorContravidriosExt,
+  } = useContravidriosExt();
+  const {
+    data: mosquiterosRaw,
+    isLoading: isLoadingMosquiteros,
+    isError: isErrorMosquiteros,
+  } = useMosquiteros();
+
+  const {
     data: tiposRaw,
     isLoading: isLoadingTipos,
     isError: isErrorTipos,
@@ -113,6 +138,10 @@ export default function NuevaTipologiaModal({
   const tipos = tiposRaw || [];
   const extrusoras = extrusorasRaw || [];
   const lineas = lineasRaw || [];
+  const mosquiteros = mosquiterosRaw || [];
+  const contravidrios = contravidriosRaw || [];
+  const contravidrios_ext = contravidrios_extRaw || [];
+  const cruces = crucesRaw || [];
 
   const isLoadingGlobal =
     isLoadingProductos ||
@@ -121,7 +150,11 @@ export default function NuevaTipologiaModal({
     isLoadingInteriores ||
     isLoadingTipos ||
     isLoadingExtrusoras ||
-    isLoadingLineas;
+    isLoadingLineas ||
+    isLoadingMosquiteros ||
+    isLoadingContravidrios ||
+    isLoadingContravidriosExt ||
+    isLoadingCruces;
 
   const isErrorGlobal =
     isErrorProductos ||
@@ -130,7 +163,11 @@ export default function NuevaTipologiaModal({
     isErrorInteriores ||
     isErrorTipos ||
     isErrorExtrusoras ||
-    isErrorLineas;
+    isErrorLineas ||
+    isErrorMosquiteros ||
+    isErrorContravidrios ||
+    isErrorContravidriosExt ||
+    isErrorCruces;
 
   const [paso, setPaso] = useState(1);
   const [form, setForm] = useState<Form>({
@@ -177,8 +214,20 @@ export default function NuevaTipologiaModal({
   const hojasDeMarco = sel.idMarco
     ? hojas.filter((h) => h.id_marco === sel.idMarco)
     : [];
+  const mosquiterosDeHoja = sel.idHoja
+    ? mosquiteros.filter((m) => m.id_hoja === sel.idHoja)
+    : [];
   const interioresDeHoja = sel.idHoja
     ? interiores.filter((i) => i.id_hoja === sel.idHoja)
+    : [];
+  const crucesDeHoja = sel.idInterior
+    ? cruces.filter((c) => c.id_interior === sel.idInterior)
+    : [];
+  const contravidriosDeHoja = sel.idInterior
+    ? contravidrios.filter((c) => c.id_interior === sel.idInterior)
+    : [];
+  const contravidriosExtDeHoja = sel.idInterior
+    ? contravidrios_ext.filter((c) => c.id_interior === sel.idInterior)
     : [];
 
   // Manejadores en cascada usando opcional chaining (?.) seguro
@@ -236,6 +285,10 @@ export default function NuevaTipologiaModal({
       id_hoja: sel.idHoja,
       id_interior: sel.idInterior,
       id_tipo: sel.idTipo,
+      id_cruce: crucesDeHoja[0]?.id ?? null,
+      id_contravidrio: contravidriosDeHoja[0]?.id ?? null,
+      id_contravidrio_ext: contravidriosExtDeHoja[0]?.id ?? null,
+      id_mosquitero: mosquiterosDeHoja[0]?.id ?? null,
     };
     onCrear(form, config);
     // Reset

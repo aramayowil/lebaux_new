@@ -5,6 +5,21 @@ import { ContravidrioExterior } from "@/types";
 const TABLE = "contravidrio_exterior";
 const SQUEMA = "opendata";
 
+export function useContravidriosExt() {
+  return useQuery({
+    queryKey: [TABLE, "contravidrio_ext"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .schema(SQUEMA)
+        .from(TABLE)
+        .select("*");
+
+      if (error) throw error;
+      return data as ContravidrioExterior[];
+    },
+  });
+}
+
 export function useContravidriosExtByInterior(id_interior: number | undefined) {
   return useQuery({
     queryKey: [TABLE, "contravidrio_ext", id_interior],
