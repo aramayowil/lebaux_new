@@ -121,14 +121,9 @@ export interface ResultadoDespiece {
   cortes: CortePerfil[];
   interiores: ItemInterior[];
   resumenes: ResumenPerfil[];
-  // Costos por rubro — idénticos al sistema Access original
-  costo_perfiles: number; // PF — perfiles naturales
-  costo_interiores: number; // VD — vidrios / interiores (área m²)
-  costo_accesorios: number; // AC — accesorios (pendiente v4)
-  costo_mo_taller: number; // MO taller (calculado desde Opciones en la vista)
-  costo_mo_colocacion: number; // MO colocación (pendiente v4)
-  costo_telas: number; // Telas / mosquiteros (pendiente v4)
-  costo_total: number; // Suma de todos los rubros
+  costo_perfiles: number;
+  costo_interiores: number;
+  costo_total: number;
   multiplicador: number;
   contexto: ContextoCalculo;
   logs: DespieceLog[];
@@ -162,12 +157,18 @@ function calcularPrecioCorte(
   medida_mm: number,
   cantidad: number,
 ): { precio_unitario: number; precio_total: number; kg: number } {
-  if (!perfil) return { precio_unitario: 0, precio_total: 0, kg: 0 };
+  if (!perfil)
+    return {
+      precio_unitario: 0,
+      precio_total: 0,
+      kg: 0,
+    };
   const pesoMetro = (perfil.peso_metro ?? 0) / 1000;
   const precioKg = perfil.precio_kg ?? 0;
   const kg = pesoMetro * medida_mm * cantidad;
   const precio_unitario = precioKg * pesoMetro * medida_mm;
   const precio_total = precioKg * kg;
+
   return { precio_unitario, precio_total, kg };
 }
 
@@ -268,6 +269,9 @@ export function calcularDespiece(
   const cant_cruces_h = posHef.length;
   const cant_cruces_v = posVef.length;
 
+  console.log("posHef", posHef);
+  console.log("posVef", posVef);
+
   const ctxBase: ContextoCalculo = {
     ancho,
     alto,
@@ -360,9 +364,12 @@ export function calcularDespiece(
             ctxBase,
           );
 
-          // El cruce HORIZONTAL es "entero": va de extremo a extremo del ancho
-          // NO se le aplica descuento_de_si_mismo (igual que el Access original)
-          const medidaCruceFinal = medidaCruceH;
+          // Aplicar descuento_de_si_mismo si hay cruces verticales
+          let medidaCruceFinal = medidaCruceH;
+          if (cant_cruces_v > 0 && ruleCruce.descuento_de_si_mismo) {
+            medidaCruceFinal =
+              medidaCruceH - ruleCruce.descuento_de_si_mismo * cant_cruces_v;
+          }
 
           if (medidaCruceFinal > 0) {
             const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
@@ -397,9 +404,7 @@ export function calcularDespiece(
             ctxBase,
           );
 
-          // El cruce VERTICAL se corta en (cant_H + 1) piezas
-          // Cada pieza se descuenta: medida_base - descuento_de_si_mismo × cant_H
-          // Ejemplo: 2H + 1V → cruce V se divide en 3 trozos, cada uno con el descuento
+          // Para cruces verticales: si hay horizontales, aplicar descuento_de_si_mismo
           let medidaCruceFinal = medidaCruceV;
           if (cant_cruces_h > 0 && ruleCruce.descuento_de_si_mismo) {
             medidaCruceFinal =
@@ -407,15 +412,10 @@ export function calcularDespiece(
           }
 
           if (medidaCruceFinal > 0) {
-            // Cantidad real de trozos del cruce V:
-            // Cada cruce V queda partido en (cant_H + 1) trozos por los cruces H
-            // Ejemplo: 2H + 1V → el único cruce V queda en 3 trozos
-            const cantTrozosV =
-              cant_cruces_v * (cant_cruces_h > 0 ? cant_cruces_h + 1 : 1);
             const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
               perfilCruce,
               medidaCruceFinal,
-              cantTrozosV,
+              cant_cruces_v,
             );
             cortes.push({
               id: cortId++,
@@ -423,16 +423,16 @@ export function calcularDespiece(
               nro_perfil: perfilCruce.nro_perfil?.toString() ?? "CRUCE",
               descripcion_perfil: perfilCruce.descri ?? "Perfil Divisor V",
               angulo: ruleCruce.angulo ?? "90°/90°",
-              cantidad: cantTrozosV,
+              cantidad: cant_cruces_v,
               medida_mm: medidaCruceFinal,
-              total_mm: medidaCruceFinal * cantTrozosV,
+              total_mm: medidaCruceFinal * cant_cruces_v,
               kg,
               precio_unitario,
               precio_total,
             });
             log.info(
               "cruces",
-              `Cruce V: ${cantTrozosV} trozos × ${medidaCruceFinal}mm`,
+              `Cruce V: ${cant_cruces_v}×${medidaCruceFinal}mm`,
             );
           }
         }
@@ -465,16 +465,7 @@ export function calcularDespiece(
     );
 
     // APLICAR DESCUENTOS DE CRUCES
-    // Fórmula idéntica al sistema Access original:
-    //   alto_vidrio = (alto_total - descuento_vidrio × cant_H) / (cant_H + 1)
-    //
-    // Diferencia crítica vs versión anterior:
-    //   ❌ Antes: altoPanoBase - (desc × cant) / (cant + 1)  → resta sobre la base
-    //   ✅ Ahora: (altoPanoBase - desc × cant) / (cant + 1)  → distribuye el total
-    //
-    // Ejemplo con alto=1000, desc=10, cant=2:
-    //   ❌ Antes: 500 - 20/3 = 493.33mm (INCORRECTO)
-    //   ✅ Ahora: (1000 - 20) / 3 = 326.67mm (CORRECTO — igual al Access)
+    // descuento_vidrio se distribuye entre los paños creados
     let anchoVidrio = anchoPanoBase;
     let altoVidrio = altoPanoBase;
 
@@ -482,19 +473,17 @@ export function calcularDespiece(
       const desc = datos.rules_cruces.descuento_vidrio;
 
       if (cant_cruces_h > 0) {
-        // Access: ([Alto] - [Descuento] × [Cant_H]) / ([Cant_H] + 1)
         altoVidrio =
-          (altoPanoBase - desc * cant_cruces_h) / (cant_cruces_h + 1);
+          altoPanoBase - (desc * cant_cruces_h) / (cant_cruces_h + 1);
       }
       if (cant_cruces_v > 0) {
-        // Access: ([Ancho] - [Descuento] × [Cant_V]) / ([Cant_V] + 1)
         anchoVidrio =
-          (anchoPanoBase - desc * cant_cruces_v) / (cant_cruces_v + 1);
+          anchoPanoBase - (desc * cant_cruces_v) / (cant_cruces_v + 1);
       }
 
       log.info(
         "interior",
-        `Descuentos aplicados: ${anchoVidrio.toFixed(2)}×${altoVidrio.toFixed(2)}mm`,
+        `Descuentos aplicados: ${anchoVidrio}×${altoVidrio}mm`,
       );
     }
 
@@ -539,6 +528,11 @@ export function calcularDespiece(
         }
       }
 
+      const precioM2Vidrio = vid
+        ? (vid.precio ?? 0) /
+          (((vid.altura ?? 1) / 1000) * ((vid.base ?? 1) / 1000))
+        : 1;
+
       for (let i = 0; i < cantPanos; i++) {
         interiorsCalc.push({
           tipo: "Vidrio",
@@ -546,7 +540,7 @@ export function calcularDespiece(
           ancho: anchoRedondo,
           alto: altoRedondo,
           area,
-          precio: vid ? (vid.precio ?? 0) * area : 0,
+          precio: vid ? precioM2Vidrio * area : 0,
           modulo: `Paño ${i + 1}`,
         });
       }
@@ -743,6 +737,7 @@ export function calcularDespiece(
     const allCuts = lista.flatMap((c) =>
       Array<number>(c.cantidad).fill(c.medida_mm),
     );
+
     const opt = optimizarCortes(allCuts, longTira);
     const totalMm = allCuts.reduce((s, m) => s + m, 0);
     const kg = perfil ? ((perfil.peso_metro ?? 0) / 1000) * totalMm : 0;
@@ -785,10 +780,6 @@ export function calcularDespiece(
     resumenes,
     costo_perfiles: costoPerfiles,
     costo_interiores: costoInteriores,
-    costo_accesorios: 0, // Pendiente v4
-    costo_mo_taller: 0, // Calculado en DespieceView desde Opciones
-    costo_mo_colocacion: 0, // Pendiente v4
-    costo_telas: 0, // Pendiente v4
     costo_total: costoPerfiles + costoInteriores,
     multiplicador: mult,
     contexto: ctxBase,

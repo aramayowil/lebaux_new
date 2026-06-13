@@ -120,18 +120,41 @@ export interface CorteOptimizado {
  * Algoritmo greedy First Fit Decreasing para optimizar barras de aluminio.
  * Similar al módulo Optimización del Access.
  */
+/**
+ * Algoritmo greedy First Fit Decreasing para optimizar barras de aluminio.
+ * Protegido contra arreglos vacíos e inconsistencias de cortes.
+ */
 export function optimizarCortes(
   medidas: number[], // mm de cada corte requerido
   largoBarra: number, // mm de la barra/tira
   descCorte = 5, // mm de disco de sierra
 ): CorteOptimizado {
+  // 1. Validación temprana si no hay cortes que procesar
+  if (!medidas || medidas.length === 0) {
+    return {
+      tirasNecesarias: 0,
+      desperdicioMm: 0,
+      eficiencia: 0,
+      layout: [],
+    };
+  }
+
   const sorted = [...medidas].sort((a, b) => b - a);
   const tiras: number[][] = [];
   const espacios: number[] = [];
 
   for (const medida of sorted) {
+    // Si una sola medida supera el largo de la barra, la salteamos para evitar bucles infinitos
+    if (medida > largoBarra) {
+      console.warn(
+        `[optimizarCortes] Corte de ${medida}mm supera el largo de barra de ${largoBarra}mm.`,
+      );
+      continue;
+    }
+
     let colocado = false;
     for (let i = 0; i < tiras.length; i++) {
+      // Verificamos si cabe sumando el disco de corte necesario para separar
       if (espacios[i]! >= medida + descCorte) {
         tiras[i]!.push(medida);
         espacios[i]! -= medida + descCorte;
@@ -139,20 +162,30 @@ export function optimizarCortes(
         break;
       }
     }
+
     if (!colocado) {
       tiras.push([medida]);
-      espacios.push(largoBarra - medida - descCorte);
+      // Al iniciar la barra, el espacio restante es el largo total menos el corte.
+      // Solo restará descCorte si se añade un SEGUNDO elemento en las iteraciones siguientes.
+      espacios.push(largoBarra - medida);
     }
   }
 
-  const totalUsado = medidas.reduce((s, m) => s + m + descCorte, 0);
+  // Si después de filtrar no se generaron tiras útiles
+  if (tiras.length === 0) {
+    return { tirasNecesarias: 0, desperdicioMm: 0, eficiencia: 0, layout: [] };
+  }
+
+  // 2. Cálculo exacto basado en lo que realmente quedó libre en cada barra
   const totalDisponible = tiras.length * largoBarra;
-  const desperdicio = totalDisponible - totalUsado;
+  const desperdicio = espacios.reduce((sum, esp) => sum + esp, 0);
+  const totalUsado = totalDisponible - desperdicio;
+  const eficiencia = totalUsado / totalDisponible;
 
   return {
     tirasNecesarias: tiras.length,
     desperdicioMm: desperdicio,
-    eficiencia: totalUsado / totalDisponible,
+    eficiencia: isNaN(eficiencia) || !isFinite(eficiencia) ? 0 : eficiencia,
     layout: tiras,
   };
 }

@@ -120,9 +120,20 @@ export default function AccesoriosTab() {
 
   // 4. Lógica de Creación
   async function handleNew(close: () => void) {
-    if (!(newForm.cod_parte ?? "").trim() || !(newForm.descri ?? "").trim()) return;
+    const codigoLimpio = (newForm.cod_parte ?? "").trim();
+    const descriLimpia = (newForm.descri ?? "").trim();
+
+    if (!codigoLimpio || !descriLimpia) return;
+
     try {
-      await createAccesorio(newForm);
+      // Armamos el payload asegurando que el código no supere los 20 caracteres
+      const payload = {
+        ...newForm,
+        cod_parte: codigoLimpio.slice(0, 20),
+        descri: descriLimpia,
+      };
+
+      await createAccesorio(payload);
       setNewForm(BLANK);
       close();
     } catch (err) {
@@ -283,6 +294,7 @@ export default function AccesoriosTab() {
                 <div className="grid grid-cols-2 gap-3">
                   <Input
                     label="Código *"
+                    maxLength={20}
                     placeholder="ej: TIR-001"
                     value={newForm.cod_parte}
                     onValueChange={(v: string) =>

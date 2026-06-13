@@ -99,7 +99,7 @@ export function useTipologiaLogic(
   );
   useEffect(() => {
     setModoRelleno(modoDesdeDB(detalle));
-  }, [detalle?.id, detalle?.revest_1, detalle?.dvh_1_1]);
+  }, [detalle?.id]);
 
   const [modoRellenoByFila, setModoRellenoByFila] = useState<ModoRelleno[]>([
     "simple",
@@ -115,17 +115,7 @@ export function useTipologiaLogic(
       detalle.revest_3 ? "revestimiento" : detalle.dvh_3_1 ? "dvh" : "simple",
       detalle.revest_4 ? "revestimiento" : detalle.dvh_4_1 ? "dvh" : "simple",
     ]);
-  }, [
-    detalle?.id,
-    detalle?.revest_1,
-    detalle?.revest_2,
-    detalle?.revest_3,
-    detalle?.revest_4,
-    detalle?.dvh_1_1,
-    detalle?.dvh_2_1,
-    detalle?.dvh_3_1,
-    detalle?.dvh_4_1,
-  ]);
+  }, [detalle?.id]);
 
   // ── Funciones de Actualización (Acciones) ───────────────────────────────────
   const toggleSection = (key: keyof typeof openSections) =>
@@ -180,12 +170,12 @@ export function useTipologiaLogic(
     });
 
     if (nuevo === "revestimiento") {
-      resetPatch.direcc_1 = "vertical";
+      resetPatch.direcc_1 = "horizontal";
       // CAMBIO SEMÁNTICO: Si mismoRellenoPanel es TRUE, seteamos la dirección por defecto en las filas activas
       if (mismoRellenoPanel) {
-        if (panosCount >= 2) resetPatch.direcc_2 = "vertical";
-        if (panosCount >= 3) resetPatch.direcc_3 = "vertical";
-        if (panosCount >= 4) resetPatch.direcc_4 = "vertical";
+        if (panosCount >= 2) resetPatch.direcc_2 = "horizontal";
+        if (panosCount >= 3) resetPatch.direcc_3 = "horizontal";
+        if (panosCount >= 4) resetPatch.direcc_4 = "horizontal";
       }
     }
     upsertDetalle({ ...detalle, ...resetPatch });
@@ -201,7 +191,7 @@ export function useTipologiaLogic(
       [f.revest]: null,
       [f.direcc]: null,
     };
-    if (nuevo === "revestimiento") patch[f.direcc] = "vertical";
+    if (nuevo === "revestimiento") patch[f.direcc] = "horizontal";
     upsertDetalle({ ...detalle, ...patch });
   }
 
