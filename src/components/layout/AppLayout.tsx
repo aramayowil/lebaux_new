@@ -30,15 +30,32 @@ import {
 import { useTheme } from "@/hooks/useTheme";
 import clsx from "clsx";
 import { useAuth } from "@/context/AuthContext";
+import { useMisPermisos } from "@/hooks/usuarios/useMiPerfil";
+import type { SeccionPermiso } from "@/types/index";
 
-const NAV = [
-  { to: "/inicio", icon: Home, label: "Dashboard" },
-  { to: "/obras", icon: FolderOpen, label: "Obras" },
-  { to: "/productos", icon: Layers, label: "Productos" },
-  { to: "/catalogos", icon: BookOpen, label: "Catálogos" },
-  { to: "/importar", icon: FolderUp, label: "Importar" },
-  { to: "/usuarios", icon: ShieldCheck, label: "Usuarios" },
-  { to: "/opciones", icon: Settings, label: "Opciones" },
+const NAV: {
+  to: string;
+  icon: typeof Home;
+  label: string;
+  seccion: SeccionPermiso;
+}[] = [
+  { to: "/inicio", icon: Home, label: "Dashboard", seccion: "inicio" },
+  { to: "/obras", icon: FolderOpen, label: "Obras", seccion: "obras" },
+  { to: "/productos", icon: Layers, label: "Productos", seccion: "productos" },
+  {
+    to: "/catalogos",
+    icon: BookOpen,
+    label: "Catálogos",
+    seccion: "catalogos",
+  },
+  { to: "/importar", icon: FolderUp, label: "Importar", seccion: "catalogos" },
+  {
+    to: "/usuarios",
+    icon: ShieldCheck,
+    label: "Usuarios",
+    seccion: "usuarios",
+  },
+  { to: "/opciones", icon: Settings, label: "Opciones", seccion: "opciones" },
 ];
 
 export default function AppLayout() {
@@ -46,15 +63,20 @@ export default function AppLayout() {
   const { dark, toggle } = useTheme();
   const [hasNotifications, setHasNotifications] = useState(true);
   const { user: supabaseUser, logout } = useAuth();
+  const { perfil, puede } = useMisPermisos();
 
   const user = {
     name:
+      perfil?.nombre ||
       supabaseUser?.user_metadata?.full_name ||
       supabaseUser?.email?.split("@")[0] ||
       "Usuario",
     email: supabaseUser?.email || "",
     avatar: supabaseUser?.user_metadata?.avatar_url || "",
+    rol: perfil?.roles?.nombre ?? "",
   };
+
+  const navVisible = NAV.filter(({ seccion }) => puede(seccion, "ver"));
 
   return (
     <div className="flex h-screen overflow-hidden bg-steel-100 dark:bg-zinc-950">
@@ -121,7 +143,7 @@ export default function AppLayout() {
 
         {/* Nav links */}
         <nav className="flex-1 py-3 px-2 flex flex-col gap-0.5 overflow-y-auto">
-          {NAV.map(({ to, icon: Icon, label }) => (
+          {navVisible.map(({ to, icon: Icon, label }) => (
             <Tooltip
               key={to}
               content={label}
@@ -217,13 +239,20 @@ export default function AppLayout() {
             >
               <DropdownItem
                 key="profile-header"
-                className="h-11 gap-2 opacity-100 cursor-default pointer-events-none border-b border-steel-100 dark:border-steel-800"
+                className="h-14 gap-2 opacity-100 cursor-default pointer-events-none border-b border-steel-100 dark:border-steel-800"
               >
                 <div className="flex items-center gap-2">
                   <Avatar src={user.avatar} className="w-5 h-5 text-xs" />
-                  <p className="font-semibold text-sm text-steel-900 dark:text-steel-100">
-                    {user.name}
-                  </p>
+                  <div className="flex flex-col">
+                    <p className="font-semibold text-sm text-steel-900 dark:text-steel-100">
+                      {user.name}
+                    </p>
+                    {user.rol && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-lebaux-amber">
+                        {user.rol}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </DropdownItem>
 

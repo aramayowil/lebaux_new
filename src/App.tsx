@@ -15,6 +15,7 @@ import PresupuestoPage from "@/pages/PresupuestoPage";
 import Login from "@/pages/login/Login";
 import Register from "@/pages/login/Register";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import PublicRoute from "./routes/PublicRoute";
 import ImportarPage from "@/pages/ImportarPage";
 import Error404Page from "@/pages/Error404Page";
 import ControlAccesoPage from "./pages/ControlAccesoPage";
@@ -43,9 +44,11 @@ export default function App() {
 
   return (
     <Routes>
-      {/* ─── RUTAS PÚBLICAS ─── */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      {/* ─── RUTAS PÚBLICAS (redirigen a /inicio si ya hay sesión) ─── */}
+      <Route element={<PublicRoute />}>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+      </Route>
       <Route path="*" element={<Error404Page />} />
 
       {/* ─── RUTAS PROTEGIDAS ─── */}

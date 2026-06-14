@@ -856,6 +856,47 @@ export interface Porcentajes {
   despercidio_pinturas?: number | null;
 }
 
+// ─── Usuarios, Roles y Permisos ────────────────────────────────────────────────
+
+export interface Rol {
+  id: number;
+  nombre: string;
+  descripcion?: string | null;
+  bloqueado: boolean;
+}
+
+export type SeccionPermiso =
+  | "inicio"
+  | "obras"
+  | "productos"
+  | "catalogos"
+  | "opciones"
+  | "usuarios";
+
+export interface Permiso {
+  id: number;
+  id_rol: number;
+  seccion: SeccionPermiso;
+  ver: boolean;
+  crear: boolean;
+  editar: boolean;
+  eliminar: boolean;
+}
+
+export type AccionPermiso = "ver" | "crear" | "editar" | "eliminar";
+
+export interface Usuario {
+  id: string; // uuid (= auth.users.id)
+  nombre: string;
+  email: string;
+  id_rol: number;
+  activo: boolean;
+  ultimo_acceso?: string | Date | null;
+  creado_en?: string | Date | null;
+  // Relación embebida (Supabase: usuarios.select("*, roles(*)"))
+  roles?: Rol | null;
+}
+
 // ─── UI / Estado ──────────────────────────────────────────────────────────────
 
 export type NavSection =
@@ -863,7 +904,8 @@ export type NavSection =
   | "obras"
   | "productos"
   | "catalogos"
-  | "opciones";
+  | "opciones"
+  | "usuarios";
 
 export type CatalogoTab =
   | "perfiles"

@@ -397,13 +397,16 @@ export function calcularDespiece(
             ctxBase,
           );
 
-          // El cruce VERTICAL se corta en (cant_H + 1) piezas
-          // Cada pieza se descuenta: medida_base - descuento_de_si_mismo × cant_H
-          // Ejemplo: 2H + 1V → cruce V se divide en 3 trozos, cada uno con el descuento
+          // Fórmula Access original (MSysQueries):
+          //   ([Alto entero] - ([Descuento de si mismo] × cruces_H)) / (cruces_H + 1)
+          // Igual que el vidrio: distribuye el total después del descuento
+          // Ejemplo: alto=1000, desc_si_mismo=8, cant_H=2
+          //   (1000 - 8×2) / (2+1) = 984/3 = 328mm c/u
           let medidaCruceFinal = medidaCruceV;
           if (cant_cruces_h > 0 && ruleCruce.descuento_de_si_mismo) {
             medidaCruceFinal =
-              medidaCruceV - ruleCruce.descuento_de_si_mismo * cant_cruces_h;
+              (medidaCruceV - ruleCruce.descuento_de_si_mismo * cant_cruces_h) /
+              (cant_cruces_h + 1);
           }
 
           if (medidaCruceFinal > 0) {
@@ -619,14 +622,18 @@ export function calcularDespiece(
       try {
         const ruleCv = datos.find_despiece_contravidrio(Number(idCv));
 
-        const cantH = calcularCantidad(
+        // Access: formula_cantidad + (cant_cruces × 2)
+        // Cuando hay cruces, cada cruce agrega 2 contravidrios más (uno a cada lado)
+        const cantHBase = calcularCantidad(
           ruleCv.formula_cantidad_contravidrios_ancho ?? "2",
           ctxBase,
         );
-        const cantV = calcularCantidad(
+        const cantVBase = calcularCantidad(
           ruleCv.formula_cantidad_contravidrios_alto ?? "2",
           ctxBase,
         );
+        const cantH = cantHBase + cant_cruces_h * 2;
+        const cantV = cantVBase + cant_cruces_v * 2;
         const medH = calcularMedida(
           ruleCv.formula_contravidrio_ancho ?? "ancho",
           ctxBase,

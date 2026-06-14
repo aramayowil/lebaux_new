@@ -1,95 +1,104 @@
-import { Button, Image, Input } from "@heroui/react";
+import { Button, Input } from "@heroui/react";
 import { useState } from "react";
-import { ToastContainer, toast } from "react-toastify";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuthStore } from "@/store/authStore"; // Importamos tu store de autenticación
+import { Link } from "react-router-dom";
+import { Eye, EyeOff, AlertCircle } from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
 import photo_login from "@/assets/images/fabrica/fabrica_1.webp";
 import NavBar from "@/components/login/NavBar";
 
+// Traducciones de errores de Supabase
+const traducirError = (msg: string): string => {
+  if (msg.includes("Invalid login credentials"))
+    return "Email o contraseña incorrectos.";
+  if (msg.includes("Email not confirmed"))
+    return "Confirmá tu email antes de ingresar.";
+  if (msg.includes("Too many requests"))
+    return "Demasiados intentos. Esperá unos minutos.";
+  if (msg.includes("User not found"))
+    return "No existe una cuenta con ese email.";
+  return msg;
+};
+
 const Login = () => {
-  const navigate = useNavigate();
+  const { login, isLoggingIn } = useAuthStore();
+
   const [formData, setFormData] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Extraemos las acciones y estados reactivos desde tu Zustand Store
-  const { login, isCheckingAuth } = useAuthStore();
+  const isFormValid =
+    formData.email.trim() !== "" && formData.password.length >= 6;
 
-  const styleInput = {
-    // 1. Hacemos el label significativamente más claro (zinc-300) y legible
-    label: "text-zinc-300 font-medium text-md pl-0.5",
-
-    // Contenedor principal sin cambios de hover/focus para cumplir tu regla previa
-    inputWrapper: ["bg-zinc-900/50", "border-zinc-800"].join(" "),
-
-    // 2. Corregimos la banda negra inyectando las directivas directas de Tailwind para autofill
-    input: [
-      "text-white placeholder:text-zinc-500",
-      "autofill:transition-colors",
-      "autofill:duration-[999999s]", // Truco técnico: congela el color para que el navegador no intente repintar el fondo
-      "file:bg-transparent",
-    ].join(" "),
-  };
-
-  const onSubmit = async (e: React.SubmitEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.email || !formData.password) {
-      toast.error("Por favor, completa todos los campos.");
-      return;
-    }
+    if (!isFormValid || isLoggingIn) return;
+    setErrorMsg(null);
 
-    // Ejecutamos el login centralizado del store
     const resultado = await login({
-      email: formData.email,
+      email: formData.email.trim().toLowerCase(),
       password: formData.password,
     });
 
-    if (resultado.success) {
-      toast.success("¡Bienvenido al sistema!", { theme: "dark" });
-      navigate("/inicio"); // O la ruta que maneje tu ProtectedRoute
-    } else {
-      // Traducimos o mostramos el error devuelto por Supabase
-      toast.error(resultado.error || "Credenciales inválidas", {
-        theme: "dark",
-      });
+    if (!resultado.success) {
+      const msg = traducirError(resultado.error || "Error al iniciar sesión.");
+      setErrorMsg(msg);
     }
+    // Si tuvo éxito, onAuthStateChange → setSession → PublicRoute redirige a /inicio
   };
 
   return (
     <div className="min-h-screen bg-black flex flex-col font-sans selection:bg-yellow-500/30">
       <NavBar />
+
       <div className="flex-1 flex overflow-hidden">
-        {/* SECCIÓN IZQUIERDA: Imagen */}
-        <div className="hidden lg:flex w-1/2 relative">
-          <Image
+        {/* ── Imagen lateral ── */}
+        <div className="hidden lg:block w-1/2 relative overflow-hidden">
+          <img
             src={photo_login}
             alt="Fábrica Lebaux"
-            className="absolute inset-0 w-full h-full object-cover z-0 grayscale-[0.3]"
-            removeWrapper
+            className="absolute inset-0 w-full h-full object-cover grayscale-[0.2]"
           />
-          <div className="absolute inset-0 bg-linear-to-tr from-black via-black/50 to-transparent z-10" />
-
-          <div className="absolute bottom-12 left-12 z-20 max-w-md">
-            <h1 className="text-4xl font-bold text-white mb-4 tracking-tighter">
+          <div className="absolute inset-0 bg-gradient-to-tr from-black via-black/60 to-transparent" />
+          <div className="absolute bottom-12 left-12 max-w-md z-10">
+            <h1 className="text-4xl font-bold text-white mb-3 tracking-tighter leading-tight">
               Sistema de Gestión <br />
               <span className="text-yellow-500">Aberturas de Aluminio</span>
             </h1>
-            <p className="text-zinc-300 text-lg leading-relaxed">
-              Optimiza tus presupuestos, cálculos de corte y gestión de obras en
-              una sola plataforma.
+            <p className="text-zinc-400 text-base leading-relaxed">
+              Presupuestos, cálculos de corte y gestión de obras en una sola
+              plataforma.
             </p>
           </div>
         </div>
 
-        {/* SECCIÓN DERECHA: Formulario */}
+        {/* ── Formulario ── */}
         <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-[#050505]">
-          <div className="w-full max-w-[420px] space-y-8">
-            <div className="space-y-2">
+          <div className="w-full max-w-[400px] space-y-6">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="h-5 w-1 bg-yellow-500 rounded-full" />
+                <p className="text-xs font-bold uppercase tracking-widest text-yellow-600">
+                  Lebaux
+                </p>
+              </div>
               <h2 className="text-3xl font-bold text-white tracking-tight">
                 Bienvenido
               </h2>
-              <p className="text-zinc-500">
-                Ingresa tus credenciales para acceder al panel.
+              <p className="text-zinc-500 text-sm">
+                Ingresá tus credenciales para acceder al panel.
               </p>
             </div>
+
+            {/* Banner de error */}
+            {errorMsg && (
+              <div className="flex items-start gap-3 bg-red-950/40 border border-red-800/60 rounded-xl px-4 py-3 animate-appearance-in">
+                <AlertCircle
+                  size={16}
+                  className="text-red-400 mt-0.5 shrink-0"
+                />
+                <p className="text-sm text-red-300 font-medium">{errorMsg}</p>
+              </div>
+            )}
 
             <form className="flex flex-col gap-5" onSubmit={onSubmit}>
               <Input
@@ -99,31 +108,64 @@ const Login = () => {
                 variant="bordered"
                 type="email"
                 size="lg"
-                classNames={styleInput}
+                autoComplete="email"
+                isDisabled={isLoggingIn}
                 value={formData.email}
-                onValueChange={(v: string) =>
-                  setFormData({ ...formData, email: v.toLowerCase() })
-                }
+                onValueChange={(v: string) => {
+                  setErrorMsg(null);
+                  setFormData((f) => ({ ...f, email: v }));
+                }}
+                classNames={{
+                  label: "text-zinc-400 font-medium text-sm",
+                  inputWrapper: [
+                    "bg-zinc-900/50 border-zinc-800 rounded-xl h-12",
+                    "hover:border-zinc-600 focus-within:!border-yellow-500",
+                    "transition-colors",
+                  ].join(" "),
+                  input: "text-white placeholder:text-zinc-600 text-sm",
+                }}
               />
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <Input
                   label="Contraseña"
-                  placeholder="Ingrese su contraseña"
+                  placeholder="Ingresá tu contraseña"
                   labelPlacement="outside"
                   variant="bordered"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   size="lg"
-                  classNames={styleInput}
+                  autoComplete="current-password"
+                  isDisabled={isLoggingIn}
                   value={formData.password}
-                  onValueChange={(v: string) =>
-                    setFormData({ ...formData, password: v })
+                  onValueChange={(v: string) => {
+                    setErrorMsg(null);
+                    setFormData((f) => ({ ...f, password: v }));
+                  }}
+                  endContent={
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="text-zinc-500 hover:text-zinc-300 transition-colors focus:outline-none"
+                    >
+                      {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                    </button>
                   }
+                  classNames={{
+                    label: "text-zinc-400 font-medium text-sm",
+                    inputWrapper: [
+                      "bg-zinc-900/50 border-zinc-800 rounded-xl h-12",
+                      "hover:border-zinc-600 focus-within:!border-yellow-500",
+                      "transition-colors",
+                    ].join(" "),
+                    input: "text-white placeholder:text-zinc-600 text-sm",
+                  }}
                 />
                 <div className="flex justify-end">
                   <Link
                     to="/password/reset"
-                    className="mt-2 text-sm text-zinc-500 hover:text-yellow-500 transition-colors"
+                    tabIndex={-1}
+                    className="text-xs text-zinc-500 hover:text-yellow-500 transition-colors"
                   >
                     ¿Olvidaste tu contraseña?
                   </Link>
@@ -131,21 +173,26 @@ const Login = () => {
               </div>
 
               <Button
-                isLoading={isCheckingAuth} // Usamos el estado de carga global de Zustand
-                color="warning"
                 type="submit"
-                className="w-full h-14 text-lg font-bold bg-yellow-600 text-black shadow-lg shadow-yellow-900/20"
+                isLoading={isLoggingIn}
+                isDisabled={!isFormValid || isLoggingIn}
+                className={[
+                  "w-full h-12 text-sm font-bold rounded-xl mt-1 transition-all duration-200",
+                  isFormValid && !isLoggingIn
+                    ? "bg-yellow-500 text-black shadow-lg shadow-yellow-900/30 hover:bg-yellow-400"
+                    : "bg-zinc-800 text-zinc-500 cursor-not-allowed",
+                ].join(" ")}
               >
-                Iniciar Sesión
+                {isLoggingIn ? "Ingresando..." : "Iniciar Sesión"}
               </Button>
             </form>
 
-            <div className="pt-6 border-t border-zinc-900 text-center">
+            <div className="pt-5 border-t border-zinc-900 text-center">
               <p className="text-sm text-zinc-500">
-                ¿No tienes acceso?{" "}
+                ¿No tenés acceso?{" "}
                 <Link
                   to="/register"
-                  className="text-yellow-600 text-medium font-semibold hover:underline decoration-2 underline-offset-4"
+                  className="text-yellow-500 font-semibold hover:underline decoration-2 underline-offset-4"
                 >
                   Registrate
                 </Link>
@@ -154,7 +201,6 @@ const Login = () => {
           </div>
         </div>
       </div>
-      <ToastContainer position="bottom-right" />
     </div>
   );
 };

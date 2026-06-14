@@ -1,24 +1,66 @@
-import { Button, Input, Card, CardBody } from "@heroui/react";
-import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Button, Input } from "@heroui/react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
-import { toast, ToastContainer } from "react-toastify";
 import NavBar from "@/components/login/NavBar";
-import { BadgeCheck, Eye, EyeClosed, MailCheck } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  BadgeCheck,
+  MailCheck,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 
-// Importación de validaciones (asumiendo que mantienen la lógica actual)
 import validateName from "@/utils/regex/name_lastname";
 import validatePassword from "@/utils/regex/passwordRegex";
 import validateEmail from "@/utils/regex/emailRegex";
 
+// Traducciones de errores de Supabase
+const traducirError = (msg: string): string => {
+  if (
+    msg.includes("already registered") ||
+    msg.includes("already been registered")
+  )
+    return "Ya existe una cuenta con ese email.";
+  if (msg.includes("Password should be"))
+    return "La contraseña es demasiado corta.";
+  if (msg.includes("Unable to validate")) return "Email inválido.";
+  if (msg.includes("rate limit"))
+    return "Demasiados intentos. Esperá unos minutos.";
+  return msg;
+};
+
+const inputClass = {
+  label: "text-zinc-400 font-medium text-sm",
+  inputWrapper: [
+    "bg-zinc-900/50 border-zinc-800 rounded-xl h-12",
+    "hover:border-zinc-600 focus-within:!border-yellow-500",
+    "transition-colors",
+  ].join(" "),
+  input: "text-white placeholder:text-zinc-600 text-sm",
+  errorMessage: "text-xs text-red-400 mt-1",
+};
+
+// Indicador de requisito de contraseña
+const Req = ({ ok, label }: { ok: boolean; label: string }) => (
+  <span
+    className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${ok ? "text-emerald-400" : "text-zinc-600"}`}
+  >
+    {ok ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+    {label}
+  </span>
+);
+
 const Register = () => {
-  const navigate = useNavigate();
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isVisiblePassword, setIsVisiblePassword] = useState(false);
-  const [isVisiblePassword2, setIsVisiblePassword2] = useState(false);
+  const [showPass, setShowPass] = useState(false);
+  const [showPass2, setShowPass2] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({
+  const [form, setForm] = useState({
     email: "",
     name: "",
     lastName: "",
@@ -26,80 +68,46 @@ const Register = () => {
     password2: "",
   });
 
-  const [error, setError] = useState<{
-    status: number;
-    message: string;
-  } | null>(null);
-
-  // --- VALIDACIONES ---
-  const isInvalidName = useMemo(
-    () => formData.name !== "" && !validateName(formData.name),
-    [formData.name],
-  );
-  const isInvalidLastName = useMemo(
-    () => formData.lastName !== "" && !validateName(formData.lastName),
-    [formData.lastName],
-  );
-  const isInvalidEmail = useMemo(
-    () => formData.email !== "" && !validateEmail(formData.email),
-    [formData.email],
-  );
-  const isInvalidPassword = useMemo(
-    () => validatePassword(formData.password),
-    [formData.password],
-  );
-  const passwordsMatch = useMemo(
-    () => formData.password2 === "" || formData.password === formData.password2,
-    [formData.password, formData.password2],
-  );
-
-  const isFormValid = useMemo(
-    () =>
-      validateName(formData.name) &&
-      validateName(formData.lastName) &&
-      validateEmail(formData.email) &&
-      isInvalidPassword.isValid &&
-      formData.password === formData.password2 &&
-      formData.password2 !== "",
-    [formData, isInvalidPassword.isValid],
-  );
-
-  // --- ESTILOS TÉCNICOS ---
-  const styleInput = {
-    label: "text-zinc-300! font-medium text-sm mb-1",
-    inputWrapper: "h-14 bg-zinc-900/40 border-zinc-800",
-    input: "text-base placeholder:text-zinc-600 text-white",
-    errorMessage: "text-xs mt-1 font-medium text-red-500",
+  const set = (field: keyof typeof form) => (val: string) => {
+    setErrorMsg(null);
+    setForm((f) => ({ ...f, [field]: val }));
   };
 
-  const onSubmit = async (e: React.SubmitEvent) => {
+  // Validaciones
+  const nameOk = validateName(form.name);
+  const lastNameOk = validateName(form.lastName);
+  const emailOk = validateEmail(form.email);
+  const passValidation = validatePassword(form.password);
+  const passMatch = form.password !== "" && form.password === form.password2;
+
+  const isFormValid =
+    nameOk && lastNameOk && emailOk && passValidation.isValid && passMatch;
+
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    if (!isFormValid || isLoading) return;
     setIsLoading(true);
+    setErrorMsg(null);
 
     try {
-      const {
-        // data,
-        error: signupError,
-      } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
+      const { error } = await supabase.auth.signUp({
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
         options: {
           data: {
-            first_name: formData.name,
-            last_name: formData.lastName,
+            full_name: `${form.name.trim()} ${form.lastName.trim()}`,
+            first_name: form.name.trim(),
+            last_name: form.lastName.trim(),
           },
         },
       });
 
-      if (signupError) throw signupError;
+      if (error) throw error;
 
       setIsSuccess(true);
-      toast.success("Enlace de verificación enviado", { theme: "dark" });
     } catch (err: any) {
-      const msg = err.message || "Error al intentar registrarse";
-      setError({ status: err.status || 500, message: msg });
-      toast.error(msg);
+      const msg = traducirError(err.message || "Error al registrarse.");
+      setErrorMsg(msg);
     } finally {
       setIsLoading(false);
     }
@@ -109,188 +117,197 @@ const Register = () => {
     <div className="min-h-screen bg-black flex flex-col selection:bg-yellow-500/30">
       <NavBar />
 
-      <main className="flex-1 flex flex-col items-center justify-center py-12 px-4">
-        <div className="max-w-[440px] w-full">
+      <main className="flex-1 flex items-center justify-center py-12 px-4">
+        <div className="w-full max-w-[440px]">
           {!isSuccess ? (
-            <div className="space-y-8 animate-appearance-in">
-              <header className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-6 w-1 bg-yellow-600 rounded-full" />
-                  <h2 className="text-2xl font-bold tracking-tight text-white uppercase italic">
-                    Nueva Cuenta
-                  </h2>
+            <div className="space-y-7 animate-appearance-in">
+              {/* Header */}
+              <header className="space-y-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-5 w-1 bg-yellow-500 rounded-full" />
+                  <p className="text-xs font-bold uppercase tracking-widest text-yellow-600">
+                    Lebaux · Registro
+                  </p>
                 </div>
+                <h2 className="text-3xl font-bold text-white tracking-tight">
+                  Nueva cuenta
+                </h2>
                 <p className="text-zinc-500 text-sm">
-                  Crea tu perfil de acceso para la plataforma de Lebaux.
+                  Tu cuenta quedará pendiente hasta que un administrador la
+                  active.
                 </p>
               </header>
 
-              <Card
-                className="bg-transparent border-none shadow-none"
-                radius="none"
-              >
-                <CardBody className="p-0 flex flex-col gap-6">
-                  <form className="flex flex-col gap-5" onSubmit={onSubmit}>
-                    <div className="grid grid-cols-2 gap-4">
-                      <Input
-                        isRequired
-                        label="Nombre"
-                        labelPlacement="outside"
-                        placeholder="David"
-                        variant="bordered"
-                        size="lg"
-                        isInvalid={isInvalidName}
-                        value={formData.name}
-                        onValueChange={(val: string) =>
-                          setFormData({ ...formData, name: val })
-                        }
-                        classNames={styleInput}
+              {/* Banner de error */}
+              {errorMsg && (
+                <div className="flex items-start gap-3 bg-red-950/40 border border-red-800/60 rounded-xl px-4 py-3 animate-appearance-in">
+                  <AlertCircle
+                    size={16}
+                    className="text-red-400 mt-0.5 shrink-0"
+                  />
+                  <p className="text-sm text-red-300 font-medium">{errorMsg}</p>
+                </div>
+              )}
+
+              <form className="flex flex-col gap-4" onSubmit={onSubmit}>
+                {/* Nombre y Apellido */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    isRequired
+                    label="Nombre"
+                    labelPlacement="outside"
+                    placeholder="Nombre"
+                    variant="bordered"
+                    size="lg"
+                    autoComplete="given-name"
+                    isDisabled={isLoading}
+                    isInvalid={form.name !== "" && !nameOk}
+                    errorMessage="Nombre inválido"
+                    value={form.name}
+                    onValueChange={set("name")}
+                    classNames={inputClass}
+                  />
+                  <Input
+                    isRequired
+                    label="Apellido"
+                    labelPlacement="outside"
+                    placeholder="Apellido"
+                    variant="bordered"
+                    size="lg"
+                    autoComplete="family-name"
+                    isDisabled={isLoading}
+                    isInvalid={form.lastName !== "" && !lastNameOk}
+                    errorMessage="Apellido inválido"
+                    value={form.lastName}
+                    onValueChange={set("lastName")}
+                    classNames={inputClass}
+                  />
+                </div>
+
+                {/* Email */}
+                <Input
+                  isRequired
+                  label="Correo electrónico"
+                  labelPlacement="outside"
+                  placeholder="usuario@lebaux.com"
+                  variant="bordered"
+                  type="email"
+                  size="lg"
+                  autoComplete="email"
+                  isDisabled={isLoading}
+                  isInvalid={form.email !== "" && !emailOk}
+                  errorMessage="Formato de email inválido"
+                  value={form.email}
+                  onValueChange={set("email")}
+                  classNames={inputClass}
+                />
+
+                {/* Contraseña */}
+                <div className="space-y-2">
+                  <Input
+                    isRequired
+                    label="Contraseña"
+                    labelPlacement="outside"
+                    placeholder="Mínimo 8 caracteres"
+                    variant="bordered"
+                    type={showPass ? "text" : "password"}
+                    size="lg"
+                    autoComplete="new-password"
+                    isDisabled={isLoading}
+                    isInvalid={form.password !== "" && !passValidation.isValid}
+                    value={form.password}
+                    onValueChange={set("password")}
+                    endContent={
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => setShowPass((v) => !v)}
+                        className="text-zinc-500 hover:text-zinc-300 transition-colors focus:outline-none"
+                      >
+                        {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
+                      </button>
+                    }
+                    classNames={inputClass}
+                  />
+
+                  {/* Indicadores de requisitos */}
+                  {form.password.length > 0 && (
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 px-1 animate-appearance-in">
+                      <Req
+                        ok={form.password.length >= 8}
+                        label="8 caracteres"
                       />
-                      <Input
-                        isRequired
-                        label="Apellido"
-                        labelPlacement="outside"
-                        placeholder="Aramayo"
-                        variant="bordered"
-                        size="lg"
-                        isInvalid={isInvalidLastName}
-                        value={formData.lastName}
-                        onValueChange={(val: string) =>
-                          setFormData({ ...formData, lastName: val })
-                        }
-                        classNames={styleInput}
+                      <Req ok={/[A-Z]/.test(form.password)} label="Mayúscula" />
+                      <Req ok={/[0-9]/.test(form.password)} label="Número" />
+                      <Req
+                        ok={/[^A-Za-z0-9]/.test(form.password)}
+                        label="Símbolo"
                       />
                     </div>
+                  )}
+                </div>
 
-                    <Input
-                      isRequired
-                      label="Correo Electronico"
-                      labelPlacement="outside"
-                      placeholder="usuario@lebaux.com"
-                      variant="bordered"
-                      type="email"
-                      size="lg"
-                      isInvalid={isInvalidEmail || error?.status === 409}
-                      errorMessage={
-                        isInvalidEmail ? "Formato de correo inválido" : ""
-                      }
-                      value={formData.email}
-                      onValueChange={(val: string) =>
-                        setFormData({ ...formData, email: val })
-                      }
-                      classNames={styleInput}
-                    />
-
-                    <Input
-                      isRequired
-                      type={isVisiblePassword ? "text" : "password"}
-                      label="Contraseña"
-                      labelPlacement="outside"
-                      placeholder="Ingresa una contraseña segura "
-                      variant="bordered"
-                      size="lg"
-                      isInvalid={
-                        formData.password !== "" && !isInvalidPassword.isValid
-                      }
-                      errorMessage={() => (
-                        <div className="flex flex-col gap-1 mt-1">
-                          {isInvalidPassword.errors.map((err, i) => (
-                            <span
-                              key={i}
-                              className="text-zinc-400 text-sm flex items-center gap-1"
-                            >
-                              <div className="w-1 h-1 bg-zinc-700 rounded-full" />{" "}
-                              {err}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      value={formData.password}
-                      onValueChange={(val: string) =>
-                        setFormData({ ...formData, password: val })
-                      }
-                      endContent={
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setIsVisiblePassword(!isVisiblePassword)
-                          }
-                          className="focus:outline-none"
-                        >
-                          {isVisiblePassword ? (
-                            <Eye size={18} className="text-zinc-600" />
-                          ) : (
-                            <EyeClosed size={18} className="text-zinc-600" />
-                          )}
-                        </button>
-                      }
-                      classNames={styleInput}
-                    />
-
-                    <Input
-                      isRequired
-                      type={isVisiblePassword2 ? "text" : "password"}
-                      label="Confirmar Contraseña"
-                      labelPlacement="outside"
-                      placeholder="Confirma tu contraseña"
-                      variant="bordered"
-                      size="lg"
-                      isInvalid={!passwordsMatch}
-                      errorMessage={
-                        !passwordsMatch ? "Las contraseñas no coinciden" : ""
-                      }
-                      value={formData.password2}
-                      onValueChange={(val: string) =>
-                        setFormData({ ...formData, password2: val })
-                      }
-                      endContent={
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setIsVisiblePassword2(!isVisiblePassword2)
-                          }
-                          className="focus:outline-none"
-                        >
-                          {isVisiblePassword2 ? (
-                            <Eye size={18} className="text-zinc-600" />
-                          ) : (
-                            <EyeClosed size={18} className="text-zinc-600" />
-                          )}
-                        </button>
-                      }
-                      classNames={styleInput}
-                    />
-
-                    <Button
-                      isDisabled={!isFormValid}
-                      isLoading={isLoading}
-                      type="submit"
-                      className="w-full font-bold text-medium h-14 bg-yellow-600 text-black shadow-lg shadow-yellow-900/10 mt-4"
+                {/* Confirmar contraseña */}
+                <Input
+                  isRequired
+                  label="Confirmar contraseña"
+                  labelPlacement="outside"
+                  placeholder="Repetí tu contraseña"
+                  variant="bordered"
+                  type={showPass2 ? "text" : "password"}
+                  size="lg"
+                  autoComplete="new-password"
+                  isDisabled={isLoading}
+                  isInvalid={form.password2 !== "" && !passMatch}
+                  errorMessage="Las contraseñas no coinciden"
+                  value={form.password2}
+                  onValueChange={set("password2")}
+                  endContent={
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowPass2((v) => !v)}
+                      className="text-zinc-500 hover:text-zinc-300 transition-colors focus:outline-none"
                     >
-                      Crear Cuenta
-                    </Button>
-                  </form>
+                      {showPass2 ? <EyeOff size={17} /> : <Eye size={17} />}
+                    </button>
+                  }
+                  classNames={inputClass}
+                />
 
-                  <div className="w-full py-6 text-center border-t border-zinc-900 mt-4">
-                    <p className="text-sm text-zinc-500">
-                      ¿Ya eres parte del equipo?
-                      <Link
-                        to="/login"
-                        className="text-yellow-600 text-medium font-bold ml-2 hover:underline decoration-2 underline-offset-4"
-                      >
-                        Inicia sesión
-                      </Link>
-                    </p>
-                  </div>
-                </CardBody>
-              </Card>
+                <Button
+                  type="submit"
+                  isLoading={isLoading}
+                  isDisabled={!isFormValid || isLoading}
+                  className={[
+                    "w-full h-12 text-sm font-bold rounded-xl mt-2 transition-all duration-200",
+                    isFormValid && !isLoading
+                      ? "bg-yellow-500 text-black shadow-lg shadow-yellow-900/30 hover:bg-yellow-400"
+                      : "bg-zinc-800 text-zinc-500 cursor-not-allowed",
+                  ].join(" ")}
+                >
+                  {isLoading ? "Creando cuenta..." : "Crear cuenta"}
+                </Button>
+              </form>
+
+              <div className="pt-5 border-t border-zinc-900 text-center">
+                <p className="text-sm text-zinc-500">
+                  ¿Ya sos parte del equipo?{" "}
+                  <Link
+                    to="/login"
+                    className="text-yellow-500 font-semibold hover:underline decoration-2 underline-offset-4"
+                  >
+                    Iniciá sesión
+                  </Link>
+                </p>
+              </div>
             </div>
           ) : (
-            /* VISTA DE ÉXITO */
+            /* ── PANTALLA DE ÉXITO ── */
             <div className="flex flex-col items-center text-center gap-8 py-10 animate-appearance-in">
               <div className="relative">
-                <div className="bg-zinc-900/40 p-8 rounded-2xl border border-zinc-800">
-                  <MailCheck size={50} className="text-yellow-600" />
+                <div className="bg-zinc-900/60 p-8 rounded-2xl border border-zinc-800">
+                  <MailCheck size={48} className="text-yellow-500" />
                 </div>
                 <BadgeCheck
                   size={28}
@@ -298,35 +315,35 @@ const Register = () => {
                 />
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <h2 className="text-3xl font-bold text-white tracking-tighter uppercase italic">
                   ¡Casi listo!
                 </h2>
                 <p className="text-zinc-400 text-sm leading-relaxed max-w-[300px] mx-auto">
-                  Enviamos un enlace de activación a: <br />
-                  <span className="text-zinc-100 font-mono text-xs">
-                    {formData.email}
+                  Enviamos un enlace de activación a:
+                  <br />
+                  <span className="text-zinc-100 font-mono text-xs bg-zinc-900 px-2 py-0.5 rounded mt-1 inline-block">
+                    {form.email}
                   </span>
                 </p>
-                <div className="p-3 bg-zinc-900/30 rounded-lg border border-zinc-800/50">
-                  <p className="text-zinc-500 text-xs italic">
-                    Revisa tu bandeja de entrada y spam para finalizar el alta.
+                <div className="p-3 bg-zinc-900/40 rounded-xl border border-zinc-800/60 mt-2">
+                  <p className="text-zinc-500 text-xs leading-relaxed">
+                    Confirmá tu email y luego aguardá a que un administrador
+                    active tu cuenta.
                   </p>
                 </div>
               </div>
 
-              <Button
-                onPress={() => navigate("/login")}
-                variant="bordered"
-                className="border-zinc-800 text-zinc-400 hover:bg-zinc-900 font-bold h-14 w-full"
+              <Link
+                to="/login"
+                className="w-full h-12 flex items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:bg-zinc-900 hover:text-white transition-colors font-semibold text-sm"
               >
                 Volver al acceso
-              </Button>
+              </Link>
             </div>
           )}
         </div>
       </main>
-      <ToastContainer position="bottom-right" theme="dark" />
     </div>
   );
 };
