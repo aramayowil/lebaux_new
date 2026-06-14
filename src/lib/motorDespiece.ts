@@ -190,17 +190,6 @@ function getDetalleStr(detalle: ObraDetalle, key: string): string | null {
   return String(v);
 }
 
-function obtenerSegmentosDeCruces(
-  total: number,
-  posiciones: number[],
-): number[] {
-  const filtradas = posiciones
-    .filter((p) => p > 0 && p < total)
-    .sort((a, b) => a - b);
-  const puntos = [0, ...filtradas, total];
-  return puntos.slice(1).map((val, i) => val - puntos[i]!);
-}
-
 interface DespiecePerfilBase {
   id_perfil?: number | null;
   formula_cantidad?: string | null;
@@ -217,7 +206,7 @@ export function calcularDespiece(
   validarEntrada(entrada);
 
   const log = crearLogger();
-  const { ancho, alto, cantidad_tipologias, detalle, tipologia } = entrada;
+  const { ancho, alto, cantidad_tipologias, detalle } = entrada;
   const hojas = entrada.cant_hojas_calculo ?? 0;
 
   log.info("init", `Despiece iniciado`, { ancho, alto, hojas });

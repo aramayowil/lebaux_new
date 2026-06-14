@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import type {
   Usuario,
   Rol,
@@ -23,7 +23,7 @@ export function useMiPerfil() {
   return useQuery({
     queryKey: [TABLE, "perfil", userId],
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .schema(SQUEMA_SEGURIDAD)

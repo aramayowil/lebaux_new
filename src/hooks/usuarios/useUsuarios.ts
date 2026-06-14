@@ -41,27 +41,26 @@ export function useUpdateUsuario() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [TABLE] });
-      // Invalida el perfil cacheado del usuario logueado por si cambió su propio rol
-      queryClient.invalidateQueries({ queryKey: ["perfil"] });
+      queryClient.invalidateQueries({ queryKey: [TABLE, "perfil"] });
     },
   });
 }
 
-// --- 3. ELIMINAR PERFIL (revoca acceso; no borra el usuario de Auth) ---
+// --- 3. ELIMINAR USUARIO COMPLETO (auth.users + seguridad.usuarios en cascade) ---
 export function useEliminarUsuario() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .schema(SQUEMA_SEGURIDAD)
-        .from(TABLE)
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
+      // Edge Function con service_role: borra auth.users → cascade a seguridad.usuarios
+      const { error } = await supabase.functions.invoke("eliminar-usuario", {
+        body: { userId: id },
+      });
+      if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [TABLE] });
+      queryClient.invalidateQueries({ queryKey: [TABLE, "perfil"] });
     },
   });
 }

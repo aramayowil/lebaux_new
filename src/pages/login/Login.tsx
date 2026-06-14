@@ -2,7 +2,7 @@ import { Button, Input } from "@heroui/react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Eye, EyeOff, AlertCircle } from "lucide-react";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import photo_login from "@/assets/images/fabrica/fabrica_1.webp";
 import NavBar from "@/components/login/NavBar";
 
@@ -43,7 +43,9 @@ const Login = () => {
       const msg = traducirError(resultado.error || "Error al iniciar sesión.");
       setErrorMsg(msg);
     }
-    // Si tuvo éxito, onAuthStateChange → setSession → PublicRoute redirige a /inicio
+    // Si tuvo éxito: onAuthStateChange → setSession → PublicRoute detecta
+    // isAuthenticated=true y redirige a "/" → ProtectedRoute elige el primer
+    // destino al que el usuario tiene permiso de ver.
   };
 
   return (
