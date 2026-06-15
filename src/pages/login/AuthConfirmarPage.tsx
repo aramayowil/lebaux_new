@@ -21,11 +21,13 @@ import {
  * (Outlook Safe Links, Gmail, etc.) pre-consuman el token al escanear links.
  *
  * El usuario llega, ve un botón, hace click → ahí se consume el token.
+ *
+ * FIX: Supabase puede enviar el token como "token" o "token_hash" según la
+ * versión del proyecto. Se resuelve intentando ambos con el operador ??.
  */
 
 type Estado = "esperando" | "procesando" | "exitoso" | "error";
 
-// Tipos de acción que puede traer el link
 type TipoAccion =
   | "signup"
   | "recovery"
@@ -73,12 +75,10 @@ export default function AuthConfirmarPage() {
   const [estado, setEstado] = useState<Estado>("esperando");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Extraemos los parámetros del URL
   const confirmationUrl = searchParams.get("confirmation_url");
   const tipoRaw = searchParams.get("type") as TipoAccion;
   const tipo = tipoRaw && tipoRaw in TEXTOS ? tipoRaw : null;
 
-  // Si no hay URL de confirmación, token inválido
   useEffect(() => {
     if (!confirmationUrl) {
       setEstado("error");
@@ -91,10 +91,15 @@ export default function AuthConfirmarPage() {
     setEstado("procesando");
 
     try {
-      // Extraemos token_hash y type de la URL de Supabase
       const url = new URL(confirmationUrl);
-      const tokenHash = url.searchParams.get("token_hash");
+
+      // ── FIX ──────────────────────────────────────────────────────────────
+      // Supabase < 2.x envía el token como "token"; versiones más nuevas usan
+      // "token_hash". Intentamos ambos para máxima compatibilidad.
+      const tokenHash =
+        url.searchParams.get("token_hash") ?? url.searchParams.get("token");
       const type = url.searchParams.get("type") as any;
+      // ─────────────────────────────────────────────────────────────────────
 
       if (!tokenHash || !type) throw new Error("Token inválido");
 
@@ -105,9 +110,14 @@ export default function AuthConfirmarPage() {
 
       if (error) throw error;
 
+      // Para signup: limpiar sessionStorage de pendiente (ya confirmó)
+      if (tipo === "signup") {
+        sessionStorage.removeItem("pendiente_email");
+        sessionStorage.removeItem("pendiente_ts");
+      }
+
       setEstado("exitoso");
 
-      // Redirigir según el tipo de acción
       setTimeout(() => {
         if (tipo === "recovery") {
           navigate("/password/nueva", { replace: true });
@@ -119,7 +129,8 @@ export default function AuthConfirmarPage() {
       setEstado("error");
       if (
         err.message?.includes("expired") ||
-        err.message?.includes("invalid")
+        err.message?.includes("invalid") ||
+        err.message?.includes("Token inválido")
       ) {
         setErrorMsg("El enlace expiró o ya fue utilizado.");
       } else {
@@ -234,6 +245,16 @@ export default function AuthConfirmarPage() {
                 </p>
               </div>
               <div className="flex flex-col gap-3 w-full">
+                {tipo === "signup" && (
+                  <Button
+                    onPress={() =>
+                      navigate("/auth/pendiente", { replace: true })
+                    }
+                    className="w-full h-11 font-bold text-sm rounded-xl bg-yellow-500 text-black hover:bg-yellow-400"
+                  >
+                    Reenviar confirmación
+                  </Button>
+                )}
                 {tipo === "recovery" && (
                   <Button
                     onPress={() =>

@@ -2,7 +2,6 @@ import { Button, Input } from "@heroui/react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
-import { ToastContainer, toast } from "react-toastify";
 import NavBar from "@/components/login/NavBar";
 import {
   Eye,
@@ -105,7 +104,7 @@ const Register = () => {
         options: {
           // Redirige al usuario a la página intermedia tras hacer click en el email.
           // Esto evita que clientes como Outlook pre-consuman el token al escanear links.
-          emailRedirectTo: `${window.location.origin}/auth/confirmar?type=signup`,
+          emailRedirectTo: `${import.meta.env.VITE_SITE_URL}/auth/confirmar?type=signup`,
           data: {
             full_name: `${form.name.trim()} ${form.lastName.trim()}`,
             first_name: form.name.trim(),
@@ -131,11 +130,9 @@ const Register = () => {
 
       setIsSuccess(true);
       startCooldown();
-      toast.success("¡Cuenta creada! Revisá tu email.", { theme: "dark" });
     } catch (err: any) {
       const msg = traducirError(err.message || "Error al registrarse.");
       setErrorMsg(msg);
-      toast.error(msg, { theme: "dark" });
     } finally {
       setIsLoading(false);
     }
@@ -150,11 +147,10 @@ const Register = () => {
         email: form.email.trim().toLowerCase(),
       });
       if (error) throw error;
-      toast.success("Email reenviado. Revisá tu bandeja.", { theme: "dark" });
       startCooldown();
     } catch (err: any) {
       const msg = traducirError(err.message || "Error al reenviar.");
-      toast.error(msg, { theme: "dark" });
+      setErrorMsg(msg);
     } finally {
       setIsResending(false);
     }
@@ -417,7 +413,6 @@ const Register = () => {
           )}
         </div>
       </main>
-      <ToastContainer position="bottom-right" theme="dark" />
     </div>
   );
 };

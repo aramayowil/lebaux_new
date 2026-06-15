@@ -24,6 +24,7 @@ import ImportarPage from "@/pages/ImportarPage";
 import Error404Page from "@/pages/Error404Page";
 import ControlAccesoPage from "./pages/ControlAccesoPage";
 import CalculadoraPage from "./pages/CalculadoraPage";
+import AuthPendientePage from "./pages/login/AuthPendientePage";
 
 export default function App() {
   const setSession = useAuthStore((state) => state.setSession);
@@ -62,6 +63,8 @@ export default function App() {
           sesión temporal, no deben redirigir aunque haya sesión activa */}
       <Route path="/password/nueva" element={<NuevaPasswordPage />} />
       <Route path="/auth/confirmar" element={<AuthConfirmarPage />} />
+      <Route path="/auth/pendiente" element={<AuthPendientePage />} />
+
       <Route path="*" element={<Error404Page />} />
 
       {/* ─── RUTAS PROTEGIDAS ─── */}

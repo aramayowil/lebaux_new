@@ -1,6 +1,6 @@
 import { Button, Input } from "@heroui/react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import photo_login from "@/assets/images/fabrica/fabrica_1.webp";
@@ -20,8 +20,8 @@ const traducirError = (msg: string): string => {
 };
 
 const Login = () => {
+  const navigate = useNavigate();
   const { login, isLoggingIn } = useAuthStore();
-
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -40,7 +40,14 @@ const Login = () => {
     });
 
     if (!resultado.success) {
-      const msg = traducirError(resultado.error || "Error al iniciar sesión.");
+      const errorRaw = resultado.error || "Error al iniciar sesión.";
+      if (errorRaw.includes("Email not confirmed")) {
+        // Redirigir a la pantalla de reenvío, pasando el email que intentó usar
+        navigate("/auth/pendiente", { state: { email: formData.email } });
+        return;
+      }
+      // Para el resto de errores, mostramos el banner rojo normal
+      const msg = traducirError(errorRaw);
       setErrorMsg(msg);
     }
     // Si tuvo éxito: onAuthStateChange → setSession → PublicRoute detecta

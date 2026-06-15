@@ -1,0 +1,58 @@
+-- ════════════════════════════════════════════════════════════════════════
+--  ESTRATEGIA DE REDIRECCIÓN AUTOMÁTICA (LOCAL vs PRODUCCIÓN)
+-- ════════════════════════════════════════════════════════════════════════
+--  Para evitar cambiar manualmente la configuración de Supabase entre 
+--  desarrollo (localhost) y producción (Netlify), se utiliza una arquitectura
+--  basada en archivos de entorno independientes (.env) y la lista de 
+--  redirecciones permitidas (Redirect URLs) de Supabase.
+--
+--  PASO 1: Configurar el Dashboard de Supabase para Producción
+--  ────────────────────────────────────────────────────────────────────────
+--  Ir a: Authentication → URL Configuration
+--
+--  1. Site URL (URL Principal):
+--     Colocar la URL de producción definitiva en Netlify:
+--     https://tu-app.netlify.app   <-- (Reemplazar por la URL real)
+--
+--  2. Redirect URLs (Additional Redirect URLs):
+--     Añadir el entorno local de desarrollo para que Supabase lo autorice:
+--     http://localhost:5173/** <-- (Es VITAL incluir los dos asteriscos '**' 
+--                                       para permitir comodines en subrutas 
+--                                       como /auth/confirmar)
+--
+--  PASO 2: Configuración de Archivos de Entorno (.env) [Archivos Aparte]
+--  ────────────────────────────────────────────────────────────────────────
+--  En la raíz del proyecto Frontend (Vite), crear/editar los archivos independientes:
+--
+--  A) Para Entorno Local (Crear archivo `.env.development` o `.env.local`):
+--     Este archivo maneja las variables mientras programás en tu máquina.
+--     ┌──────────────────────────────────────────────────────────┐
+--     │ VITE_SITE_URL=http://localhost:5173                      │
+--     └──────────────────────────────────────────────────────────┘
+--
+--  B) Para Entorno de Producción (Netlify Panel):
+--     Por seguridad, NO se suben archivos .env con credenciales de producción a Git.
+--     La variable se carga directamente en el Panel de Netlify de la siguiente forma:
+--     Ir a: Site configuration → Environment variables → Add a variable
+--     ┌──────────────────────────────────────────────────────────┐
+--     │ Key:   VITE_SITE_URL                                     │
+--     │ Value: https://tu-app.netlify.app                        │
+--     └──────────────────────────────────────────────────────────┘
+--
+--  PASO 3: Inyección Dinámica en el Frontend (Vite)
+--  ────────────────────────────────────────────────────────────────────────
+--  - En el código TypeScript se consume la variable unificada:
+--    `import.meta.env.VITE_SITE_URL`
+--  - Al ejecutar `npm run dev` -> Vite lee el archivo local e inyecta `http://localhost:5173`.
+--  - Al compilar en Netlify    -> Vite toma la variable del panel e inyecta la URL web.
+--
+--  PASO 4: Plantillas de Email Dinámicas (Supabase Dashboard)
+--  ────────────────────────────────────────────────────────────────────────
+--  - Para que el flujo sea 100% automático sin tocar el panel de Supabase:
+--    SE RECOMIENDA cambiar la variable `{{ .SiteURL }}` por `{{ .RedirectTo }}` 
+--    en los enlaces (tags <a>) de los templates de correo que se muestran abajo.
+--
+--  - ¿Por qué? Porque `{{ .RedirectTo }}` captura dinámicamente la URL que viaja 
+--    desde el parámetro `emailRedirectTo` de tu Frontend (Vite), validando contra 
+--    la lista de permitidos que configuraste en el PASO 1.
+-- ════════════════════════════════════════════════════════════════════════
