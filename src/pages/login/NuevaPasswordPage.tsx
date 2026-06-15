@@ -40,33 +40,41 @@ export default function NuevaPasswordPage() {
   const passMatch = password !== "" && password === password2;
   const isFormValid = passValidation.isValid && passMatch;
 
-  // Supabase redirige con un hash que contiene el token de recuperación.
-  // onAuthStateChange lo detecta como evento "PASSWORD_RECOVERY".
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        // Sesión temporal válida — el usuario puede cambiar la contraseña
-        setEstado("listo");
-      } else if (event === "SIGNED_OUT") {
-        setEstado("expirado");
-      }
-    });
+    // Esta página recibe al usuario DESPUÉS de que AuthConfirmarPage consumió el token.
+    // En ese momento Supabase ya estableció una sesión temporal de PASSWORD_RECOVERY.
+    // Solo necesitamos verificar que esa sesión exista.
+    const checkSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    // Si el token ya está en el hash al montar (F5 en la página)
-    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setEstado("listo");
-      } else {
-        // Sin sesión → el token expiró o no es válido
-        setTimeout(() => {
-          setEstado((prev) => (prev === "verificando" ? "expirado" : prev));
-        }, 3000);
+        return;
       }
-    });
 
-    return () => subscription.unsubscribe();
+      // Escuchar el evento PASSWORD_RECOVERY por si llegamos directamente desde
+      // el link del email (flujo sin página intermedia / compatibilidad)
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "PASSWORD_RECOVERY") setEstado("listo");
+      });
+
+      // Si en 4 segundos no hay sesión, el enlace expiró
+      const timeout = setTimeout(() => {
+        setEstado((prev) => (prev === "verificando" ? "expirado" : prev));
+        subscription.unsubscribe();
+      }, 4000);
+
+      return () => {
+        clearTimeout(timeout);
+        subscription.unsubscribe();
+      };
+    };
+
+    checkSession();
   }, []);
 
   const handleGuardar = async (e: React.FormEvent) => {
@@ -82,6 +90,8 @@ export default function NuevaPasswordPage() {
       setEstado("guardado");
       toast.success("¡Contraseña actualizada!", { theme: "dark" });
 
+      // Cerrar sesión temporal y redirigir al login
+      await supabase.auth.signOut();
       setTimeout(() => navigate("/login", { replace: true }), 2500);
     } catch (err: any) {
       const msg = err.message?.includes("same password")
@@ -102,15 +112,15 @@ export default function NuevaPasswordPage() {
 
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-[400px]">
-          {/* ── Verificando token ── */}
+          {/* ── Verificando sesión ── */}
           {estado === "verificando" && (
-            <div className="flex flex-col items-center gap-4 text-center animate-pulse">
+            <div className="flex flex-col items-center gap-4 text-center">
               <Loader2 size={32} className="text-yellow-500 animate-spin" />
-              <p className="text-zinc-400 text-sm">Verificando enlace...</p>
+              <p className="text-zinc-400 text-sm">Verificando sesión...</p>
             </div>
           )}
 
-          {/* ── Token expirado o inválido ── */}
+          {/* ── Token/sesión expirada ── */}
           {estado === "expirado" && (
             <div className="flex flex-col items-center text-center gap-6 animate-appearance-in">
               <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
@@ -122,11 +132,10 @@ export default function NuevaPasswordPage() {
               </div>
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold text-white">
-                  Enlace inválido
+                  Sesión inválida
                 </h2>
                 <p className="text-zinc-500 text-sm leading-relaxed max-w-[280px] mx-auto">
-                  Este enlace expiró o ya fue utilizado. Solicitá uno nuevo
-                  desde la pantalla de recuperación.
+                  El enlace expiró o ya fue utilizado. Solicitá uno nuevo.
                 </p>
               </div>
               <Button
@@ -138,7 +147,7 @@ export default function NuevaPasswordPage() {
             </div>
           )}
 
-          {/* ── Formulario de nueva contraseña ── */}
+          {/* ── Formulario ── */}
           {estado === "listo" && (
             <div className="space-y-7 animate-appearance-in">
               <div className="space-y-1">
@@ -266,7 +275,7 @@ export default function NuevaPasswordPage() {
             </div>
           )}
 
-          {/* ── Contraseña guardada ── */}
+          {/* ── Guardado exitosamente ── */}
           {estado === "guardado" && (
             <div className="flex flex-col items-center text-center gap-6 animate-appearance-in">
               <div className="w-20 h-20 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
@@ -286,12 +295,8 @@ export default function NuevaPasswordPage() {
               </div>
               <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-emerald-500 rounded-full animate-[width_2.5s_linear]"
-                  style={{
-                    width: "100%",
-                    transition: "width 2.5s linear",
-                    animationFillMode: "forwards",
-                  }}
+                  className="h-full bg-emerald-500 rounded-full"
+                  style={{ width: "100%", transition: "width 2.5s linear" }}
                 />
               </div>
             </div>

@@ -16,6 +16,7 @@ import Login from "@/pages/login/Login";
 import Register from "@/pages/login/Register";
 import RecuperarPasswordPage from "@/pages/login/RecuperarPasswordPage";
 import NuevaPasswordPage from "@/pages/login/NuevaPasswordPage";
+import AuthConfirmarPage from "@/pages/login/AuthConfirmarPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import PublicRoute from "./routes/PublicRoute";
 import SinPermisosPage from "@/pages/SinPermisosPage";
@@ -57,9 +58,10 @@ export default function App() {
             desde el link del email, por eso va fuera de PublicRoute */}
       </Route>
 
-      {/* Nueva contraseña: Supabase la abre con una sesión temporal en el hash,
-          no debe redirigir aunque haya sesión activa */}
+      {/* Nueva contraseña y confirmación de email: Supabase las abre con una
+          sesión temporal, no deben redirigir aunque haya sesión activa */}
       <Route path="/password/nueva" element={<NuevaPasswordPage />} />
+      <Route path="/auth/confirmar" element={<AuthConfirmarPage />} />
       <Route path="*" element={<Error404Page />} />
 
       {/* ─── RUTAS PROTEGIDAS ─── */}

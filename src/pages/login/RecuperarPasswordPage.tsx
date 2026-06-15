@@ -52,10 +52,9 @@ export default function RecuperarPasswordPage() {
       const { error } = await supabase.auth.resetPasswordForEmail(
         email.trim().toLowerCase(),
         {
-          // Supabase redirigirá aquí tras hacer click en el email.
-          // Ajustá la URL al dominio de producción en Supabase Dashboard →
-          // Authentication → URL Configuration → Redirect URLs
-          redirectTo: `${window.location.origin}/password/nueva`,
+          // La página intermedia recibe el token y lo consume cuando el usuario
+          // hace click, evitando el problema de prefetching de clientes de email.
+          redirectTo: `${window.location.origin}/auth/confirmar?type=recovery`,
         },
       );
       if (error) throw error;

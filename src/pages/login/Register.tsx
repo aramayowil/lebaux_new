@@ -103,6 +103,9 @@ const Register = () => {
         email: form.email.trim().toLowerCase(),
         password: form.password,
         options: {
+          // Redirige al usuario a la página intermedia tras hacer click en el email.
+          // Esto evita que clientes como Outlook pre-consuman el token al escanear links.
+          emailRedirectTo: `${window.location.origin}/auth/confirmar?type=signup`,
           data: {
             full_name: `${form.name.trim()} ${form.lastName.trim()}`,
             first_name: form.name.trim(),
@@ -208,7 +211,7 @@ const Register = () => {
                     isRequired
                     label="Nombre"
                     labelPlacement="outside"
-                    placeholder="David"
+                    placeholder="Nombre"
                     variant="bordered"
                     size="lg"
                     autoComplete="given-name"
@@ -223,7 +226,7 @@ const Register = () => {
                     isRequired
                     label="Apellido"
                     labelPlacement="outside"
-                    placeholder="Aramayo"
+                    placeholder="Apellido"
                     variant="bordered"
                     size="lg"
                     autoComplete="family-name"
