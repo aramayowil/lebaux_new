@@ -65,6 +65,8 @@ export default function AppLayout() {
   const { user: supabaseUser, logout } = useAuth();
   const { perfil, puede } = useMisPermisos();
 
+  const URL_BASE_STORAGE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/assets`;
+
   const user = {
     name:
       perfil?.nombre ||
@@ -81,13 +83,6 @@ export default function AppLayout() {
   return (
     <div className="flex h-screen overflow-hidden bg-steel-100 dark:bg-zinc-950">
       {/* ── Sidebar ── */}
-      {/* <aside
-        className={clsx(
-          "flex flex-col h-full",
-          "bg-steel-100 dark:bg-steel-950 transition-all duration-200 ease-in-out shrink-0",
-          collapsed ? "w-[64px]" : "w-[210px]",
-        )}
-      > */}
       <aside
         className={clsx(
           "flex flex-col h-full",
@@ -113,8 +108,8 @@ export default function AppLayout() {
             <img
               src={
                 collapsed
-                  ? "/images/logos/url_logo.png"
-                  : "/images/logos/LEBAUX-LOGO.png"
+                  ? `${URL_BASE_STORAGE}/logos/logo_recortado.png`
+                  : `${URL_BASE_STORAGE}/logos/logo.png`
               }
               alt="Lebaux"
               className={clsx(

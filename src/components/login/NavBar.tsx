@@ -1,6 +1,6 @@
-import lebaux_logo from "@/assets/images/logo/lebaux.png";
 import { Navbar } from "@heroui/react";
 import { NavbarBrand } from "@heroui/react";
+import { Image } from "@heroui/react";
 import { NavbarContent } from "@heroui/react";
 import { NavbarItem } from "@heroui/react";
 import { Link } from "react-router-dom";
@@ -16,8 +16,8 @@ const NavBar = () => {
           to="/login"
           className="transition-opacity hover:opacity-80 active:scale-95"
         >
-          <img
-            src={lebaux_logo}
+          <Image
+            src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/assets/logos/logo.png`}
             alt="Lebaux"
             className="h-8 w-auto object-contain"
           />

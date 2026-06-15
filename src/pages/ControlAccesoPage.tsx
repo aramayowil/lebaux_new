@@ -1,4 +1,4 @@
-import { Tabs, Tab, Button } from "@heroui/react";
+import { Tabs, Tab, Button, Skeleton } from "@heroui/react";
 import { ShieldCheck, Users, ShieldAlert, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import UsuariosTab from "@/components/usuarios/UsuariosTab";
@@ -9,11 +9,41 @@ export default function ControlAccesoPage() {
   const puedeVerUsuarios = usePuede("usuarios", "ver");
   const navigate = useNavigate();
 
-  // ── Estado Protegido: Sin Acceso (UX Mejorada con Salida) ──────────
+  const isPerfilLoading = false;
+
+  // ── SKELETON ESTRUCTURAL ───────────────────────────
+  if (isPerfilLoading) {
+    return (
+      <div className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-950">
+        <header className="sticky top-0 z-10 flex items-center justify-between px-6 py-2 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-steel-900 shrink-0">
+          <div className="space-y-2 w-full max-w-sm py-1.5">
+            <Skeleton className="h-7 w-3/5 rounded-xl" />
+            <Skeleton className="h-3 w-5/6 rounded-lg" />
+          </div>
+        </header>
+        <div className="flex-1 p-5">
+          <div className="max-w-7xl mx-auto space-y-6">
+            <div className="flex gap-6 border-b border-zinc-200 dark:border-zinc-800 pt-4 pb-2">
+              <Skeleton className="h-5 w-24 rounded-lg" />
+              <Skeleton className="h-5 w-32 rounded-lg" />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <CardSkeletonMini key={i} />
+              ))}
+            </div>
+            <Skeleton className="h-14 w-full rounded-xl" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── ESTADO PROTEGIDO: SIN ACCESO ──────────────────
   if (!puedeVerUsuarios) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-6 bg-zinc-50/50 dark:bg-zinc-950/50 animate-in fade-in zoom-in-95 duration-400">
-        <div className="flex flex-col items-center text-center max-w-md p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl shadow-zinc-200/20 dark:shadow-none">
+      <div className="h-full flex flex-col items-center justify-center p-6 bg-zinc-50 dark:bg-zinc-950 animate-in fade-in zoom-in-95 duration-400">
+        <div className="flex flex-col items-center text-center max-w-md p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-none">
           <div className="p-4 bg-red-500/10 dark:bg-red-500/5 rounded-2xl mb-5 ring-4 ring-red-500/5">
             <ShieldAlert className="w-8 h-8 text-red-500" strokeWidth={1.5} />
           </div>
@@ -37,45 +67,39 @@ export default function ControlAccesoPage() {
     );
   }
 
+  // ── RENDER PRINCIPAL DE LA INTERFAZ ─────────────────────────────────
   return (
-    <div className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-950/40">
-      {/* ── Header Glassmorphism (Más inmersivo) ──────────────────────── */}
-      <header className="sticky top-0 z-30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/80 dark:bg-steel-900/90 backdrop-blur-md px-6 py-5 border-b border-zinc-200/80 dark:border-zinc-800/80 shrink-0 shadow-sm">
+    <div className="flex flex-col h-full">
+      {/* Header Unificado y Consistente (Sticky y Full-Bleed) */}
+      <header className="sticky top-0 z-10 flex items-center justify-between px-6 py-2 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-steel-900 shrink-0">
         <div>
           <h2 className="text-2xl font-black text-zinc-800 dark:text-zinc-100 tracking-tight">
             Control de Acceso
           </h2>
-          <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1 font-medium">
+          <p className="text-zinc-400 dark:text-zinc-500 text-xs mt-1 font-medium">
             Administración de credenciales de personal, asignación de roles de
             taller y auditoría de permisos.
           </p>
         </div>
       </header>
 
-      {/* ── Área Principal de Contenido ────────────────────────────────── */}
-      <div className="flex-1 overflow-auto p-4 md:px-6 md:pt-0">
-        <div className="max-w-7xl mx-auto pb-12 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      {/* Área de Contenido Scrollable */}
+      <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-zinc-950 p-5">
+        <div className="max-w-7xl mx-auto pb-10 animate-in fade-in duration-400">
           <Tabs
             variant="underlined"
             aria-label="Secciones de control de acceso"
             classNames={{
-              // Hacemos que la barra de tabs flote al scrollear hacia abajo
-              base: "sticky top-0 z-20 bg-zinc-50/90 dark:bg-zinc-950/90 backdrop-blur-md pt-4 pb-1",
-              tabList: [
-                "border-b border-zinc-200/80 dark:border-zinc-800/80",
-                "w-full gap-6 sm:gap-8 px-1",
-              ].join(" "),
-              cursor:
-                "bg-lebaux-amber h-[3px] rounded-full shadow-[0_1px_4px_rgba(245,158,11,0.4)]",
-              tab: "max-w-fit px-2 h-12",
+              tabList:
+                "border-b border-zinc-200/80 dark:border-zinc-800/60 w-full gap-4 px-1",
+              cursor: "bg-amber-500 h-[2px]",
+              tab: "max-w-fit px-1 h-11",
               tabContent: [
-                "text-zinc-500 dark:text-zinc-400",
-                "font-bold text-[11px] uppercase tracking-widest",
-                "group-data-[selected=true]:text-lebaux-amber dark:group-data-[selected=true]:text-amber-400",
-                "group-hover:text-zinc-800 dark:group-hover:text-zinc-200",
-                "transition-all duration-300",
+                "text-zinc-400 dark:text-zinc-500",
+                "font-bold text-xs uppercase tracking-wider",
+                "group-data-[selected=true]:text-amber-500 dark:group-data-[selected=true]:text-amber-400",
+                "transition-colors duration-200",
               ].join(" "),
-              panel: "pt-6", // Separación entre los tabs pegajosos y el contenido
             }}
           >
             {/* Pestaña 1: Gestión de Operadores */}
@@ -84,16 +108,16 @@ export default function ControlAccesoPage() {
               title={
                 <div className="flex items-center gap-2">
                   <Users size={14} strokeWidth={2.5} />
-                  <span>Operadores</span>
+                  <span>Usuarios</span>
                 </div>
               }
             >
-              <div className="animate-in fade-in duration-400">
+              <div className="mt-4 animate-in fade-in duration-300">
                 <UsuariosTab />
               </div>
             </Tab>
 
-            {/* Pestaña 2: Matriz de Roles y Permisos Privados */}
+            {/* Pestaña 2: Matriz de Roles y Permisos */}
             <Tab
               key="roles"
               title={
@@ -103,13 +127,23 @@ export default function ControlAccesoPage() {
                 </div>
               }
             >
-              <div className="animate-in fade-in duration-400">
+              <div className="mt-4 animate-in fade-in duration-300">
                 <RolesPermisosTab />
               </div>
             </Tab>
           </Tabs>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── COMPONENTE AUXILIAR ─────────────────────
+function CardSkeletonMini() {
+  return (
+    <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-xl p-4 space-y-2">
+      <Skeleton className="h-6 w-1/3 rounded-lg" />
+      <Skeleton className="h-3 w-1/2 rounded-md" />
     </div>
   );
 }

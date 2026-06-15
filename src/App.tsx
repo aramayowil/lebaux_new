@@ -12,30 +12,26 @@ import ProductosPage from "@/pages/ProductosPage";
 import CatalogosPage from "@/pages/CatalogosPage";
 import OpcionesPage from "@/pages/OpcionesPage";
 import PresupuestoPage from "@/pages/PresupuestoPage";
-import Login from "@/pages/login/Login";
-import Register from "@/pages/login/Register";
-import RecuperarPasswordPage from "@/pages/login/RecuperarPasswordPage";
-import NuevaPasswordPage from "@/pages/login/NuevaPasswordPage";
-import AuthConfirmarPage from "@/pages/login/AuthConfirmarPage";
+import Login from "@/pages/auth/Login";
+import Register from "@/pages/auth/Register";
+import RecuperarPasswordPage from "@/pages/auth/RecuperarPasswordPage";
+import NuevaPasswordPage from "@/pages/auth/NuevaPasswordPage";
+import AuthConfirmarPage from "@/pages/auth/AuthConfirmarPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import PublicRoute from "./routes/PublicRoute";
 import SinPermisosPage from "@/pages/SinPermisosPage";
 import ImportarPage from "@/pages/ImportarPage";
 import Error404Page from "@/pages/Error404Page";
 import ControlAccesoPage from "./pages/ControlAccesoPage";
-import CalculadoraPage from "./pages/CalculadoraPage";
-import AuthPendientePage from "./pages/login/AuthPendientePage";
+import AuthPendientePage from "./pages/auth/AuthPendientePage";
 
 export default function App() {
   const setSession = useAuthStore((state) => state.setSession);
 
   useEffect(() => {
-    // 1. Comprobación síncrona inmediata al arrancar/F5
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session?.user ?? null);
     });
-
-    // 2. Escucha activa de cambios de sesión
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -84,7 +80,6 @@ export default function App() {
           <Route path="/catalogos" element={<CatalogosPage />} />
           <Route path="/importar" element={<ImportarPage />} />
           <Route path="/usuarios" element={<ControlAccesoPage />} />
-          <Route path="/calculadora" element={<CalculadoraPage />} />
           <Route path="/opciones" element={<OpcionesPage />} />
         </Route>
       </Route>
@@ -93,15 +88,4 @@ export default function App() {
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
-}
-
-{
-  /* ─── RUTAS SÓLO PARA ADMINISTRADORES ─── */
-}
-{
-  /* <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
-    <Route element={<AdminLayout />}>
-      <Route path="/admin" element={<PanelAdmin />} />
-    </Route>
-  </Route> */
 }

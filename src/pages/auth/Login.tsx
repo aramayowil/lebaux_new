@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
-import photo_login from "@/assets/images/fabrica/fabrica_1.webp";
 import NavBar from "@/components/login/NavBar";
 
 // Traducciones de errores de Supabase
@@ -54,6 +53,7 @@ const Login = () => {
     // isAuthenticated=true y redirige a "/" → ProtectedRoute elige el primer
     // destino al que el usuario tiene permiso de ver.
   };
+  const photo_login = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/assets/auth/fabrica_1.webp`;
 
   return (
     <div className="min-h-screen bg-black flex flex-col font-sans selection:bg-yellow-500/30">
@@ -66,8 +66,9 @@ const Login = () => {
             src={photo_login}
             alt="Fábrica Lebaux"
             className="absolute inset-0 w-full h-full object-cover grayscale-[0.2]"
+            loading="eager"
           />
-          <div className="absolute inset-0 bg-gradient-to-tr from-black via-black/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-tr from-black via-black/40 to-transparent" />
           <div className="absolute bottom-12 left-12 max-w-md z-10">
             <h1 className="text-4xl font-bold text-white mb-3 tracking-tighter leading-tight">
               Sistema de Gestión <br />

@@ -15,7 +15,14 @@ import {
   useDisclosure,
   Tooltip,
 } from "@heroui/react";
-import { Plus, Trash2, ShieldCheck, Lock, Layers } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  ShieldCheck,
+  Lock,
+  Layers,
+  MousePointer2,
+} from "lucide-react";
 import {
   useRoles,
   useCreateRol,
@@ -42,6 +49,26 @@ const ACCIONES: { key: AccionPermiso; label: string }[] = [
   { key: "eliminar", label: "Eliminar" },
 ];
 
+// Componente para titulos de bloque basado en OpcionesPage
+function SectionHeader({
+  icon: Icon,
+  title,
+}: {
+  icon: React.ElementType;
+  title: string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5 pb-3 border-b border-zinc-100 dark:border-zinc-800 mb-3">
+      <div className="flex items-center justify-center w-6 h-6 rounded-md bg-lebaux-amber/10">
+        <Icon className="w-3.5 h-3.5 text-lebaux-amber" strokeWidth={2} />
+      </div>
+      <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
+        {title}
+      </h3>
+    </div>
+  );
+}
+
 export default function RolesPermisosTab() {
   const { data: roles = [], isLoading: cargandoRoles } = useRoles();
   const { mutateAsync: createRol } = useCreateRol();
@@ -53,7 +80,6 @@ export default function RolesPermisosTab() {
 
   const [selectedRolId, setSelectedRolId] = useState<number | null>(null);
 
-  // Selecciona automáticamente el primer rol disponible
   useEffect(() => {
     if (!selectedRolId && roles.length > 0) {
       setSelectedRolId(roles[0].id);
@@ -91,11 +117,11 @@ export default function RolesPermisosTab() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
       {/* Columna Izquierda: Lista de roles */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
             Roles del sistema
           </h3>
           <Button
@@ -103,7 +129,7 @@ export default function RolesPermisosTab() {
             variant="flat"
             isDisabled={!puedeCrear}
             startContent={<Plus size={14} />}
-            className="font-bold text-[11px] uppercase tracking-wider"
+            className="font-bold text-[10px] uppercase tracking-wider h-7 px-3 bg-zinc-200/50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300"
             onPress={onOpen}
           >
             Nuevo rol
@@ -122,16 +148,17 @@ export default function RolesPermisosTab() {
               isPressable
               onPress={() => setSelectedRolId(rol.id)}
               className={clsx(
-                "border rounded-xl shadow-none transition-colors",
+                "border rounded-xl shadow-none transition-colors w-full",
                 selectedRolId === rol.id
                   ? "border-lebaux-amber bg-amber-50/60 dark:bg-amber-500/5"
-                  : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900",
+                  : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700",
               )}
             >
               <CardBody className="p-3.5 flex flex-row items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-3 min-w-0">
                   <ShieldCheck
-                    size={15}
+                    size={16}
+                    strokeWidth={2}
                     className={clsx(
                       "shrink-0",
                       selectedRolId === rol.id
@@ -139,12 +166,12 @@ export default function RolesPermisosTab() {
                         : "text-zinc-400",
                     )}
                   />
-                  <div className="min-w-0">
+                  <div className="min-w-0 text-left">
                     <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">
                       {rol.nombre}
                     </p>
                     {rol.descripcion && (
-                      <p className="text-[10px] text-zinc-400 truncate">
+                      <p className="text-[10px] text-zinc-400 truncate mt-0.5">
                         {rol.descripcion}
                       </p>
                     )}
@@ -159,9 +186,7 @@ export default function RolesPermisosTab() {
                   )}
                   <Tooltip
                     content={
-                      rol.bloqueado
-                        ? "No se puede eliminar un rol protegido"
-                        : "Eliminar rol"
+                      rol.bloqueado ? "No se puede eliminar" : "Eliminar rol"
                     }
                   >
                     <Button
@@ -183,16 +208,35 @@ export default function RolesPermisosTab() {
       </div>
 
       {/* Columna Derecha: Matriz de permisos del rol seleccionado */}
-      <div className="lg:col-span-2 space-y-4">
+      <div className="lg:col-span-2 space-y-5">
         {selectedRol ? (
           <PermisosMatrix rol={selectedRol} puedeEditar={puedeEditar} />
         ) : (
-          <Card className="border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 shadow-none">
-            <CardBody className="p-10 flex flex-col items-center justify-center gap-2 text-zinc-400">
-              <Layers className="w-8 h-8 opacity-40" />
-              <p className="text-xs font-semibold uppercase tracking-wider">
-                Seleccioná un rol para ver sus permisos
-              </p>
+          <Card className="border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 shadow-none min-h-[400px] flex items-center justify-center">
+            <CardBody className="p-10 flex flex-col items-center justify-center gap-5 text-center animate-in fade-in zoom-in-95 duration-400">
+              <div className="relative">
+                <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700">
+                  <Layers
+                    className="w-8 h-8 text-zinc-400 dark:text-zinc-500"
+                    strokeWidth={1.5}
+                  />
+                </div>
+                <div className="absolute -bottom-1.5 -right-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-full shadow-md border border-zinc-100 dark:border-zinc-800">
+                  <MousePointer2
+                    className="w-4 h-4 text-lebaux-amber animate-bounce"
+                    strokeWidth={2}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-200 tracking-tight">
+                  Matriz de Permisos
+                </h3>
+                <p className="text-xs max-w-[240px] mx-auto leading-relaxed text-zinc-400 dark:text-zinc-500">
+                  Seleccioná un rol de la lista para auditar o configurar sus
+                  permisos operativos.
+                </p>
+              </div>
             </CardBody>
           </Card>
         )}
@@ -203,37 +247,57 @@ export default function RolesPermisosTab() {
         <ModalContent>
           {(onClose: () => void) => (
             <>
-              <ModalHeader className="font-display">Nuevo rol</ModalHeader>
-              <ModalBody className="gap-3">
+              <ModalHeader className="font-display text-zinc-800 dark:text-zinc-100">
+                Nuevo rol
+              </ModalHeader>
+              <ModalBody className="gap-4">
                 <Input
                   label="Nombre del rol"
+                  labelPlacement="outside"
                   placeholder="ej: Supervisor de taller"
+                  variant="bordered"
                   value={newRol.nombre}
                   onValueChange={(v: string) =>
                     setNewRol((f) => ({ ...f, nombre: v }))
                   }
-                  size="sm"
+                  classNames={{
+                    label:
+                      "font-bold text-[11px] text-zinc-500 dark:text-zinc-400 uppercase tracking-wider",
+                    inputWrapper:
+                      "border-zinc-200 dark:border-zinc-800 hover:border-lebaux-amber/60 focus-within:!border-lebaux-amber rounded-xl bg-white dark:bg-zinc-900 shadow-none transition-colors",
+                    input:
+                      "text-sm font-medium text-zinc-800 dark:text-zinc-200",
+                  }}
                 />
                 <Textarea
                   label="Descripción"
+                  labelPlacement="outside"
                   placeholder="Para qué se usa este rol"
+                  variant="bordered"
                   value={newRol.descripcion}
                   onValueChange={(v: string) =>
                     setNewRol((f) => ({ ...f, descripcion: v }))
                   }
-                  size="sm"
+                  classNames={{
+                    label:
+                      "font-bold text-[11px] text-zinc-500 dark:text-zinc-400 uppercase tracking-wider",
+                    inputWrapper:
+                      "border-zinc-200 dark:border-zinc-800 hover:border-lebaux-amber/60 focus-within:!border-lebaux-amber rounded-xl bg-white dark:bg-zinc-900 shadow-none transition-colors",
+                    input:
+                      "text-sm font-medium text-zinc-800 dark:text-zinc-200",
+                  }}
                 />
-                <p className="text-[11px] text-zinc-400">
-                  Después de crearlo, configurá sus permisos en la matriz de la
-                  derecha.
+                <p className="text-[11px] text-zinc-400 text-center">
+                  Después de crearlo, configurá sus permisos en la matriz.
                 </p>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="light" onPress={onClose} className="font-bold">
                   Cancelar
                 </Button>
                 <Button
                   color="primary"
+                  className="bg-lebaux-amber text-white font-bold"
                   isDisabled={!newRol.nombre.trim()}
                   onPress={() => handleCrearRol(onClose)}
                 >
@@ -276,7 +340,9 @@ function PermisosMatrix({
   return (
     <Card className="border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 shadow-none">
       <CardBody className="p-5 space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
+        <SectionHeader icon={ShieldCheck} title="Matriz de Autorizaciones" />
+
+        <div className="flex items-center justify-between flex-wrap gap-2 pb-2">
           <div>
             <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
               {rol.nombre}
@@ -299,48 +365,52 @@ function PermisosMatrix({
         </div>
 
         {!editable && (
-          <p className="text-[11px] text-amber-600 dark:text-amber-400">
-            {rol.bloqueado
-              ? "Este rol es protegido por el sistema y sus permisos no pueden modificarse."
-              : "Tu rol actual no tiene permiso para editar permisos."}
-          </p>
+          <div className="px-3 py-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg">
+            <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+              {rol.bloqueado
+                ? "Este rol es protegido por el sistema y sus permisos no pueden modificarse."
+                : "Tu rol actual no tiene permiso para editar permisos operativos."}
+            </p>
+          </div>
         )}
 
         <div className="overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-xl">
           <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="bg-zinc-50 dark:bg-zinc-950/60 border-b border-zinc-100 dark:border-zinc-800">
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                  Sección
+              <tr className="bg-zinc-50 dark:bg-zinc-950/60 border-b border-zinc-200 dark:border-zinc-800">
+                <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                  Sección / Módulo
                 </th>
                 {ACCIONES.map((a) => (
                   <th
                     key={a.key}
-                    className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-zinc-400"
+                    className="px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-zinc-400"
                   >
                     {a.label}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
               {SECCIONES.map((s) => (
                 <tr
                   key={s.key}
                   className="hover:bg-zinc-50/70 dark:hover:bg-zinc-950/30 transition-colors"
                 >
-                  <td className="px-4 py-2.5 text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                  <td className="px-4 py-3 text-xs font-bold text-zinc-700 dark:text-zinc-300">
                     {s.label}
                   </td>
                   {ACCIONES.map((a) => {
                     const activo = valorDe(s.key, a.key);
                     return (
-                      <td key={a.key} className="px-4 py-2 text-center">
+                      <td key={a.key} className="px-4 py-3 text-center">
                         <Checkbox
                           isSelected={activo}
                           isDisabled={!editable || isLoading}
                           onValueChange={() => toggle(s.key, a.key, activo)}
                           aria-label={`${a.label} ${s.label}`}
+                          color="warning"
+                          size="sm"
                         />
                       </td>
                     );
