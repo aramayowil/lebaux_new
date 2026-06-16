@@ -6,9 +6,10 @@ import {
   AlertCircle,
   Wrench,
   HardHat,
+  Package,
 } from "lucide-react";
 import { formatMm, formatPesos } from "@/lib/calculoDespiece";
-import type { ResultadoDespiece } from "@/lib/motorDespiece";
+import type { ResultadoDespiece, ItemAccesorio } from "@/lib/motorDespiece";
 import { useOpciones } from "@/hooks/catalogo/useOpciones";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -40,6 +41,9 @@ const NIVEL_COLOR: Record<string, string> = {
   Cruces:
     "bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300",
   Interior: "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300",
+  // Niveles exclusivos de accesorios
+  Contravidrio:
+    "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
 };
 
 const nivelChip = (n: string) => (
@@ -75,6 +79,7 @@ export default function DespieceView({ resultado, titulo }: Props) {
   const {
     cortes = [],
     interiores = [],
+    accesorios = [],
     resumenes = [],
     costo_perfiles = 0,
     costo_interiores = 0,
@@ -545,7 +550,27 @@ export default function DespieceView({ resultado, titulo }: Props) {
           </div>
         </Tab>
 
-        {/* ── RESUMEN OPTIMIZADO (pestaña 3) ── */}
+        {/* ── ACCESORIOS (pestaña 3) ── */}
+        <Tab
+          key="accesorios"
+          title={
+            <span className="flex items-center gap-1.5">
+              <Package className="w-3.5 h-3.5" /> Accesorios
+              {accesorios.length > 0 && (
+                <span className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-1.5 py-0.5 rounded-full font-medium leading-none">
+                  {accesorios.length}
+                </span>
+              )}
+            </span>
+          }
+        >
+          <AccesoriosTab
+            accesorios={accesorios}
+            costo_accesorios={costo_accesorios}
+          />
+        </Tab>
+
+        {/* ── RESUMEN OPTIMIZADO (pestaña 4) ── */}
         <Tab
           key="resumen"
           title={
@@ -743,6 +768,125 @@ export default function DespieceView({ resultado, titulo }: Props) {
           </div>
         </Tab>
       </Tabs>
+    </div>
+  );
+}
+
+// ─── Tab de Accesorios ───────────────────────────────────────────────────────
+
+function AccesoriosTab({
+  accesorios,
+  costo_accesorios,
+}: {
+  accesorios: ItemAccesorio[];
+  costo_accesorios: number;
+}) {
+  // Mostrar la columna "Conjunto" solo si al menos un ítem tiene nombre_conjunto
+  const hayConjuntos = accesorios.some((a) => a.nombre_conjunto);
+  // Ítems que no van al presupuesto del cliente (solo uso de fabricación)
+  const haySoloFab = accesorios.some((a) => !a.aparece_presupuesto);
+
+  const totalUnidades = accesorios.reduce((s, a) => s + a.cantidad, 0);
+
+  return (
+    <div className="pt-4 space-y-3">
+      {accesorios.length === 0 ? (
+        <div className="text-center py-8 text-stone-400">
+          <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-40" />
+          <p className="text-sm">Sin accesorios calculados</p>
+          <p className="text-xs mt-1 opacity-60">
+            Configurar reglas en Despiece → Accesorios
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="overflow-x-auto rounded-lg border border-stone-200 dark:border-stone-700">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-stone-100 dark:bg-stone-800 border-b border-stone-200 dark:border-stone-700">
+                  <Th>Ubicación</Th>
+                  <Th>Cod. Parte</Th>
+                  <Th>Descripción</Th>
+                  {hayConjuntos && <Th>Conjunto</Th>}
+                  <Th right>Cant.</Th>
+                  <Th right>P. Unit.</Th>
+                  <Th right>Costo</Th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                {accesorios.map((a, idx) => (
+                  <tr
+                    key={idx}
+                    className={`hover:bg-stone-50 dark:hover:bg-stone-800/30 ${
+                      !a.aparece_presupuesto ? "opacity-55" : ""
+                    }`}
+                  >
+                    <td className="py-1.5 pl-3 pr-2">{nivelChip(a.nivel)}</td>
+                    <td className="py-1.5 pr-3 font-mono font-semibold text-stone-700 dark:text-stone-300">
+                      {a.cod_parte}
+                    </td>
+                    <td className="py-1.5 pr-3 text-stone-500">
+                      <div className="flex items-center gap-1.5">
+                        <span>{a.descripcion}</span>
+                        {!a.aparece_presupuesto && (
+                          <span className="text-[9px] bg-stone-200 text-stone-400 dark:bg-stone-700 dark:text-stone-500 px-1 py-0.5 rounded leading-none">
+                            solo fab.
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    {hayConjuntos && (
+                      <td className="py-1.5 pr-3 text-stone-400 text-[10px] italic">
+                        {a.nombre_conjunto ?? "—"}
+                      </td>
+                    )}
+                    <Td right mono>
+                      {a.cantidad}
+                    </Td>
+                    <Td right mono>
+                      {a.precio_unitario > 0
+                        ? formatPesos(a.precio_unitario)
+                        : "—"}
+                    </Td>
+                    <Td right mono bold>
+                      {a.precio_total > 0 ? formatPesos(a.precio_total) : "—"}
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-stone-300 dark:border-stone-600 font-semibold text-xs">
+                  <td
+                    colSpan={hayConjuntos ? 4 : 3}
+                    className="py-2 pl-3 text-stone-500"
+                  >
+                    TOTAL ACCESORIOS
+                  </td>
+                  <td className="text-right font-mono py-2 pr-3">
+                    {totalUnidades} u
+                  </td>
+                  <td />
+                  <td className="text-right font-mono font-bold text-sm py-2 pr-3">
+                    {formatPesos(costo_accesorios)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {/* Nota "solo fab." */}
+          {haySoloFab && (
+            <p className="text-[10px] text-stone-400 italic pl-1">
+              Los ítems marcados como{" "}
+              <span className="bg-stone-200 dark:bg-stone-700 text-stone-500 dark:text-stone-400 px-1 py-0.5 rounded not-italic">
+                solo fab.
+              </span>{" "}
+              se usan en fabricación pero no aparecen en el presupuesto al
+              cliente.
+            </p>
+          )}
+        </>
+      )}
     </div>
   );
 }

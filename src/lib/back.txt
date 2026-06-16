@@ -1,23 +1,21 @@
+// motorDespiece.ts
 /**
- * Motor de Despiece – v3
- *
- * Cambios vs v2:
- *   [NEW] DespieceInterior procesado: define cantidad de paños + medidas base
- *   [NEW] Lógica de cruces completa: descuentos de vidrio + descuento_de_si_mismo
- *   [NEW] Cruces CENTRADOS: distribuyen equitativamente
- *   [NEW] Cruces VARIABLES: usan posiciones explícitas + descuentos perimetrales
- *   [NEW] dpMosquitero: en pausa (procesado en v4)
- *   [IMPROVED] DatosProducto incluye rules_interior
- *   [IMPROVED] Validación temprana de interior
- */
-
+Motor de Despiece – v3
+Cambios vs v2:
+[NEW] DespieceInterior procesado: define cantidad de paños + medidas base
+[NEW] Lógica de cruces completa: descuentos de vidrio + descuento_de_si_mismo
+[NEW] Cruces CENTRADOS: distribuyen equitativamente
+[NEW] Cruces VARIABLES: usan posiciones explícitas + descuentos perimetrales
+[NEW] Soporte completo para DVH (2 láminas + cámara) con cálculo de costos combinados
+[IMPROVED] DatosProducto incluye rules_interior
+[IMPROVED] Validación temprana de interior
+*/
 import {
   calcularCantidad,
   calcularMedida,
   optimizarCortes,
   type ContextoCalculo,
 } from "./calculoDespiece";
-
 import type {
   ObraTipologia,
   ObraDetalle,
@@ -36,7 +34,6 @@ import type {
 } from "@/types";
 
 // ─── Interfaces de Comunicación ──────────────────────────────────────────────
-
 export interface EntradaCalculo {
   ancho: number;
   alto: number;
@@ -50,21 +47,16 @@ export interface DatosProducto {
   marco?: Perfil;
   hoja?: Perfil;
   interior?: Perfil;
-
   rules_perfiles_marco: DespiecePerfil[];
   rules_perfiles_hoja: DespiecePerfil[];
   rules_interior: DespieceInterior | null;
   rules_cruces: DespieceCruce | null;
   rules_perfiles_contravidrio: DespiecePerfilContravidrio[];
-
-  /** Accesorios por nivel — paralelo a rules_perfiles_* */
   rules_accesorios_marco: DespieceAccesorioMarco[];
   rules_accesorios_hoja: DespieceAccesorioHoja[];
   rules_accesorios_interior: DespieceAccesorioInterior[];
   rules_accesorios_cruces: DespieceAccesorioCruce[];
-
   find_despiece_contravidrio: (id: number) => DespiecePerfilContravidrio;
-
   catalog_perfiles: Perfil[];
   catalog_accesorios: Accesorio[];
   catalog_vidrios: Vidrio[];
@@ -94,13 +86,14 @@ export interface CortePerfil {
 }
 
 export interface ItemInterior {
-  tipo: "Vidrio" | "Revestimiento" | "CV Int." | "CV Ext." | "VR";
+  tipo: "Vidrio" | "Revestimiento" | "CV Int." | "CV Ext." | "VR" | "DVH";
   cantidad: number;
   ancho: number;
   alto: number;
   area: number;
   precio: number;
   modulo?: string;
+  descripcion?: string; // Detalle de composición (ej: "lam 3+3 + 12mm + float 4")
 }
 
 export interface ResumenPerfil {
@@ -128,9 +121,7 @@ export interface ItemAccesorio {
   precio_unitario: number;
   precio_total: number;
   nivel: NivelAccesorio;
-  /** Solo en Hoja: controla si el ítem aparece en el presupuesto al cliente */
   aparece_presupuesto: boolean;
-  /** Agrupador de conjunto (ej. "Kit cierre") */
   id_conjunto?: number | null;
   nombre_conjunto?: string | null;
 }
@@ -149,21 +140,19 @@ export interface ResultadoDespiece {
   interiores: ItemInterior[];
   accesorios: ItemAccesorio[];
   resumenes: ResumenPerfil[];
-  // Costos por rubro — idénticos al sistema Access original
-  costo_perfiles: number; // PF — perfiles naturales
-  costo_interiores: number; // VD — vidrios / interiores (área m²)
-  costo_accesorios: number; // AC — accesorios
-  costo_mo_taller: number; // MO taller (calculado desde Opciones en la vista)
-  costo_mo_colocacion: number; // MO colocación (pendiente v4)
-  costo_telas: number; // Telas / mosquiteros (pendiente v4)
-  costo_total: number; // Suma de todos los rubros
+  costo_perfiles: number;
+  costo_interiores: number;
+  costo_accesorios: number;
+  costo_mo_taller: number;
+  costo_mo_colocacion: number;
+  costo_telas: number;
+  costo_total: number;
   multiplicador: number;
   contexto: ContextoCalculo;
   logs: DespieceLog[];
 }
 
 // ─── Helpers Internos ────────────────────────────────────────────────────────
-
 function crearLogger() {
   const entries: DespieceLog[] = [];
   return {
@@ -226,29 +215,22 @@ interface DespiecePerfilBase {
 }
 
 // ─── Motor Principal ─────────────────────────────────────────────────────────
-
 export function calcularDespiece(
   entrada: EntradaCalculo,
   datos: DatosProducto,
 ): ResultadoDespiece {
   validarEntrada(entrada);
-
   const log = crearLogger();
   const { ancho, alto, cantidad_tipologias, detalle } = entrada;
   const hojas = entrada.cant_hojas_calculo ?? 0;
-
   log.info("init", `Despiece iniciado`, { ancho, alto, hojas });
 
   // ── PASO 1: Calcular posiciones de cruces ─────────────────────────────────
-
   let posHef: number[] = [];
   let posVef: number[] = [];
-
   if (datos.rules_cruces) {
     const tipo_cruce = detalle.tipo_cruce ?? 0;
-
     if (tipo_cruce === 2) {
-      // VARIABLES
       const h1 = getDetalleNum(detalle, "horizontal_1");
       const h2 = getDetalleNum(detalle, "horizontal_2");
       const h3 = getDetalleNum(detalle, "horizontal_3");
@@ -265,7 +247,6 @@ export function calcularDespiece(
         (n): n is number => n !== null && n !== undefined && n > 0,
       );
     } else if (tipo_cruce === 1) {
-      // CENTRADOS
       const c_h = detalle.cant_centrados_horizontal ?? 0;
       const c_v = detalle.cant_centrados_vertical ?? 0;
       posHef = Array.from({ length: c_h }, (_, i) =>
@@ -281,10 +262,8 @@ export function calcularDespiece(
       posVef,
     });
   }
-
   const cant_cruces_h = posHef.length;
   const cant_cruces_v = posVef.length;
-
   const ctxBase: ContextoCalculo = {
     ancho,
     alto,
@@ -299,40 +278,23 @@ export function calcularDespiece(
   const interiorsCalc: ItemInterior[] = [];
   const accesariosCalc: ItemAccesorio[] = [];
   let cortId = 1;
-
   const perfilMap = buildPerfilMap(datos.catalog_perfiles);
   const lkPerfil = (id: number) => perfilMap.get(id);
 
   // ── PASO 2: Procesar Marco y Hoja ────────────────────────────────────────
-
-  function addCorte(
-    nivel: NivelCorte,
-    dp: DespiecePerfilBase,
-    ctx: ContextoCalculo,
-  ) {
+  function addCorte(nivel: NivelCorte, dp: DespiecePerfilBase, ctx: ContextoCalculo) {
     const cant = calcularCantidad(dp.formula_cantidad ?? "0", ctx);
     const medida = calcularMedida(dp.formula_perfil ?? "0", ctx);
     if (cant <= 0 || medida <= 0) {
-      log.warn(
-        "addCorte",
-        `Corte descartado (cant=${cant}, medida=${medida})`,
-        { nivel },
-      );
+      log.warn("addCorte", `Corte descartado (cant=${cant}, medida=${medida})`, { nivel });
       return;
     }
-
     const perfil = lkPerfil(dp.id_perfil ?? 0);
     if (!perfil) {
-      log.warn("addCorte", `Perfil id=${dp.id_perfil} no encontrado`, {
-        nivel,
-      });
+      log.warn("addCorte", `Perfil id=${dp.id_perfil} no encontrado`, { nivel });
     }
 
-    const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
-      perfil,
-      medida,
-      cant,
-    );
+    const { kg, precio_unitario, precio_total } = calcularPrecioCorte(perfil, medida, cant);
 
     cortes.push({
       id: cortId++,
@@ -355,7 +317,6 @@ export function calcularDespiece(
       addCorte("Marco", dp as DespiecePerfilBase, ctxBase),
     );
   }
-
   if (detalle.hoja) {
     log.info("hoja", `Procesando ${datos.rules_perfiles_hoja.length} reglas`);
     datos.rules_perfiles_hoja.forEach((dp) =>
@@ -364,22 +325,13 @@ export function calcularDespiece(
   }
 
   // ── PASO 3: Procesar Cruces (divisores) ──────────────────────────────────
-
   if (datos.rules_cruces && (cant_cruces_h > 0 || cant_cruces_v > 0)) {
     const ruleCruce = datos.rules_cruces;
     if (ruleCruce.id_perfil) {
       const perfilCruce = lkPerfil(ruleCruce.id_perfil);
-
       if (perfilCruce) {
-        // Cruce horizontal
         if (cant_cruces_h > 0) {
-          const medidaCruceH = calcularMedida(
-            ruleCruce.formula_ancho_entero || "ancho",
-            ctxBase,
-          );
-
-          // El cruce HORIZONTAL es "entero": va de extremo a extremo del ancho
-          // NO se le aplica descuento_de_si_mismo (igual que el Access original)
+          const medidaCruceH = calcularMedida(ruleCruce.formula_ancho_entero || "ancho", ctxBase);
           const medidaCruceFinal = medidaCruceH;
 
           if (medidaCruceFinal > 0) {
@@ -401,25 +353,12 @@ export function calcularDespiece(
               precio_unitario,
               precio_total,
             });
-            log.info(
-              "cruces",
-              `Cruce H: ${cant_cruces_h}×${medidaCruceFinal}mm`,
-            );
+            log.info("cruces", `Cruce H: ${cant_cruces_h}×${medidaCruceFinal}mm`);
           }
         }
 
-        // Cruce vertical
         if (cant_cruces_v > 0) {
-          const medidaCruceV = calcularMedida(
-            ruleCruce.formula_alto_entero || "alto",
-            ctxBase,
-          );
-
-          // Fórmula Access original (MSysQueries):
-          //   ([Alto entero] - ([Descuento de si mismo] × cruces_H)) / (cruces_H + 1)
-          // Igual que el vidrio: distribuye el total después del descuento
-          // Ejemplo: alto=1000, desc_si_mismo=8, cant_H=2
-          //   (1000 - 8×2) / (2+1) = 984/3 = 328mm c/u
+          const medidaCruceV = calcularMedida(ruleCruce.formula_alto_entero || "alto", ctxBase);
           let medidaCruceFinal = medidaCruceV;
           if (cant_cruces_h > 0 && ruleCruce.descuento_de_si_mismo) {
             medidaCruceFinal =
@@ -428,11 +367,7 @@ export function calcularDespiece(
           }
 
           if (medidaCruceFinal > 0) {
-            // Cantidad real de trozos del cruce V:
-            // Cada cruce V queda partido en (cant_H + 1) trozos por los cruces H
-            // Ejemplo: 2H + 1V → el único cruce V queda en 3 trozos
-            const cantTrozosV =
-              cant_cruces_v * (cant_cruces_h > 0 ? cant_cruces_h + 1 : 1);
+            const cantTrozosV = cant_cruces_v * (cant_cruces_h > 0 ? cant_cruces_h + 1 : 1);
             const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
               perfilCruce,
               medidaCruceFinal,
@@ -451,10 +386,7 @@ export function calcularDespiece(
               precio_unitario,
               precio_total,
             });
-            log.info(
-              "cruces",
-              `Cruce V: ${cantTrozosV} trozos × ${medidaCruceFinal}mm`,
-            );
+            log.info("cruces", `Cruce V: ${cantTrozosV} trozos × ${medidaCruceFinal}mm`);
           }
         }
       }
@@ -462,213 +394,179 @@ export function calcularDespiece(
   }
 
   // ── PASO 4: Procesar Interior (vidrios/revestimiento) ────────────────────
-
   if (datos.rules_interior) {
     const ruleInterior = datos.rules_interior;
+    const cantPanos = calcularCantidad(ruleInterior.formula_cantidad_interiores ?? "1", ctxBase);
+    const anchoPanoBase = calcularMedida(ruleInterior.formula_ancho_interior ?? "ancho", ctxBase);
+    const altoPanoBase = calcularMedida(ruleInterior.formula_alto_interior ?? "alto", ctxBase);
 
-    // Calcular cantidad de paños y sus medidas base
-    const cantPanos = calcularCantidad(
-      ruleInterior.formula_cantidad_interiores ?? "1",
-      ctxBase,
-    );
-    const anchoPanoBase = calcularMedida(
-      ruleInterior.formula_ancho_interior ?? "ancho",
-      ctxBase,
-    );
-    const altoPanoBase = calcularMedida(
-      ruleInterior.formula_alto_interior ?? "alto",
-      ctxBase,
-    );
-
-    log.info(
-      "interior",
-      `${cantPanos} paños, base: ${anchoPanoBase}×${altoPanoBase}mm`,
-    );
-
-    // APLICAR DESCUENTOS DE CRUCES
+    log.info("interior", `${cantPanos} paños, base: ${anchoPanoBase}×${altoPanoBase}mm`);
 
     let anchoVidrio = anchoPanoBase;
     let altoVidrio = altoPanoBase;
 
     if (datos.rules_cruces && datos.rules_cruces.descuento_vidrio) {
       const desc = datos.rules_cruces.descuento_vidrio;
-
       if (cant_cruces_h > 0) {
-        altoVidrio =
-          (altoPanoBase - desc * cant_cruces_h) / (cant_cruces_h + 1);
+        altoVidrio = (altoPanoBase - desc * cant_cruces_h) / (cant_cruces_h + 1);
       }
       if (cant_cruces_v > 0) {
-        anchoVidrio =
-          (anchoPanoBase - desc * cant_cruces_v) / (cant_cruces_v + 1);
+        anchoVidrio = (anchoPanoBase - desc * cant_cruces_v) / (cant_cruces_v + 1);
       }
-
-      log.info(
-        "interior",
-        `Descuentos aplicados: ${anchoVidrio.toFixed(2)}×${altoVidrio.toFixed(2)}mm`,
-      );
+      log.info("interior", `Descuentos aplicados: ${anchoVidrio.toFixed(2)}×${altoVidrio.toFixed(2)}mm`);
     }
 
-    // Redondear para manufactura
     const anchoRedondo = Math.round(anchoVidrio);
     const altoRedondo = Math.round(altoVidrio);
     const area = (anchoRedondo / 1000) * (altoRedondo / 1000);
 
-    // Obtener tipo de interior (vidrio o revestimiento)
-    const tipoInterior = getDetalleStr(detalle, "interior_1");
-    const dvhVal = getDetalleStr(detalle, "dvh_1_1");
-    const revestVal = getDetalleStr(detalle, "revest_1");
+    for (let i = 0; i < cantPanos; i++) {
+      const pañoIdx = i + 1;
 
-    let esVidrio = false;
-    let esRevestimiento = false;
-    let idVidrio: string | null = null;
-    let idPerfilRevest: string | null = null;
+      const dvh1 = getDetalleStr(detalle, `dvh_${pañoIdx}_1`);
+      const dvh2 = getDetalleStr(detalle, `dvh_${pañoIdx}_2`);
+      const camara = getDetalleStr(detalle, `camara_${pañoIdx}`);
+      const tipoInterior = getDetalleStr(detalle, `interior_${pañoIdx}`);
+      const revestVal = getDetalleStr(detalle, `revest_${pañoIdx}`);
 
-    if (dvhVal) {
-      esVidrio = true;
-      idVidrio = dvhVal;
-    } else if (tipoInterior === "VIDRIO") {
-      esVidrio = true;
-      idVidrio = null;
-    } else if (tipoInterior === "REVESTIMIENTO") {
-      esRevestimiento = true;
-      idPerfilRevest = revestVal;
-    } else if (tipoInterior && tipoInterior !== "null") {
-      esVidrio = true;
-      idVidrio = tipoInterior;
-    }
+      const esDVH = !!(dvh1 && dvh2);
+      const esVidrioSimple = !esDVH && (tipoInterior === "VIDRIO" || dvh1);
+      const esRevestimiento = !esDVH && tipoInterior === "REVESTIMIENTO";
 
-    // Procesar vidrio
-    if (esVidrio) {
-      let vid: Vidrio | undefined;
-      if (idVidrio) {
-        vid = datos.catalog_vidrios.find(
-          (v) => v.id.toString() === idVidrio || v.codigo === idVidrio,
+      if (esDVH) {
+        const vid1 = datos.catalog_vidrios.find(
+          (v) => v.id.toString() === dvh1 || v.codigo === dvh1,
         );
-        if (!vid) {
-          log.warn("vidrio", `Vidrio id="${idVidrio}" no encontrado`);
+        const vid2 = datos.catalog_vidrios.find(
+          (v) => v.id.toString() === dvh2 || v.codigo === dvh2,
+        );
+
+        if (!vid1) log.warn("vidrio", `Vidrio 1 (dvh_${pañoIdx}_1) "${dvh1}" no encontrado`);
+        if (!vid2) log.warn("vidrio", `Vidrio 2 (dvh_${pañoIdx}_2) "${dvh2}" no encontrado`);
+
+        const precioM2_1 = vid1
+          ? (vid1.precio ?? 0) / (((vid1.altura ?? 1) / 1000) * ((vid1.base ?? 1) / 1000))
+          : 0;
+        const precioM2_2 = vid2
+          ? (vid2.precio ?? 0) / (((vid2.altura ?? 1) / 1000) * ((vid2.base ?? 1) / 1000))
+          : 0;
+
+        const costoVid1 = precioM2_1 * area;
+        const costoVid2 = precioM2_2 * area;
+
+        const desc1 = vid1?.descri || vid1?.codigo || dvh1 || "Vidrio 1";
+        const descCamara = camara || "Cámara";
+        const desc2 = vid2?.descri || vid2?.codigo || dvh2 || "Vidrio 2";
+
+        interiorsCalc.push({
+          tipo: "DVH",
+          cantidad: 1,
+          ancho: anchoRedondo,
+          alto: altoRedondo,
+          area,
+          precio: costoVid1 + costoVid2,
+          modulo: `Paño ${pañoIdx}`,
+          descripcion: `${desc1} + ${descCamara} + ${desc2}`,
+        });
+
+        log.info("interior", `Paño ${pañoIdx} DVH: ${desc1} + ${descCamara} + ${desc2} (${anchoRedondo}×${altoRedondo}mm)`);
+      } else if (esVidrioSimple) {
+        const vidId = dvh1 || tipoInterior;
+        const vid = datos.catalog_vidrios.find(
+          (v) => v.id.toString() === vidId || v.codigo === vidId,
+        );
+
+        if (!vid && vidId) {
+          log.warn("vidrio", `Vidrio simple "${vidId}" no encontrado`);
         }
-      }
 
-      const precioM2Vidrio = vid
-        ? (vid.precio ?? 0) /
-          (((vid.altura ?? 1) / 1000) * ((vid.base ?? 1) / 1000))
-        : 0;
+        const precioM2 = vid
+          ? (vid.precio ?? 0) / (((vid.altura ?? 1) / 1000) * ((vid.base ?? 1) / 1000))
+          : 0;
 
-      for (let i = 0; i < cantPanos; i++) {
         interiorsCalc.push({
           tipo: "Vidrio",
           cantidad: 1,
           ancho: anchoRedondo,
           alto: altoRedondo,
           area,
-          precio: vid ? precioM2Vidrio * area : 0,
-          modulo: `Paño ${i + 1}`,
+          precio: vid ? precioM2 * area : 0,
+          modulo: `Paño ${pañoIdx}`,
+          descripcion: vid?.descri || vid?.codigo || "Vidrio Simple",
         });
-      }
-      log.info(
-        "interior",
-        `${cantPanos} vidrios de ${anchoRedondo}×${altoRedondo}mm`,
-      );
-    }
 
-    // Procesar revestimiento
-    else if (esRevestimiento && idPerfilRevest) {
-      const perfilRevest = datos.catalog_perfiles.find(
-        (p) =>
-          p.nro_perfil === idPerfilRevest || p.id.toString() === idPerfilRevest,
-      );
-
-      if (perfilRevest) {
-        const pasoTablilla = 100;
-        const orientacion = getDetalleStr(detalle, "direcc_1") ?? "H";
-        const cantidadTablillas =
-          orientacion === "H"
-            ? Math.ceil(altoVidrio / pasoTablilla)
-            : Math.ceil(anchoVidrio / pasoTablilla);
-        const medidaCorteTablilla =
-          orientacion === "H" ? anchoVidrio : altoVidrio;
-
-        const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
-          perfilRevest,
-          medidaCorteTablilla,
-          cantidadTablillas,
+        log.info("interior", `Paño ${pañoIdx} Vidrio Simple: ${vid?.descri || vidId} (${anchoRedondo}×${altoRedondo}mm)`);
+      } else if (esRevestimiento && revestVal) {
+        const perfilRevest = datos.catalog_perfiles.find(
+          (p) => p.nro_perfil === revestVal || p.id.toString() === revestVal,
         );
 
-        cortes.push({
-          id: cortId++,
-          nivel: "Interior",
-          nro_perfil: perfilRevest.nro_perfil?.toString() ?? "REV",
-          descripcion_perfil: perfilRevest.descri ?? "Tablilla",
-          angulo: "90°/90°",
-          cantidad: cantidadTablillas,
-          medida_mm: medidaCorteTablilla,
-          total_mm: medidaCorteTablilla * cantidadTablillas,
-          kg,
-          precio_unitario,
-          precio_total,
-        });
+        if (perfilRevest) {
+          const pasoTablilla = 100;
+          const orientacion = getDetalleStr(detalle, `direcc_${pañoIdx}`) ?? "H";
+          const cantidadTablillas =
+            orientacion === "H"
+              ? Math.ceil(altoVidrio / pasoTablilla)
+              : Math.ceil(anchoVidrio / pasoTablilla);
+          const medidaCorteTablilla = orientacion === "H" ? anchoVidrio : altoVidrio;
 
-        interiorsCalc.push({
-          tipo: "Revestimiento",
-          cantidad: cantidadTablillas,
-          ancho: medidaCorteTablilla,
-          alto: pasoTablilla,
-          area,
-          precio: precio_total,
-          modulo: `Paño 1`,
-        });
+          const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
+            perfilRevest,
+            medidaCorteTablilla,
+            cantidadTablillas,
+          );
 
-        log.info(
-          "interior",
-          `${cantidadTablillas} tablillas de ${medidaCorteTablilla}mm`,
-        );
+          cortes.push({
+            id: cortId++,
+            nivel: "Interior",
+            nro_perfil: perfilRevest.nro_perfil?.toString() ?? "REV",
+            descripcion_perfil: perfilRevest.descri ?? "Tablilla",
+            angulo: "90°/90°",
+            cantidad: cantidadTablillas,
+            medida_mm: medidaCorteTablilla,
+            total_mm: medidaCorteTablilla * cantidadTablillas,
+            kg,
+            precio_unitario,
+            precio_total,
+          });
+
+          interiorsCalc.push({
+            tipo: "Revestimiento",
+            cantidad: cantidadTablillas,
+            ancho: medidaCorteTablilla,
+            alto: pasoTablilla,
+            area,
+            precio: precio_total,
+            modulo: `Paño ${pañoIdx}`,
+            descripcion: perfilRevest.descri || "Revestimiento",
+          });
+
+          log.info("interior", `Paño ${pañoIdx} Revestimiento: ${cantidadTablillas} tablillas de ${medidaCorteTablilla}mm`);
+        }
       }
     }
   }
 
   // ── PASO 5: Procesar Contravidrios ──────────────────────────────────────
-
   if (datos.rules_interior && datos.rules_perfiles_contravidrio.length > 0) {
     const idCv = detalle.contravidrios ?? detalle.interior;
     if (idCv) {
       try {
         const ruleCv = datos.find_despiece_contravidrio(Number(idCv));
-
-        // Access: formula_cantidad + (cant_cruces × 2)
-        // Cuando hay cruces, cada cruce agrega 2 contravidrios más (uno a cada lado)
-        const cantHBase = calcularCantidad(
-          ruleCv.formula_cantidad_contravidrios_ancho ?? "2",
-          ctxBase,
-        );
-        const cantVBase = calcularCantidad(
-          ruleCv.formula_cantidad_contravidrios_alto ?? "2",
-          ctxBase,
-        );
+        const cantHBase = calcularCantidad(ruleCv.formula_cantidad_contravidrios_ancho ?? "2", ctxBase);
+        const cantVBase = calcularCantidad(ruleCv.formula_cantidad_contravidrios_alto ?? "2", ctxBase);
         const cantH = cantHBase + cant_cruces_h * 2;
         const cantV = cantVBase + cant_cruces_v * 2;
-        const medH = calcularMedida(
-          ruleCv.formula_contravidrio_ancho ?? "ancho",
-          ctxBase,
-        );
-        const medV = calcularMedida(
-          ruleCv.formula_contravidrio_alto ?? "alto",
-          ctxBase,
-        );
+        const medH = calcularMedida(ruleCv.formula_contravidrio_ancho ?? "ancho", ctxBase);
+        const medV = calcularMedida(ruleCv.formula_contravidrio_alto ?? "alto", ctxBase);
 
         const perfilCv = lkPerfil(ruleCv.id_perfil ?? 0);
         if (!perfilCv) {
-          log.warn(
-            "contravidrio",
-            `Perfil CV id=${ruleCv.id_perfil} no encontrado`,
-          );
+          log.warn("contravidrio", `Perfil CV id=${ruleCv.id_perfil} no encontrado`);
         }
 
         if (perfilCv && medH > 0 && cantH > 0) {
-          const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
-            perfilCv,
-            medH,
-            cantH,
-          );
+          const { kg, precio_unitario, precio_total } = calcularPrecioCorte(perfilCv, medH, cantH);
           cortes.push({
             id: cortId++,
             nivel: "Contravid. Int.",
@@ -686,11 +584,7 @@ export function calcularDespiece(
         }
 
         if (perfilCv && medV > 0 && cantV > 0) {
-          const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
-            perfilCv,
-            medV,
-            cantV,
-          );
+          const { kg, precio_unitario, precio_total } = calcularPrecioCorte(perfilCv, medV, cantV);
           cortes.push({
             id: cortId++,
             nivel: "Contravid. Int.",
@@ -713,52 +607,26 @@ export function calcularDespiece(
   }
 
   // ── PASO 5.5: Procesar Accesorios ───────────────────────────────────────
-  //
-  // Paralelo a PASO 2 (perfiles): por cada regla se evalúa formula_cantidad
-  // con ctxBase y se registra el accesorio con su costo unitario.
-  //
-  // Niveles soportados: Marco · Hoja · Interior · Cruces
-  // Hoja agrega: aparece_presupuesto, id_conjunto, nombre_conjunto
-  //
-  // Los accesorios SIN id_accesorio (null) se saltan con warn.
-
   const accesorioMap = new Map(datos.catalog_accesorios.map((a) => [a.id, a]));
-
   function addAccesorio(
     nivel: NivelAccesorio,
     idAccesorio: number | null | undefined,
     formulaCantidad: string | null | undefined,
-    opciones?: {
-      aparece_presupuesto?: boolean;
-      id_conjunto?: number | null;
-      nombre_conjunto?: string | null;
-    },
+    opciones?: { aparece_presupuesto?: boolean; id_conjunto?: number | null; nombre_conjunto?: string | null },
   ) {
     if (!idAccesorio) {
-      log.warn(
-        "accesorios",
-        `Regla sin id_accesorio en nivel ${nivel}, omitida`,
-      );
+      log.warn("accesorios", `Regla sin id_accesorio en nivel ${nivel}, omitida`);
       return;
     }
-
     const cantidad = calcularCantidad(formulaCantidad ?? "0", ctxBase);
     if (cantidad <= 0) {
-      log.warn(
-        "accesorios",
-        `Accesorio id=${idAccesorio} cantidad=0, omitido`,
-        { nivel },
-      );
+      log.warn("accesorios", `Accesorio id=${idAccesorio} cantidad=0, omitido`, { nivel });
       return;
     }
 
     const acc = accesorioMap.get(idAccesorio);
     if (!acc) {
-      log.warn(
-        "accesorios",
-        `Accesorio id=${idAccesorio} no encontrado en catálogo`,
-        { nivel },
-      );
+      log.warn("accesorios", `Accesorio id=${idAccesorio} no encontrado en catálogo`, { nivel });
       return;
     }
 
@@ -776,29 +644,17 @@ export function calcularDespiece(
       nombre_conjunto: opciones?.nombre_conjunto ?? null,
     });
 
-    log.info(
-      "accesorios",
-      `[${nivel}] ${acc.cod_parte} "${acc.descri}": ${cantidad} u × $${precioUnitario}`,
-    );
+    log.info("accesorios", `[${nivel}] ${acc.cod_parte} "${acc.descri}": ${cantidad} u × $${precioUnitario}`);
   }
 
-  // Marco
   if (detalle.marco && datos.rules_accesorios_marco.length > 0) {
-    log.info(
-      "accesorios",
-      `Marco: ${datos.rules_accesorios_marco.length} reglas`,
-    );
+    log.info("accesorios", `Marco: ${datos.rules_accesorios_marco.length} reglas`);
     for (const rule of datos.rules_accesorios_marco) {
       addAccesorio("Marco", rule.id_accesorio, rule.formula_cantidad);
     }
   }
-
-  // Hoja — propaga aparece_presupuesto, id_conjunto, nombre_conjunto
   if (detalle.hoja && datos.rules_accesorios_hoja.length > 0) {
-    log.info(
-      "accesorios",
-      `Hoja: ${datos.rules_accesorios_hoja.length} reglas`,
-    );
+    log.info("accesorios", `Hoja: ${datos.rules_accesorios_hoja.length} reglas`);
     for (const rule of datos.rules_accesorios_hoja) {
       addAccesorio("Hoja", rule.id_accesorio, rule.formula_cantidad, {
         aparece_presupuesto: rule.aparece_presupuesto,
@@ -807,13 +663,8 @@ export function calcularDespiece(
       });
     }
   }
-
-  // Interior
   if (detalle.interior && datos.rules_accesorios_interior.length > 0) {
-    log.info(
-      "accesorios",
-      `Interior: ${datos.rules_accesorios_interior.length} reglas`,
-    );
+    log.info("accesorios", `Interior: ${datos.rules_accesorios_interior.length} reglas`);
     for (const rule of datos.rules_accesorios_interior) {
       addAccesorio("Interior", rule.id_accesorio, rule.formula_cantidad, {
         id_conjunto: rule.id_conjunto,
@@ -821,24 +672,14 @@ export function calcularDespiece(
       });
     }
   }
-
-  // Cruces
-  if (
-    detalle.cruce &&
-    (cant_cruces_h > 0 || cant_cruces_v > 0) &&
-    datos.rules_accesorios_cruces.length > 0
-  ) {
-    log.info(
-      "accesorios",
-      `Cruces: ${datos.rules_accesorios_cruces.length} reglas`,
-    );
+  if (detalle.cruce && (cant_cruces_h > 0 || cant_cruces_v > 0) && datos.rules_accesorios_cruces.length > 0) {
+    log.info("accesorios", `Cruces: ${datos.rules_accesorios_cruces.length} reglas`);
     for (const rule of datos.rules_accesorios_cruces) {
       addAccesorio("Cruces", rule.id_accesorio, rule.formula_cantidad);
     }
   }
 
   // ── PASO 6: Multiplicar por cantidad de tipologías ────────────────────────
-
   const mult = cantidad_tipologias ?? 1;
   if (mult !== 1) {
     cortes.forEach((c) => {
@@ -860,21 +701,11 @@ export function calcularDespiece(
   }
 
   // ── PASO 7: Optimización de barras y resúmenes ───────────────────────────
-
-  const mapPerfiles = new Map<
-    string,
-    {
-      perfil: Perfil | undefined;
-      lista: { medida_mm: number; cantidad: number; angulo: string }[];
-    }
-  >();
-
+  const mapPerfiles = new Map<string, { perfil: Perfil | undefined; lista: { medida_mm: number; cantidad: number; angulo: string }[] }>();
   for (const c of cortes) {
     if (!mapPerfiles.has(c.nro_perfil)) {
       mapPerfiles.set(c.nro_perfil, {
-        perfil: datos.catalog_perfiles.find(
-          (p) => p.nro_perfil?.toString() === c.nro_perfil,
-        ),
+        perfil: datos.catalog_perfiles.find((p) => p.nro_perfil?.toString() === c.nro_perfil),
         lista: [],
       });
     }
@@ -888,14 +719,11 @@ export function calcularDespiece(
   const resumenes: ResumenPerfil[] = [];
   for (const [nro, { perfil, lista }] of mapPerfiles) {
     const longTira = perfil?.long_tira ?? 6000;
-    const allCuts = lista.flatMap((c) =>
-      Array<number>(c.cantidad).fill(c.medida_mm),
-    );
+    const allCuts = lista.flatMap((c) => Array<number>(c.cantidad).fill(c.medida_mm));
     const opt = optimizarCortes(allCuts, longTira);
     const totalMm = allCuts.reduce((s, m) => s + m, 0);
     const kg = perfil ? ((perfil.peso_metro ?? 0) / 1000) * totalMm : 0;
     const precioKg = perfil?.precio_kg ?? 0;
-
     resumenes.push({
       nro_perfil: nro,
       descripcion_perfil: perfil?.descri ?? "Perfil de optimización",
@@ -911,25 +739,14 @@ export function calcularDespiece(
       cortes: lista,
     });
 
-    log.info(
-      "optimizacion",
-      `${nro}: ${opt.tirasNecesarias} tiras, eficiencia ${(opt.eficiencia * 100).toFixed(1)}%`,
-    );
+    log.info("optimizacion", `${nro}: ${opt.tirasNecesarias} tiras, eficiencia ${(opt.eficiencia * 100).toFixed(1)}%`);
   }
 
   // ── PASO 8: Totales ──────────────────────────────────────────────────────
-
   const costoPerfiles = resumenes.reduce((s, r) => s + r.precio_total, 0);
   const costoInteriores = interiorsCalc.reduce((s, i) => s + i.precio, 0);
-  const costoAccesorios = accesariosCalc.reduce(
-    (s, a) => s + a.precio_total,
-    0,
-  );
-
-  log.info(
-    "totales",
-    `PF: $${costoPerfiles.toFixed(2)} | VD: $${costoInteriores.toFixed(2)} | AC: $${costoAccesorios.toFixed(2)}`,
-  );
+  const costoAccesorios = accesariosCalc.reduce((s, a) => s + a.precio_total, 0);
+  log.info("totales", `PF: $${costoPerfiles.toFixed(2)} | VD: $${costoInteriores.toFixed(2)} | AC: $${costoAccesorios.toFixed(2)}`);
 
   return {
     cortes,
@@ -939,9 +756,9 @@ export function calcularDespiece(
     costo_perfiles: costoPerfiles,
     costo_interiores: costoInteriores,
     costo_accesorios: costoAccesorios,
-    costo_mo_taller: 0, // Calculado en DespieceView desde Opciones
-    costo_mo_colocacion: 0, // Pendiente v4
-    costo_telas: 0, // Pendiente v4
+    costo_mo_taller: 0,
+    costo_mo_colocacion: 0,
+    costo_telas: 0,
     costo_total: costoPerfiles + costoInteriores + costoAccesorios,
     multiplicador: mult,
     contexto: ctxBase,

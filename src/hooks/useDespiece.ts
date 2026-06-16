@@ -15,6 +15,10 @@ import type {
   DespiecePerfilHoja,
   DespiecePerfilMarco,
   DespieceInterior,
+  DespieceAccesorioMarco,
+  DespieceAccesorioHoja,
+  DespieceAccesorioInterior,
+  DespieceAccesorioCruce,
 } from "@/types";
 
 // Catálogos generales
@@ -70,66 +74,107 @@ export function useDespiece(
     queryFn: async () => {
       if (!idMarco && !idHoja) return null;
 
-      const [rMarco, rHoja, rMosquitero, rInterior, rCruce, rCV, rCVE, rVR] =
-        await Promise.all([
-          idMarco
-            ? supabase
-                .schema("opendata")
-                .from("despiece_perfiles_marco")
-                .select("*")
-                .eq("id_marco", idMarco)
-            : null,
-          idHoja
-            ? supabase
-                .schema("opendata")
-                .from("despiece_perfiles_hoja")
-                .select("*")
-                .eq("id_hoja", idHoja)
-            : null,
-          idMosquitero
-            ? supabase
-                .schema("opendata")
-                .from("despiece_perfiles_mosquitero")
-                .select("*")
-                .eq("id_mosquitero", idMosquitero)
-            : null,
-          idInterior
-            ? supabase
-                .schema("opendata")
-                .from("despiece_interior")
-                .select("*")
-                .eq("id_interior", idInterior)
-            : null,
-          idCruce
-            ? supabase
-                .schema("opendata")
-                .from("despiece_cruces")
-                .select("*")
-                .eq("id_cruces", idCruce)
-            : null,
-
-          idContravidrio
-            ? supabase
-                .schema("opendata")
-                .from("despiece_perfiles_contravidrio")
-                .select("*")
-                .eq("id_contravidrio", idContravidrio)
-            : null,
-          idContravidrioExt
-            ? supabase
-                .schema("opendata")
-                .from("despiece_perfiles_contravidrio_ext")
-                .select("*")
-                .eq("id_contravidrio", idContravidrioExt)
-            : null,
-          idInterior
-            ? supabase
-                .schema("opendata")
-                .from("despiece_perfiles_vidrio_repartido")
-                .select("*")
-                .eq("id_vr", idInterior)
-            : null,
-        ]);
+      const [
+        rMarco,
+        rHoja,
+        rMosquitero,
+        rInterior,
+        rCruce,
+        rCV,
+        rCVE,
+        rVR,
+        rAccMarco,
+        rAccHoja,
+        rAccInterior,
+        rAccCruces,
+      ] = await Promise.all([
+        // ── Perfiles ──────────────────────────────────────────────────────────
+        idMarco
+          ? supabase
+              .schema("opendata")
+              .from("despiece_perfiles_marco")
+              .select("*")
+              .eq("id_marco", idMarco)
+          : null,
+        idHoja
+          ? supabase
+              .schema("opendata")
+              .from("despiece_perfiles_hoja")
+              .select("*")
+              .eq("id_hoja", idHoja)
+          : null,
+        idMosquitero
+          ? supabase
+              .schema("opendata")
+              .from("despiece_perfiles_mosquitero")
+              .select("*")
+              .eq("id_mosquitero", idMosquitero)
+          : null,
+        idInterior
+          ? supabase
+              .schema("opendata")
+              .from("despiece_interior")
+              .select("*")
+              .eq("id_interior", idInterior)
+          : null,
+        idCruce
+          ? supabase
+              .schema("opendata")
+              .from("despiece_cruces")
+              .select("*")
+              .eq("id_cruces", idCruce)
+          : null,
+        idContravidrio
+          ? supabase
+              .schema("opendata")
+              .from("despiece_perfiles_contravidrio")
+              .select("*")
+              .eq("id_contravidrio", idContravidrio)
+          : null,
+        idContravidrioExt
+          ? supabase
+              .schema("opendata")
+              .from("despiece_perfiles_contravidrio_ext")
+              .select("*")
+              .eq("id_contravidrio", idContravidrioExt)
+          : null,
+        idInterior
+          ? supabase
+              .schema("opendata")
+              .from("despiece_perfiles_vidrio_repartido")
+              .select("*")
+              .eq("id_vr", idInterior)
+          : null,
+        // ── Accesorios ────────────────────────────────────────────────────────
+        idMarco
+          ? supabase
+              .schema("opendata")
+              .from("despiece_accesorios_marco")
+              .select("*")
+              .eq("id_marco", idMarco)
+          : null,
+        idHoja
+          ? supabase
+              .schema("opendata")
+              .from("despiece_accesorios_hoja")
+              .select("*")
+              .eq("id_hoja", idHoja)
+          : null,
+        idInterior
+          ? supabase
+              .schema("opendata")
+              .from("despiece_accesorios_interior")
+              .select("*")
+              .eq("id_interior", idInterior)
+          : null,
+        idCruce
+          ? supabase
+              .schema("opendata")
+              .from("despiece_accesorios_cruces")
+              .select("*")
+              .eq("id_cruces", idCruce)
+          : null,
+      ]);
 
       return {
         dpMarco: (rMarco?.data ?? []) as DespiecePerfilMarco[],
@@ -140,6 +185,12 @@ export function useDespiece(
         dpCV: (rCV?.data ?? []) as DespiecePerfilContravidrio[],
         dpCVE: (rCVE?.data ?? []) as DespiecePerfilContravidrio[],
         dpVR: rVR?.data ?? [],
+        // Accesorios
+        dpAccMarco: (rAccMarco?.data ?? []) as DespieceAccesorioMarco[],
+        dpAccHoja: (rAccHoja?.data ?? []) as DespieceAccesorioHoja[],
+        dpAccInterior: (rAccInterior?.data ??
+          []) as DespieceAccesorioInterior[],
+        dpAccCruces: (rAccCruces?.data ?? []) as DespieceAccesorioCruce[],
       };
     },
     enabled: !!detalle && (!!idMarco || !!idHoja),
@@ -200,6 +251,11 @@ export function useDespiece(
           ...despieceRules.dpCV,
           ...despieceRules.dpCVE,
         ] as DespiecePerfilContravidrio[],
+
+        rules_accesorios_marco: despieceRules.dpAccMarco,
+        rules_accesorios_hoja: despieceRules.dpAccHoja,
+        rules_accesorios_interior: despieceRules.dpAccInterior,
+        rules_accesorios_cruces: despieceRules.dpAccCruces,
 
         // Lookup O(1) usando Map preconstruido
         find_despiece_contravidrio: (idContravidrio) => {
