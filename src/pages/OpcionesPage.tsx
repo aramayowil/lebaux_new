@@ -131,10 +131,10 @@ export default function OpcionesPage() {
       {/* ── Sticky Header ── */}
       <header className="sticky top-0 z-10 flex items-center justify-between px-6 py-2 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-steel-900 shrink-0">
         <div>
-          <h2 className="text-2xl font-extrabold text-zinc-800 dark:text-zinc-100 tracking-tight">
+          <h2 className="text-2xl font-black text-zinc-800 dark:text-zinc-100 tracking-tight">
             Configuración del Sistema
           </h2>
-          <p className="text-zinc-400 dark:text-zinc-500 text-xs mt-0.5 font-medium">
+          <p className="text-zinc-400 dark:text-zinc-500 text-xs mt-1 font-medium">
             Ajustes globales, coeficientes de ganancia y cómputos de taller.
           </p>
         </div>

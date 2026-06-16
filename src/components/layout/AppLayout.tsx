@@ -1,4 +1,4 @@
-import { Outlet, NavLink } from "react-router-dom";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import {
   Home,
@@ -59,6 +59,7 @@ const NAV: {
 ];
 
 export default function AppLayout() {
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const { dark, toggle } = useTheme();
   const [hasNotifications, setHasNotifications] = useState(true);
@@ -234,10 +235,11 @@ export default function AppLayout() {
             >
               <DropdownItem
                 key="profile-header"
+                textValue={`Perfil de ${user.name}`}
                 className="h-14 gap-2 opacity-100 cursor-default pointer-events-none border-b border-steel-100 dark:border-steel-800"
               >
-                <div className="flex items-center gap-2">
-                  <Avatar src={user.avatar} className="w-5 h-5 text-xs" />
+                <div className="flex items-center gap-3">
+                  <Avatar src={user.avatar} className="w-9 h-9 text-xs" />
                   <div className="flex flex-col">
                     <p className="font-semibold text-sm text-steel-900 dark:text-steel-100">
                       {user.name}
@@ -253,7 +255,9 @@ export default function AppLayout() {
 
               <DropdownItem
                 key="profile"
+                textValue="Perfil"
                 startContent={<User className="w-4 h-4" />}
+                onPress={() => navigate("/perfil")}
               >
                 Mi Perfil
               </DropdownItem>
@@ -266,6 +270,7 @@ export default function AppLayout() {
 
               <DropdownItem
                 key="theme"
+                textValue="Tema"
                 closeOnSelect={false}
                 onClick={toggle}
                 startContent={
@@ -281,12 +286,14 @@ export default function AppLayout() {
 
               <DropdownItem
                 key="feedback"
+                textValue="Feedback"
                 startContent={<MessageSquare className="w-4 h-4" />}
               >
                 Feedback
               </DropdownItem>
               <DropdownItem
                 key="support"
+                textValue="Ayuda y soporte"
                 startContent={<HelpCircle className="w-4 h-4" />}
               >
                 Ayuda & Soporte
@@ -294,6 +301,7 @@ export default function AppLayout() {
 
               <DropdownItem
                 key="logout"
+                textValue="Cerrar sesión"
                 className="text-danger"
                 color="danger"
                 startContent={<LogOut className="w-4 h-4" />}

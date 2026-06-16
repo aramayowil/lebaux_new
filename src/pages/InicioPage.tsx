@@ -25,11 +25,11 @@ import clsx from "clsx";
 import { usePerfiles } from "@/hooks/catalogo/usePerfiles";
 import { useAccesorios } from "@/hooks/catalogo/useAccesorios";
 import { useTratamientos } from "@/hooks/catalogo/useTratamientos";
-import { useOpciones } from "@/hooks/catalogo/useOpciones";
 import { useLineas } from "@/hooks/catalogo/useLineas";
 import type { Obra } from "@/types";
 
 import InicioPageSkeleton from "@/components/ui/skeletons/InicioPageSkeleton";
+import { useMiPerfil } from "@/hooks/usuarios/useMiPerfil";
 
 // ── DATA MOCK ────────────────────────────────────────────────────────────────
 const obras: Obra[] = [
@@ -245,17 +245,17 @@ export default function InicioPage() {
     useAccesorios();
   const { data: tratamientos = [], isLoading: loadingTratamientos } =
     useTratamientos();
-  const { data: opciones, isLoading: loadingOpciones } = useOpciones();
+  const { data: perfil, isLoading: loadingPerfil } = useMiPerfil();
   const { data: lineas = [], isLoading: loadingLineas } = useLineas();
 
   const isLoadingGlobal =
     loadingPerfiles ||
     loadingAccesorios ||
     loadingTratamientos ||
-    loadingOpciones ||
-    loadingLineas;
+    loadingLineas ||
+    loadingPerfil;
 
-  const nombre = opciones?.nombre ?? "Usuario";
+  const nombre = perfil?.nombre.split(" ")[0] || "Usuario";
 
   const dataLineas = lineas
     .map((l) => ({
@@ -510,8 +510,9 @@ export default function InicioPage() {
   return (
     <div className="flex flex-col h-full">
       {/* ── HEADER ────────────────────────────────────────────────────────── */}
-      <header className="shrink-0 px-6 pt-3 pb-3 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0">
+        <div className="flex items-center justify-between w-full gap-4">
+          {/* Contenido Izquierdo */}
           <div>
             {isLoadingGlobal ? (
               <div className="w-56 h-7 bg-zinc-100 dark:bg-zinc-800 rounded-lg animate-pulse" />
@@ -520,7 +521,7 @@ export default function InicioPage() {
                 {getGreeting(nombre)}
               </h2>
             )}
-            <p className="text-zinc-400 dark:text-zinc-500 text-xs mt-1.5 flex items-center gap-1.5 font-medium capitalize">
+            <p className="text-zinc-400 dark:text-zinc-500 text-xs mt-0.5 flex items-center gap-1.5 font-medium capitalize">
               <Calendar className="w-3.5 h-3.5 shrink-0" />
               {new Date().toLocaleDateString("es-AR", {
                 weekday: "long",
@@ -531,18 +532,18 @@ export default function InicioPage() {
             </p>
           </div>
 
-          {/* Mini KPI strip */}
+          {/* Mini KPI strip - Alineados verticalmente */}
           <div className="hidden md:flex items-center gap-2">
-            <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/50 rounded-xl px-3 py-2">
+            <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/50 rounded-lg px-3 py-1.5">
               <Activity className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
-                {obras.length} obras activas
+              <span className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                {obras.length} obras
               </span>
             </div>
-            <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/50 rounded-xl px-3 py-2">
+            <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/50 rounded-lg px-3 py-1.5">
               <Zap className="w-3.5 h-3.5 text-lebaux-amber shrink-0" />
-              <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
-                {perfiles.length + accesorios.length} ítems de catálogo
+              <span className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                {perfiles.length + accesorios.length} ítems
               </span>
             </div>
           </div>
