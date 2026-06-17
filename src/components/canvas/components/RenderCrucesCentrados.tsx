@@ -1,5 +1,5 @@
 import { Group, Rect } from "react-konva";
-import type { ObraDetalle, Vidrio } from "@/types";
+import type { ObraDetalle, Perfil, Vidrio } from "@/types";
 import { RenderCelda } from "./RenderCelda";
 import { JSX } from "react";
 
@@ -8,6 +8,7 @@ type Color = {
   catalogVidrios: Vidrio[];
   contorno: string;
   lineasCotas: string;
+  perfiles: Perfil[];
 };
 
 interface RenderCrucesCentradosProps {

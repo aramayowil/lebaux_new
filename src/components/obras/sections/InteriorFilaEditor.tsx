@@ -12,8 +12,6 @@ const SEL = {
 };
 type ModoRelleno = "simple" | "dvh" | "revestimiento";
 
-const OPCIONES_CAMARA = ["6", "9", "12", "15", "18"];
-
 // ── Subcomponente de Edición de Filas ────────────────────────────────────────
 export default function InteriorFilaEditor({
   label,
@@ -142,20 +140,30 @@ export default function InteriorFilaEditor({
               selectedKeys={(() => {
                 const val = detalle?.[camaraKey];
                 if (val == null) return new Set<string>();
-                return OPCIONES_CAMARA.includes(String(val))
+                return perfiles.some(
+                  (p) => p.es_camara_europea && String(p.id) === String(val),
+                )
                   ? new Set([String(val)])
                   : new Set<string>();
               })()}
-              onSelectionChange={(k: any) =>
-                upd({ [camaraKey]: ([...k][0] as string) || null } as any)
-              }
+              onSelectionChange={(k: any) => {
+                const selected = [...k][0] as string;
+                upd({ [camaraKey]: selected ? Number(selected) : null } as any);
+              }}
               classNames={SEL}
             >
-              {OPCIONES_CAMARA.map((c) => (
-                <SelectItem key={c} textValue={`${c}mm`}>
-                  <span className="font-mono text-xs">{c} mm</span>
-                </SelectItem>
-              ))}
+              {perfiles
+                .filter((p) => p.es_camara_europea && p.nro_perfil)
+                .map((c) => (
+                  <SelectItem
+                    key={String(c.id)}
+                    textValue={c.descri ?? c.nro_perfil!}
+                  >
+                    <span className="font-mono text-xs">
+                      {String(c.descri?.split(" ")[2] || "Sin cámara")}
+                    </span>
+                  </SelectItem>
+                ))}
             </Select>
           </div>
           {detalle?.[dvh1Key] && detalle?.[camaraKey] && detalle?.[dvh2Key] && (
@@ -163,7 +171,14 @@ export default function InteriorFilaEditor({
               Composición:{" "}
               {vidrios.find((v) => String(v.id) === String(detalle[dvh1Key]))
                 ?.espesor ?? "?"}{" "}
-              / {String(detalle[camaraKey])} /{" "}
+              /{" "}
+              {String(
+                perfiles
+                  .find((p) => String(p.id) === String(detalle[camaraKey]))
+                  ?.descri?.split(" ")[2]
+                  .split("mm")[0] || "Sin cámara",
+              )}{" "}
+              /{" "}
               {vidrios.find((v) => String(v.id) === String(detalle[dvh2Key]))
                 ?.espesor ?? "?"}
             </div>
@@ -190,7 +205,7 @@ export default function InteriorFilaEditor({
             classNames={SEL}
           >
             {perfiles
-              .filter((p) => !p.bloqueado)
+              .filter((p) => (p.cubre ?? 0) > 0)
               .map((p) => (
                 <SelectItem
                   key={p.nro_perfil}

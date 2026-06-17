@@ -21,13 +21,15 @@ import {
   Layers,
   Square,
   SquaresSubtract,
-  Eraser,
   Loader2,
   PanelRightClose,
   PanelRightOpen,
   Settings2,
   PenLine,
   CircleCheckBig,
+  Drill,
+  FilePlusCorner,
+  PencilRuler,
 } from "lucide-react";
 import clsx from "clsx";
 import TipologiaCanvas from "@/components/canvas/TipologiaCanvas";
@@ -94,6 +96,8 @@ export default function ObraEditorPage() {
   const [localAncho, setLocalAncho] = useState("");
   const [localAlto, setLocalAlto] = useState("");
   const [localCantidad, setLocalCantidad] = useState("");
+  const [moColocacion, setMoColocacion] = useState<number>(0);
+  const [localMoColocacion, setLocalMoColocacion] = useState("0");
 
   // ── HOOKS DE CARGA DE DATOS ───────────────────────────────────────────────
   const { data: obra, isLoading: loadObra } = useObra(idObra);
@@ -580,7 +584,21 @@ export default function ObraEditorPage() {
               {/* 2. FILA INFERIOR: BARRA DE HERRAMIENTAS Y AJUSTES */}
               <div className="w-full flex justify-center pb-4 pt-2 bg-gradient-to-t from-zinc-50 via-zinc-50/80 to-transparent dark:from-zinc-950 dark:via-zinc-950/80 pointer-events-none z-50">
                 <div className="bg-white/90 dark:bg-zinc-900/95 backdrop-blur-md shadow-xl border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-2 flex items-center gap-1 pointer-events-auto">
-                  <Tooltip content="Añadir Travesaño Horizontal" delay={400}>
+                  <Tooltip content="Modo Edición">
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      className="rounded-xl h-9 w-9 text-zinc-600 dark:text-zinc-300"
+                      onPress={() =>
+                        console.log("Agregar Travesaño Horizontal")
+                      }
+                    >
+                      <PencilRuler className="h-5 w-5" />
+                    </Button>
+                  </Tooltip>
+
+                  <Tooltip content="Añadir Travesaño Horizontal">
                     <Button
                       isIconOnly
                       size="sm"
@@ -594,7 +612,7 @@ export default function ObraEditorPage() {
                     </Button>
                   </Tooltip>
 
-                  <Tooltip content="Añadir Travesaño Vertical" delay={400}>
+                  <Tooltip content="Añadir Travesaño Vertical">
                     <Button
                       isIconOnly
                       size="sm"
@@ -752,14 +770,89 @@ export default function ObraEditorPage() {
                     </PopoverContent>
                   </Popover>
 
-                  <Tooltip content="Limpiar Modificaciones" delay={400}>
+                  <Popover placement="top" offset={20} showArrow={true}>
+                    <PopoverTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant={moColocacion > 0 ? "flat" : "light"}
+                        color={moColocacion > 0 ? "warning" : "default"}
+                        className="rounded-xl h-9 w-9"
+                      >
+                        <Drill className="h-5 w-5" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="p-3 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl rounded-xl">
+                      <div className="flex flex-col gap-3 w-52">
+                        <div>
+                          <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                            Colocación
+                          </p>
+                          <p className="text-[10px] text-zinc-400 mt-0.5">
+                            M.O. de colocación por tipología
+                          </p>
+                        </div>
+
+                        <Input
+                          label="Precio de colocación"
+                          size="sm"
+                          variant="faded"
+                          type="number"
+                          min={0}
+                          startContent={
+                            <span className="text-zinc-400 text-xs">$</span>
+                          }
+                          value={localMoColocacion}
+                          onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
+                            e.target.select()
+                          }
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setLocalMoColocacion(e.target.value)
+                          }
+                          onBlur={() => {
+                            const val = parseFloat(localMoColocacion) || 0;
+                            setMoColocacion(val);
+                            setLocalMoColocacion(String(val));
+                          }}
+                          onKeyDown={(
+                            e: React.KeyboardEvent<HTMLInputElement>,
+                          ) => {
+                            if (e.key === "Enter") {
+                              const val = parseFloat(localMoColocacion) || 0;
+                              setMoColocacion(val);
+                            }
+                          }}
+                          classNames={{
+                            input:
+                              "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                          }}
+                        />
+
+                        {moColocacion > 0 && (
+                          <button
+                            onClick={() => {
+                              setMoColocacion(0);
+                              setLocalMoColocacion("0");
+                            }}
+                            className="text-[10px] text-zinc-400 hover:text-red-500 text-left transition-colors"
+                          >
+                            Limpiar
+                          </button>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <Tooltip content="Crear Presupuesto">
                     <Button
                       isIconOnly
                       size="sm"
                       variant="light"
-                      className="rounded-xl h-9 w-9 text-zinc-400 hover:text-red-500"
+                      className="rounded-xl h-9 w-9 text-zinc-600 dark:text-zinc-300"
+                      onPress={() =>
+                        console.log("Agregar Travesaño Horizontal")
+                      }
                     >
-                      <Eraser className="h-5 w-5" />
+                      <FilePlusCorner className="h-5 w-5" />
                     </Button>
                   </Tooltip>
                 </div>
@@ -826,6 +919,7 @@ export default function ObraEditorPage() {
       {selectedId && (
         <DespieceModal
           idTipologia={selectedId}
+          moColocacion={moColocacion}
           isOpen={showDespieceModal}
           onClose={() => setShowDespieceModal(false)}
         />

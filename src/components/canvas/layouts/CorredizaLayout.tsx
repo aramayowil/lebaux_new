@@ -1,5 +1,5 @@
 import { Group, Rect, Arrow } from "react-konva";
-import type { ObraTipologia, ObraDetalle, Vidrio } from "@/types";
+import type { ObraTipologia, ObraDetalle, Vidrio, Perfil } from "@/types";
 import { RenderCelda } from "../components/RenderCelda";
 import { RenderCrucesCentrados } from "../components/RenderCrucesCentrados";
 import { RenderCrucesVariables } from "../components/RenderCrucesVariables";
@@ -16,6 +16,7 @@ interface LayoutProps {
     catalogVidrios: Vidrio[];
     contorno: string;
     lineasCotas: string;
+    perfiles: Perfil[];
   };
 }
 

@@ -33,7 +33,7 @@ export interface Perfil {
   material?: number | null;
   id_moneda?: number | null;
   cubre?: number | null;
-  bloqueado: boolean;
+  es_camara_europea: boolean;
   minimo_reutilizable?: number | null; // DB: double precision (Largo mínimo en mm para scrap/reutilizar)
 }
 

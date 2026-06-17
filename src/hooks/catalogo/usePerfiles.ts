@@ -20,6 +20,39 @@ export function usePerfiles() {
   });
 }
 
+export function usePerfilById(id: number) {
+  return useQuery({
+    queryKey: [TABLE, id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .schema(SQUEMA)
+        .from(TABLE)
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      return data as Perfil;
+    },
+  });
+}
+
+export function usePerfilesByLinea(lineaId: number | undefined) {
+  return useQuery({
+    queryKey: [TABLE, lineaId],
+    queryFn: async () => {
+      if (!lineaId) return [];
+      const { data, error } = await supabase
+        .schema(SQUEMA)
+        .from(TABLE)
+        .select("*")
+        .eq("id_linea", lineaId);
+
+      if (error) throw error;
+      return data as Perfil[];
+    },
+  });
+}
+
 // --- 2. CREAR (insert) ---
 export function useCreatePerfil() {
   const queryClient = useQueryClient();

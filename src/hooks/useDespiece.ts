@@ -196,8 +196,6 @@ export function useDespiece(
     enabled: !!detalle && (!!idMarco || !!idHoja),
   });
 
-  console.log("Despiece Rules", despieceRules);
-
   const catalogosLoading =
     loadPerfiles ||
     loadAccesorios ||

@@ -79,6 +79,7 @@ export default function TipologiaConfigPanel({
   const ancho = detalle.ancho ?? 0;
   const alto = detalle.alto ?? 0;
 
+  console.log("detalle", detalle);
   return (
     <div className="h-full flex flex-col bg-white dark:bg-zinc-950 border-zinc-200/80 select-none">
       {/* HEADER DE COMPONENTE */}

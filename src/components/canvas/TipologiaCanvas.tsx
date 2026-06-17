@@ -17,6 +17,7 @@ import BanderolaLayout from "./layouts/BanderolaLayout";
 import PuertaRebatibleLayout from "./layouts/PuertaRebatible";
 import ProjectanteLayout from "./layouts/ProjectanteLayout";
 import { FallbackLayout } from "./layouts/FallbackLayout";
+import { usePerfilesByLinea } from "@/hooks/catalogo/usePerfiles";
 
 interface Props {
   tipologia: ObraTipologia;
@@ -45,6 +46,12 @@ export default function TipologiaCanvas({
     isPending: pendingHoja,
     error: errorHoja,
   } = useHojasById(detalles.hoja ?? undefined);
+
+  const {
+    data: catalogosPerfiles,
+    isPending: pendingCatalogosPerfiles,
+    error: errorCatalogosPerfiles,
+  } = usePerfilesByLinea(detalles.id_linea ?? undefined);
 
   const {
     data: tratamiento,
@@ -172,6 +179,26 @@ export default function TipologiaCanvas({
     );
   }
 
+  if (
+    !catalogosPerfiles &&
+    !pendingCatalogosPerfiles &&
+    !errorCatalogosPerfiles
+  ) {
+    return (
+      <div className="flex items-center justify-center h-64 text-amber-600 font-medium border border-amber-200 bg-amber-50 rounded-xl p-4">
+        Los perfiles asignados a esta abertura ya no existen en el sistema.
+      </div>
+    );
+  }
+
+  if (!catalogosPerfiles || catalogosPerfiles.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64 text-amber-600 font-medium border border-amber-200 bg-amber-50 rounded-xl p-4">
+        Los perfiles asignados a esta abertura ya no existen en el sistema.
+      </div>
+    );
+  }
+
   if (tieneHojaValida && !hoja_detalle) {
     return (
       <div className="flex items-center justify-center h-64 text-amber-600 font-medium border border-amber-200 bg-amber-50 rounded-xl p-4">
@@ -207,6 +234,7 @@ export default function TipologiaCanvas({
       colorAluminioBase !== "#FFFCFC"
         ? invertirColor(colorAluminioBase)
         : "#f59e0b",
+    perfiles: catalogosPerfiles,
     lineasCotas: "#78716c",
     revestimiento: "#94a3b8",
   };

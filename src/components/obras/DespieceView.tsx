@@ -84,6 +84,7 @@ export default function DespieceView({ resultado, titulo }: Props) {
     costo_perfiles = 0,
     costo_interiores = 0,
     costo_accesorios = 0,
+    costo_tratamiento = 0,
     costo_mo_taller = 0,
     costo_mo_colocacion = 0,
     multiplicador = 1,
@@ -93,6 +94,7 @@ export default function DespieceView({ resultado, titulo }: Props) {
   // ── Factores de margen (porcentaje sobre cada rubro, igual que Access) ──────
   // En Access: precio_con_ganancia = precio_base * (1 + porcentaje/100)
   const pctPerf = (opciones.porcentaje_sobre_perfiles ?? 0) / 100;
+  const pctTrat = (opciones.porcentaje_sobre_pinturas ?? 0) / 100;
   const pctVid = (opciones.porcentaje_sobre_vidrios ?? 0) / 100;
   const pctAcc = (opciones.porcentaje_sobre_accesorios ?? 0) / 100;
   const pctMano = (opciones.porcentaje_sobre_mano ?? 0) / 100;
@@ -166,9 +168,9 @@ export default function DespieceView({ resultado, titulo }: Props) {
     },
     {
       label: "Tratamientos",
-      costo: 0,
-      conIva: 0,
-      conGanancia: 0,
+      costo: costo_tratamiento,
+      conIva: costo_tratamiento * (1 + ivaPct),
+      conGanancia: costo_tratamiento * (1 + pctTrat) * (1 + ivaPct),
       color: "#94a3b8",
     },
     {
@@ -477,12 +479,13 @@ export default function DespieceView({ resultado, titulo }: Props) {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-stone-200 dark:border-stone-700">
-                    <Th>Módulo</Th>
+                    <Th>Módulo / Ubicación</Th>
                     <Th>Tipo</Th>
+                    <Th>Descripción vidrio</Th>
                     <Th right>Cant.</Th>
-                    <Th right>Ancho (mm)</Th>
-                    <Th right>Alto (mm)</Th>
-                    <Th right>Área (m²)</Th>
+                    <Th right>Ancho mm</Th>
+                    <Th right>Alto mm</Th>
+                    <Th right>Área m²</Th>
                     <Th right>Precio m²</Th>
                     <Th right>Costo</Th>
                   </tr>
@@ -491,16 +494,46 @@ export default function DespieceView({ resultado, titulo }: Props) {
                   {interiores.map((item, idx) => {
                     const areaM2 = (item.ancho / 1000) * (item.alto / 1000);
                     const precioM2 = areaM2 > 0 ? item.precio / areaM2 : 0;
+                    // Separador visual cada vez que cambia la hoja
+                    const prevHoja =
+                      idx > 0 ? interiores[idx - 1]?.numero_hoja : null;
+                    const cambioDeBuja =
+                      item.numero_hoja != null &&
+                      item.numero_hoja !== prevHoja &&
+                      idx > 0;
                     return (
                       <tr
                         key={idx}
-                        className="hover:bg-stone-50 dark:hover:bg-stone-800/30"
+                        className={`hover:bg-stone-50 dark:hover:bg-stone-800/30 ${
+                          cambioDeBuja
+                            ? "border-t-2 border-stone-300 dark:border-stone-600"
+                            : ""
+                        }`}
                       >
-                        <td className="py-1.5 pr-3 text-stone-500">
+                        {/* Módulo: "Hoja 1 → Paño Sup → Vid. Ext." */}
+                        <td className="py-1.5 pl-1 pr-3 text-stone-600 dark:text-stone-300 font-medium whitespace-nowrap">
                           {item.modulo ?? `Paño ${idx + 1}`}
                         </td>
+                        {/* Chip tipo + cara DVH */}
                         <td className="py-1.5 pr-3">
-                          <IntTipoChip tipo={item.tipo} />
+                          <IntTipoChip
+                            tipo={item.tipo}
+                            esDvh={item.es_dvh}
+                            cara={item.cara}
+                          />
+                        </td>
+                        {/* Descripción vidrio + cámara */}
+                        <td className="py-1.5 pr-3">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-stone-600 dark:text-stone-300">
+                              {item.descripcion_vidrio ?? "—"}
+                            </span>
+                            {item.es_dvh && item.descripcion_camara && (
+                              <span className="text-[10px] text-stone-400 dark:text-stone-500 italic">
+                                Cámara: {item.descripcion_camara}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <Td right mono>
                           {item.cantidad}
@@ -512,7 +545,6 @@ export default function DespieceView({ resultado, titulo }: Props) {
                           {item.alto.toFixed(1)}
                         </Td>
                         <Td right mono>
-                          {/* Conversión mm → m²: (ancho_mm/1000) × (alto_mm/1000) */}
                           {areaM2.toFixed(4)}
                         </Td>
                         <Td right mono>
@@ -527,7 +559,7 @@ export default function DespieceView({ resultado, titulo }: Props) {
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-stone-300 dark:border-stone-600 font-semibold text-xs">
-                    <td colSpan={5} className="py-2 text-stone-500">
+                    <td colSpan={6} className="py-2 text-stone-500">
                       TOTAL VIDRIOS
                     </td>
                     <td className="text-right font-mono py-2">
@@ -993,7 +1025,36 @@ function EficienciaChip({ v }: { v: number }) {
   return <span className={`font-mono text-[10px] ${color}`}>{pct}%</span>;
 }
 
-function IntTipoChip({ tipo }: { tipo: string }) {
+function IntTipoChip({
+  tipo,
+  esDvh,
+  cara,
+}: {
+  tipo: string;
+  esDvh?: boolean;
+  cara?: "interior" | "exterior" | "simple";
+}) {
+  // DVH: chip principal + sub-chip de cara
+  if (esDvh) {
+    const isExt = cara === "exterior";
+    return (
+      <div className="flex flex-col gap-0.5 w-fit">
+        <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 tracking-wide">
+          DVH
+        </span>
+        <span
+          className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+            isExt
+              ? "bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400"
+              : "bg-teal-50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-400"
+          }`}
+        >
+          {isExt ? "Exterior" : "Interior"}
+        </span>
+      </div>
+    );
+  }
+
   const map: Record<string, string> = {
     Vidrio: "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400",
     Revestimiento:
@@ -1006,7 +1067,9 @@ function IntTipoChip({ tipo }: { tipo: string }) {
   };
   return (
     <span
-      className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${map[tipo] ?? "bg-stone-100 text-stone-600"}`}
+      className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+        map[tipo] ?? "bg-stone-100 text-stone-600"
+      }`}
     >
       {tipo}
     </span>

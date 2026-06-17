@@ -23,11 +23,13 @@ import { useObraDetallesByTipologia } from "@/hooks/obra/useObraDetalles";
 
 interface DespieceModalProps {
   idTipologia: number;
+  moColocacion: number;
   isOpen: boolean;
   onClose: () => void;
 }
 
 const DespieceModal = ({
+  moColocacion,
   idTipologia,
   isOpen,
   onClose,

@@ -23,6 +23,22 @@ export function useLineas(idExtrusora?: number | null) {
   });
 }
 
+export function useLineaById(id: number) {
+  return useQuery({
+    queryKey: [TABLE, id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .schema(SQUEMA)
+        .from(TABLE)
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      return data as Linea;
+    },
+  });
+}
+
 // --- 2. CREAR (insert) ---
 export function useCreateLinea() {
   const queryClient = useQueryClient();

@@ -1,14 +1,10 @@
 /**
- * Motor de Despiece – v3
+ * Motor de Despiece – v3.1
  *
- * Cambios vs v2:
- *   [NEW] DespieceInterior procesado: define cantidad de paños + medidas base
- *   [NEW] Lógica de cruces completa: descuentos de vidrio + descuento_de_si_mismo
- *   [NEW] Cruces CENTRADOS: distribuyen equitativamente
- *   [NEW] Cruces VARIABLES: usan posiciones explícitas + descuentos perimetrales
- *   [NEW] dpMosquitero: en pausa (procesado en v4)
- *   [IMPROVED] DatosProducto incluye rules_interior
- *   [IMPROVED] Validación temprana de interior
+ * Cambios vs v3:
+ *   [FIX]  PASO 4: DVH ahora genera 2 ItemInterior por hoja (cara int. + cara ext.)
+ *   [FIX]  PASO 4: Detección DVH por hoja usando dvh_N_1 / dvh_N_2 / camara_N
+ *   [NEW]  ItemInterior: campos descripcion_vidrio, numero_hoja, cara, es_dvh, descripcion_camara
  */
 
 import {
@@ -93,6 +89,16 @@ export interface CortePerfil {
   precio_total: number;
 }
 
+/**
+ * ItemInterior — representa un paño de vidrio, DVH, revestimiento u otro relleno.
+ *
+ * Campos DVH (v3.1):
+ *   - es_dvh: true cuando el paño es doble vidrio aislante
+ *   - cara: "interior" | "exterior" para los dos vidrios del DVH; "simple" para vidrio monolítico
+ *   - descripcion_vidrio: descripción del vidrio (ej. "Float 4mm", "Laminado 3+3")
+ *   - descripcion_camara: separador de cámara (ej. "Aire 12mm", "Argón 16mm")
+ *   - numero_hoja: 1-based — a qué hoja de la tipología pertenece este paño
+ */
 export interface ItemInterior {
   tipo: "Vidrio" | "Revestimiento" | "CV Int." | "CV Ext." | "VR";
   cantidad: number;
@@ -101,6 +107,12 @@ export interface ItemInterior {
   area: number;
   precio: number;
   modulo?: string;
+  // ── Nuevos campos DVH / descripción ─────────────────────────────────────
+  descripcion_vidrio?: string;
+  numero_hoja?: number;
+  cara?: "interior" | "exterior" | "simple";
+  es_dvh?: boolean;
+  descripcion_camara?: string;
 }
 
 export interface ResumenPerfil {
@@ -153,6 +165,7 @@ export interface ResultadoDespiece {
   costo_perfiles: number; // PF — perfiles naturales
   costo_interiores: number; // VD — vidrios / interiores (área m²)
   costo_accesorios: number; // AC — accesorios
+  costo_tratamiento: number; // TR — tratamiento / color de perfiles (kg × $/kg)
   costo_mo_taller: number; // MO taller (calculado desde Opciones en la vista)
   costo_mo_colocacion: number; // MO colocación (pendiente v4)
   costo_telas: number; // Telas / mosquiteros (pendiente v4)
@@ -378,8 +391,6 @@ export function calcularDespiece(
             ctxBase,
           );
 
-          // El cruce HORIZONTAL es "entero": va de extremo a extremo del ancho
-          // NO se le aplica descuento_de_si_mismo (igual que el Access original)
           const medidaCruceFinal = medidaCruceH;
 
           if (medidaCruceFinal > 0) {
@@ -415,11 +426,6 @@ export function calcularDespiece(
             ctxBase,
           );
 
-          // Fórmula Access original (MSysQueries):
-          //   ([Alto entero] - ([Descuento de si mismo] × cruces_H)) / (cruces_H + 1)
-          // Igual que el vidrio: distribuye el total después del descuento
-          // Ejemplo: alto=1000, desc_si_mismo=8, cant_H=2
-          //   (1000 - 8×2) / (2+1) = 984/3 = 328mm c/u
           let medidaCruceFinal = medidaCruceV;
           if (cant_cruces_h > 0 && ruleCruce.descuento_de_si_mismo) {
             medidaCruceFinal =
@@ -428,9 +434,6 @@ export function calcularDespiece(
           }
 
           if (medidaCruceFinal > 0) {
-            // Cantidad real de trozos del cruce V:
-            // Cada cruce V queda partido en (cant_H + 1) trozos por los cruces H
-            // Ejemplo: 2H + 1V → el único cruce V queda en 3 trozos
             const cantTrozosV =
               cant_cruces_v * (cant_cruces_h > 0 ? cant_cruces_h + 1 : 1);
             const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
@@ -462,11 +465,15 @@ export function calcularDespiece(
   }
 
   // ── PASO 4: Procesar Interior (vidrios/revestimiento) ────────────────────
+  //
+  // v3.1 — Cambios:
+  //   - DVH detectado por hoja: dvh_N_1 (interior) + dvh_N_2 (exterior) + camara_N
+  //   - Cada hoja DVH genera 2 ItemInterior (una por lámina)
+  //   - ItemInterior lleva numero_hoja, cara, es_dvh, descripcion_vidrio, descripcion_camara
 
   if (datos.rules_interior) {
     const ruleInterior = datos.rules_interior;
 
-    // Calcular cantidad de paños y sus medidas base
     const cantPanos = calcularCantidad(
       ruleInterior.formula_cantidad_interiores ?? "1",
       ctxBase,
@@ -485,8 +492,7 @@ export function calcularDespiece(
       `${cantPanos} paños, base: ${anchoPanoBase}×${altoPanoBase}mm`,
     );
 
-    // APLICAR DESCUENTOS DE CRUCES
-
+    // Aplicar descuentos de cruces
     let anchoVidrio = anchoPanoBase;
     let altoVidrio = altoPanoBase;
 
@@ -508,120 +514,209 @@ export function calcularDespiece(
       );
     }
 
-    // Redondear para manufactura
     const anchoRedondo = Math.round(anchoVidrio);
     const altoRedondo = Math.round(altoVidrio);
     const area = (anchoRedondo / 1000) * (altoRedondo / 1000);
 
-    // Obtener tipo de interior (vidrio o revestimiento)
-    const tipoInterior = getDetalleStr(detalle, "interior_1");
-    const dvhVal = getDetalleStr(detalle, "dvh_1_1");
-    const revestVal = getDetalleStr(detalle, "revest_1");
+    // ── Detectar tipo base (para saber si es revestimiento) ────────────────
+    const tipoBase1 = getDetalleStr(detalle, "interior_1");
+    const esRevestimientoBase = tipoBase1 === "REVESTIMIENTO";
 
-    let esVidrio = false;
-    let esRevestimiento = false;
-    let idVidrio: string | null = null;
-    let idPerfilRevest: string | null = null;
+    if (esRevestimientoBase) {
+      // ── REVESTIMIENTO ────────────────────────────────────────────────────
+      const revestVal = getDetalleStr(detalle, "revest_1");
 
-    if (dvhVal) {
-      esVidrio = true;
-      idVidrio = dvhVal;
-    } else if (tipoInterior === "VIDRIO") {
-      esVidrio = true;
-      idVidrio = null;
-    } else if (tipoInterior === "REVESTIMIENTO") {
-      esRevestimiento = true;
-      idPerfilRevest = revestVal;
-    } else if (tipoInterior && tipoInterior !== "null") {
-      esVidrio = true;
-      idVidrio = tipoInterior;
-    }
-
-    // Procesar vidrio
-    if (esVidrio) {
-      let vid: Vidrio | undefined;
-      if (idVidrio) {
-        vid = datos.catalog_vidrios.find(
-          (v) => v.id.toString() === idVidrio || v.codigo === idVidrio,
+      if (revestVal) {
+        const perfilRevest = datos.catalog_perfiles.find(
+          (p) => p.nro_perfil === revestVal || p.id.toString() === revestVal,
         );
-        if (!vid) {
-          log.warn("vidrio", `Vidrio id="${idVidrio}" no encontrado`);
+
+        if (perfilRevest) {
+          const pasoTablilla = 100;
+          const orientacion = getDetalleStr(detalle, "direcc_1") ?? "H";
+          const cantidadTablillas =
+            orientacion === "H"
+              ? Math.ceil(altoVidrio / pasoTablilla)
+              : Math.ceil(anchoVidrio / pasoTablilla);
+          const medidaCorteTablilla =
+            orientacion === "H" ? anchoVidrio : altoVidrio;
+
+          const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
+            perfilRevest,
+            medidaCorteTablilla,
+            cantidadTablillas,
+          );
+
+          cortes.push({
+            id: cortId++,
+            nivel: "Interior",
+            nro_perfil: perfilRevest.nro_perfil?.toString() ?? "REV",
+            descripcion_perfil: perfilRevest.descri ?? "Tablilla",
+            angulo: "90°/90°",
+            cantidad: cantidadTablillas,
+            medida_mm: medidaCorteTablilla,
+            total_mm: medidaCorteTablilla * cantidadTablillas,
+            kg,
+            precio_unitario,
+            precio_total,
+          });
+
+          interiorsCalc.push({
+            tipo: "Revestimiento",
+            cantidad: cantidadTablillas,
+            ancho: medidaCorteTablilla,
+            alto: pasoTablilla,
+            area,
+            precio: precio_total,
+            modulo: `Hoja 1`,
+            numero_hoja: 1,
+            cara: "simple",
+          });
+
+          log.info(
+            "interior",
+            `${cantidadTablillas} tablillas de ${medidaCorteTablilla}mm`,
+          );
+        } else {
+          log.warn(
+            "interior",
+            `Perfil revestimiento id="${revestVal}" no encontrado`,
+          );
         }
       }
+    } else {
+      // ── VIDRIOS (simple o DVH) — procesado por paño/hoja ─────────────────
 
-      const precioM2Vidrio = vid
-        ? (vid.precio ?? 0) /
-          (((vid.altura ?? 1) / 1000) * ((vid.base ?? 1) / 1000))
-        : 0;
+      /**
+       * Busca un vidrio en el catálogo por ID numérico o código string.
+       * Devuelve undefined si no se encuentra o si el id es vacío/nulo.
+       */
+      const resolveVid = (
+        idStr: string | null | undefined,
+      ): Vidrio | undefined => {
+        if (!idStr || idStr === "null" || idStr === "undefined")
+          return undefined;
+        return datos.catalog_vidrios.find(
+          (v) => v.id.toString() === idStr || v.codigo === idStr,
+        );
+      };
+
+      /**
+       * Calcula precio por m² dado un vidrio del catálogo.
+       * Usa base × altura del catálogo para calcular el m² de referencia.
+       */
+      const precioM2Vid = (vid: Vidrio | undefined): number => {
+        if (!vid) return 0;
+        const baseM = (vid.base ?? 1) / 1000;
+        const altM = (vid.altura ?? 1) / 1000;
+        const m2Ref = baseM * altM;
+        return m2Ref > 0 ? (vid.precio ?? 0) / m2Ref : 0;
+      };
 
       for (let i = 0; i < cantPanos; i++) {
-        interiorsCalc.push({
-          tipo: "Vidrio",
-          cantidad: 1,
-          ancho: anchoRedondo,
-          alto: altoRedondo,
-          area,
-          precio: vid ? precioM2Vidrio * area : 0,
-          modulo: `Paño ${i + 1}`,
-        });
-      }
-      log.info(
-        "interior",
-        `${cantPanos} vidrios de ${anchoRedondo}×${altoRedondo}mm`,
-      );
-    }
+        const paneNum = i + 1; // 1-based (= número de hoja)
 
-    // Procesar revestimiento
-    else if (esRevestimiento && idPerfilRevest) {
-      const perfilRevest = datos.catalog_perfiles.find(
-        (p) =>
-          p.nro_perfil === idPerfilRevest || p.id.toString() === idPerfilRevest,
-      );
+        // Campos DVH de este paño
+        const dvhIntId = getDetalleStr(detalle, `dvh_${paneNum}_1`); // lámina interior
+        const dvhExtId = getDetalleStr(detalle, `dvh_${paneNum}_2`); // lámina exterior
+        const camaraStr = getDetalleStr(detalle, `camara_${paneNum}`); // separador
 
-      if (perfilRevest) {
-        const pasoTablilla = 100;
-        const orientacion = getDetalleStr(detalle, "direcc_1") ?? "H";
-        const cantidadTablillas =
-          orientacion === "H"
-            ? Math.ceil(altoVidrio / pasoTablilla)
-            : Math.ceil(anchoVidrio / pasoTablilla);
-        const medidaCorteTablilla =
-          orientacion === "H" ? anchoVidrio : altoVidrio;
+        // Fallback: usar interior_N como ID de vidrio simple si no hay dvh
+        const interiorNId = getDetalleStr(detalle, `interior_${paneNum}`);
+        const vidSimpleId =
+          dvhIntId ??
+          (interiorNId !== "VIDRIO" && interiorNId !== "REVESTIMIENTO"
+            ? interiorNId
+            : null);
 
-        const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
-          perfilRevest,
-          medidaCorteTablilla,
-          cantidadTablillas,
-        );
+        // Es DVH si ambas láminas están definidas
+        const esDvh = !!(dvhIntId && dvhExtId);
 
-        cortes.push({
-          id: cortId++,
-          nivel: "Interior",
-          nro_perfil: perfilRevest.nro_perfil?.toString() ?? "REV",
-          descripcion_perfil: perfilRevest.descri ?? "Tablilla",
-          angulo: "90°/90°",
-          cantidad: cantidadTablillas,
-          medida_mm: medidaCorteTablilla,
-          total_mm: medidaCorteTablilla * cantidadTablillas,
-          kg,
-          precio_unitario,
-          precio_total,
-        });
+        if (esDvh) {
+          // ── DVH: 2 láminas (interior + exterior) ─────────────────────────
+          const vidInt = resolveVid(dvhIntId);
+          const vidExt = resolveVid(dvhExtId);
 
-        interiorsCalc.push({
-          tipo: "Revestimiento",
-          cantidad: cantidadTablillas,
-          ancho: medidaCorteTablilla,
-          alto: pasoTablilla,
-          area,
-          precio: precio_total,
-          modulo: `Paño 1`,
-        });
+          if (!vidInt)
+            log.warn(
+              "vidrio",
+              `DVH cara interior id="${dvhIntId}" no encontrado (hoja ${paneNum})`,
+            );
+          if (!vidExt)
+            log.warn(
+              "vidrio",
+              `DVH cara exterior id="${dvhExtId}" no encontrado (hoja ${paneNum})`,
+            );
 
-        log.info(
-          "interior",
-          `${cantidadTablillas} tablillas de ${medidaCorteTablilla}mm`,
-        );
+          // Lámina interior
+          const pmInt = precioM2Vid(vidInt);
+          interiorsCalc.push({
+            tipo: "Vidrio",
+            cantidad: 1,
+            ancho: anchoRedondo,
+            alto: altoRedondo,
+            area,
+            precio: pmInt * area,
+            modulo: `Hoja ${paneNum}`,
+            descripcion_vidrio:
+              vidInt?.descri ?? vidInt?.codigo ?? `DVH Int. (id:${dvhIntId})`,
+            numero_hoja: paneNum,
+            cara: "interior",
+            es_dvh: true,
+            descripcion_camara: camaraStr ?? undefined,
+          });
+
+          // Lámina exterior
+          const pmExt = precioM2Vid(vidExt);
+          interiorsCalc.push({
+            tipo: "Vidrio",
+            cantidad: 1,
+            ancho: anchoRedondo,
+            alto: altoRedondo,
+            area,
+            precio: pmExt * area,
+            modulo: `Hoja ${paneNum}`,
+            descripcion_vidrio:
+              vidExt?.descri ?? vidExt?.codigo ?? `DVH Ext. (id:${dvhExtId})`,
+            numero_hoja: paneNum,
+            cara: "exterior",
+            es_dvh: true,
+            descripcion_camara: camaraStr ?? undefined,
+          });
+
+          log.info(
+            "interior",
+            `Hoja ${paneNum} DVH: int="${dvhIntId}"/${vidInt?.descri ?? "?"} | ext="${dvhExtId}"/${vidExt?.descri ?? "?"} | cámara: ${camaraStr ?? "—"}`,
+          );
+        } else {
+          // ── Vidrio simple ─────────────────────────────────────────────────
+          const vid = resolveVid(vidSimpleId);
+          if (vidSimpleId && !vid)
+            log.warn(
+              "vidrio",
+              `Vidrio simple id="${vidSimpleId}" no encontrado (hoja ${paneNum})`,
+            );
+
+          const pm = precioM2Vid(vid);
+          interiorsCalc.push({
+            tipo: "Vidrio",
+            cantidad: 1,
+            ancho: anchoRedondo,
+            alto: altoRedondo,
+            area,
+            precio: pm * area,
+            modulo: `Hoja ${paneNum}`,
+            descripcion_vidrio: vid?.descri ?? vid?.codigo ?? undefined,
+            numero_hoja: paneNum,
+            cara: "simple",
+            es_dvh: false,
+          });
+
+          log.info(
+            "interior",
+            `Hoja ${paneNum} vidrio simple: "${vidSimpleId ?? "sin id"}" / ${vid?.descri ?? "sin catálogo"}`,
+          );
+        }
       }
     }
   }
@@ -634,8 +729,6 @@ export function calcularDespiece(
       try {
         const ruleCv = datos.find_despiece_contravidrio(Number(idCv));
 
-        // Access: formula_cantidad + (cant_cruces × 2)
-        // Cuando hay cruces, cada cruce agrega 2 contravidrios más (uno a cada lado)
         const cantHBase = calcularCantidad(
           ruleCv.formula_cantidad_contravidrios_ancho ?? "2",
           ctxBase,
@@ -713,14 +806,6 @@ export function calcularDespiece(
   }
 
   // ── PASO 5.5: Procesar Accesorios ───────────────────────────────────────
-  //
-  // Paralelo a PASO 2 (perfiles): por cada regla se evalúa formula_cantidad
-  // con ctxBase y se registra el accesorio con su costo unitario.
-  //
-  // Niveles soportados: Marco · Hoja · Interior · Cruces
-  // Hoja agrega: aparece_presupuesto, id_conjunto, nombre_conjunto
-  //
-  // Los accesorios SIN id_accesorio (null) se saltan con warn.
 
   const accesorioMap = new Map(datos.catalog_accesorios.map((a) => [a.id, a]));
 
@@ -793,7 +878,7 @@ export function calcularDespiece(
     }
   }
 
-  // Hoja — propaga aparece_presupuesto, id_conjunto, nombre_conjunto
+  // Hoja
   if (detalle.hoja && datos.rules_accesorios_hoja.length > 0) {
     log.info(
       "accesorios",
@@ -926,9 +1011,34 @@ export function calcularDespiece(
     0,
   );
 
+  // Tratamiento / color: kg totales de perfiles × precio_por_kilo del tratamiento
+  // El ID del tratamiento viene de tipologia.color (número)
+  const totalKgPerfiles = cortes.reduce((s, c) => s + c.kg, 0);
+  const idTratamiento = entrada.detalle.color ?? null;
+  const tratamiento = idTratamiento
+    ? datos.catalog_tratamientos.find((t) => t.id === idTratamiento)
+    : undefined;
+  const costoTratamiento = tratamiento
+    ? totalKgPerfiles * (tratamiento.precio_por_kilo ?? 0)
+    : 0;
+
+  if (tratamiento) {
+    log.info(
+      "tratamiento",
+      `${totalKgPerfiles.toFixed(3)} kg × $${tratamiento.precio_por_kilo}/kg` +
+        ` (${tratamiento.descripcion ?? `id:${idTratamiento}`})` +
+        ` = $${costoTratamiento.toFixed(2)}`,
+    );
+  } else if (idTratamiento) {
+    log.warn(
+      "tratamiento",
+      `Tratamiento id=${idTratamiento} no encontrado en catálogo`,
+    );
+  }
+
   log.info(
     "totales",
-    `PF: $${costoPerfiles.toFixed(2)} | VD: $${costoInteriores.toFixed(2)} | AC: $${costoAccesorios.toFixed(2)}`,
+    `PF: $${costoPerfiles.toFixed(2)} | VD: $${costoInteriores.toFixed(2)} | AC: $${costoAccesorios.toFixed(2)} | TR: $${costoTratamiento.toFixed(2)}`,
   );
 
   return {
@@ -939,10 +1049,12 @@ export function calcularDespiece(
     costo_perfiles: costoPerfiles,
     costo_interiores: costoInteriores,
     costo_accesorios: costoAccesorios,
-    costo_mo_taller: 0, // Calculado en DespieceView desde Opciones
-    costo_mo_colocacion: 0, // Pendiente v4
-    costo_telas: 0, // Pendiente v4
-    costo_total: costoPerfiles + costoInteriores + costoAccesorios,
+    costo_tratamiento: costoTratamiento,
+    costo_mo_taller: 0,
+    costo_mo_colocacion: 0,
+    costo_telas: 0,
+    costo_total:
+      costoPerfiles + costoInteriores + costoAccesorios + costoTratamiento,
     multiplicador: mult,
     contexto: ctxBase,
     logs: log.entries(),

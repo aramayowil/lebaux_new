@@ -1,5 +1,5 @@
 import { Group, Rect, Text } from "react-konva";
-import type { ObraDetalle, Vidrio } from "@/types";
+import type { ObraDetalle, Perfil, Vidrio } from "@/types";
 import { RenderSubPanel } from "./RenderSubPanel";
 import RenderRevestimiento from "./RenderRevestimiento";
 import { RenderProfundidad } from "./RenderProfundidad";
@@ -14,6 +14,7 @@ interface RenderCeldaCrucesProps {
     aluminio: string;
     catalogVidrios: Vidrio[];
     contorno: string;
+    perfiles: Perfil[];
   };
   detalles: ObraDetalle;
 }
@@ -93,7 +94,10 @@ export const RenderCelda = ({
       colors.catalogVidrios.find((v) => v.id === Number(valorDvh2))?.espesor ??
         0,
     );
-    const camara = Number(detalles[keyCamara]);
+    const id_camara = Number(detalles[keyCamara]);
+    const camara_descripcion =
+      colors.perfiles.find((p) => p.id === id_camara)?.descri || "";
+    const camara = camara_descripcion.split(" ")[2].split("mm")[0];
     const colorVidrio =
       intToHexBGR(
         Number(
