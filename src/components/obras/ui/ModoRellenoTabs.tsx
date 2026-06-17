@@ -1,5 +1,6 @@
 import clsx from "clsx";
-type ModoRelleno = "simple" | "dvh" | "revestimiento";
+
+export type ModoRelleno = "simple" | "dvh" | "revestimiento";
 
 export default function ModoRellenoTabs({
   value,

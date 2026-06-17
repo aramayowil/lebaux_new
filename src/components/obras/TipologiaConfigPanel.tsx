@@ -1,7 +1,5 @@
 import { Switch, Input, Chip, Button } from "@heroui/react";
 import { Palette, Layers, Grid2X2, LayoutGrid, Plus } from "lucide-react";
-
-// Hooks de Datos (Catálogos y Productos)
 import { useTratamientos } from "@/hooks/catalogo/useTratamientos";
 import { useVidrios } from "@/hooks/catalogo/useVidrios";
 import { usePerfiles } from "@/hooks/catalogo/usePerfiles";
@@ -10,11 +8,7 @@ import { useContravidriosByInterior } from "@/hooks/productos/useContravidrios";
 import { useContravidriosExtByInterior } from "@/hooks/productos/useContravidriosExt";
 import { useVidrioRepartidosByInterior } from "@/hooks/productos/useVidRepartidos";
 import { useTiposInteriores } from "@/hooks/catalogo/useTiposInteriores";
-
-// Tipos
 import type { ObraDetalle } from "@/types";
-
-// Lógica y Componentes UI Modulares
 import { useTipologiaLogic, FILA_FIELDS } from "./logic/useTipologiaLogic";
 import SectionHeader from "./ui/SectionHeader";
 import RowSelect from "./ui/RowSelect";
@@ -32,10 +26,8 @@ export default function TipologiaConfigPanel({
   detalle,
   upsertDetalle,
 }: Props) {
-  // 1. Lógica de Componente
   const { state, actions } = useTipologiaLogic(detalle, upsertDetalle);
 
-  // 2. Fetch de Catálogos
   const { data: tratamientos = [], isLoading: loadingTratamientos } =
     useTratamientos();
   const { data: vidrios = [], isLoading: loadingVidrios } = useVidrios();
@@ -56,7 +48,6 @@ export default function TipologiaConfigPanel({
     idInterior ?? undefined,
   );
 
-  // 3. Variables de Renderizado
   const vidrosCrudos = vidrios.filter((v) => {
     const t = tiposInterior.find((x) => x.id === v.tipo_rev);
     return !t || t.descripcion?.toLowerCase().includes("vidrio");
@@ -71,7 +62,6 @@ export default function TipologiaConfigPanel({
   if (state.tipoCruce === 2)
     cruceBadge = `Variables (${state.posH.length + 1} f. de vidrio)`;
 
-  // Pantalla de carga
   if (!detalle || loadingTratamientos || loadingVidrios || loadingPerfiles) {
     return <TipologiaConfigPanelSkeleton />;
   }
@@ -79,10 +69,10 @@ export default function TipologiaConfigPanel({
   const ancho = detalle.ancho ?? 0;
   const alto = detalle.alto ?? 0;
 
-  console.log("detalle", detalle);
+  console.log("detalles", detalle);
+
   return (
     <div className="h-full flex flex-col bg-white dark:bg-zinc-950 border-zinc-200/80 select-none">
-      {/* HEADER DE COMPONENTE */}
       <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/10">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg bg-amber-400/10 text-amber-500">
@@ -100,7 +90,7 @@ export default function TipologiaConfigPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
-        {/* ══════════ ACABADO ══════════ */}
+        {/* ACABADO */}
         <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 overflow-hidden">
           <SectionHeader
             icon={Palette}
@@ -123,7 +113,7 @@ export default function TipologiaConfigPanel({
           )}
         </div>
 
-        {/* ══════════ ESTRUCTURA E INTERIOR ══════════ */}
+        {/* ESTRUCTURA */}
         <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 overflow-hidden">
           <SectionHeader
             icon={Layers}
@@ -168,15 +158,6 @@ export default function TipologiaConfigPanel({
                       placeholder="Automático..."
                     />
                   )}
-                  {vidriosRepartidos.length > 0 && (
-                    <RowSelect
-                      label="Vidrio Repartido (VR)"
-                      items={vidriosRepartidos}
-                      selectedKey={detalle.vr_1}
-                      onKeyChange={(k) => actions.upd({ vr_1: k })}
-                      placeholder="Sin VR..."
-                    />
-                  )}
                 </>
               )}
 
@@ -192,10 +173,18 @@ export default function TipologiaConfigPanel({
                     camaraKey="camara_1"
                     revestKey="revest_1"
                     direccKey="direcc_1"
+                    vrKey="vr_1"
+                    horKey="hor_vr_1"
+                    verKey="ver_vr_1"
+                    activoVrKey="activo_vr_1"
                     detalle={detalle}
                     vidrios={vidrosCrudos}
                     perfiles={perfiles}
+                    vidriosRepartidos={vidriosRepartidos}
                     upd={actions.upd}
+                    onToggleVR={(activo) =>
+                      actions.toggleVidrioRepartido(0, activo)
+                    }
                   />
                 )}
 
@@ -227,7 +216,7 @@ export default function TipologiaConfigPanel({
                       <LayoutGrid className="w-3 h-3 text-zinc-400" />
                       <span>
                         {state.panosCount} Fila
-                        {state.panosCount !== 1 ? "s" : ""}
+                        {state.panosCount !== 1 ? "s" : " "}
                         {state.tipoCruce === 1
                           ? ` · ${(detalle.cant_centrados_vertical ?? 0) + 1} Módulos por fila`
                           : ` · ${state.posV.length + 1} Módulos por fila`}
@@ -245,10 +234,18 @@ export default function TipologiaConfigPanel({
                         camaraKey="camara_1"
                         revestKey="revest_1"
                         direccKey="direcc_1"
+                        vrKey="vr_1"
+                        horKey="hor_vr_1"
+                        verKey="ver_vr_1"
+                        activoVrKey="activo_vr_1"
                         detalle={detalle}
                         vidrios={vidrosCrudos}
                         perfiles={perfiles}
+                        vidriosRepartidos={vidriosRepartidos}
                         upd={actions.upd}
+                        onToggleVR={(activo) =>
+                          actions.toggleVidrioRepartido(0, activo)
+                        }
                       />
                     ) : (
                       <div className="space-y-2">
@@ -270,10 +267,18 @@ export default function TipologiaConfigPanel({
                               camaraKey={f.camara}
                               revestKey={f.revest}
                               direccKey={f.direcc}
+                              vrKey={f.vr}
+                              horKey={f.hor}
+                              verKey={f.ver}
+                              activoVrKey={f.activoVr}
                               detalle={detalle}
                               vidrios={vidrosCrudos}
                               perfiles={perfiles}
+                              vidriosRepartidos={vidriosRepartidos}
                               upd={actions.upd}
+                              onToggleVR={(activo) =>
+                                actions.toggleVidrioRepartido(idx, activo)
+                              }
                             />
                           );
                         })}
@@ -286,7 +291,7 @@ export default function TipologiaConfigPanel({
           )}
         </div>
 
-        {/* ══════════ CRUCES ══════════ */}
+        {/* CRUCES */}
         <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 overflow-hidden">
           <SectionHeader
             icon={Grid2X2}

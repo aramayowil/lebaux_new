@@ -20,16 +20,18 @@ export default function CentradosCounter({
   max,
   onChange,
 }: {
-  label: string;
+  label?: string;
   value: number;
   max: number;
   onChange: (v: number) => void;
 }) {
   return (
     <div className="flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/20 px-2.5 py-1.5 rounded-xl border border-zinc-100 dark:border-zinc-800/30">
-      <span className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
-        {label}
-      </span>
+      {label && (
+        <span className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
+          {label}
+        </span>
+      )}
       <div className="flex items-center gap-2.5">
         <button
           type="button"

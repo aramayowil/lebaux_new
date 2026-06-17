@@ -4,6 +4,7 @@ import { RenderSubPanel } from "./RenderSubPanel";
 import RenderRevestimiento from "./RenderRevestimiento";
 import { RenderProfundidad } from "./RenderProfundidad";
 import { intToHexBGR } from "@/utils/intToHexRGB";
+import RenderVidrioRepartido from "./RenderVidrioRepartido";
 
 interface RenderCeldaCrucesProps {
   filaId: number;
@@ -40,6 +41,16 @@ export const RenderCelda = ({
   const valorDvh2 = detalles[keyDvh2] as string | null;
   const valorRevest = detalles[keyRevest] as string | null;
   const valorDirecc = detalles[keyDirecc] as string | null;
+
+  const vrKey = `vr_${filaId}` as keyof ObraDetalle;
+  const horVRKey = `hor_vr_${filaId}` as keyof ObraDetalle;
+  const verVRKey = `ver_vr_${filaId}` as keyof ObraDetalle;
+  const activoVRKey = `activo_vr_${filaId}` as keyof ObraDetalle;
+
+  const valorVR = detalles[vrKey] as string | null;
+  const horVR = Number(detalles[horVRKey] ?? 0);
+  const verVR = Number(detalles[verVRKey] ?? 0);
+  const activoVR = !!detalles[activoVRKey];
 
   // Márgenes estéticos para los textos descriptivos técnicos
   const offsetProfundidad = 4 * scale;
@@ -154,12 +165,25 @@ export const RenderCelda = ({
           contorno={colors.contorno}
           colors={colors}
         />
-        <RenderProfundidad
-          hojaW={ancho}
-          hojaH={alto}
-          scale={scale}
-          colors={colors}
-        />
+        {/* 4. Vidrio repartido (VR) si está activo */}
+        {activoVR && valorVR?.trim() && (horVR > 0 || verVR > 0) ? (
+          <RenderVidrioRepartido
+            ancho={ancho}
+            alto={alto}
+            scale={scale}
+            colors={colors}
+            horVR={horVR}
+            verVR={verVR}
+          />
+        ) : (
+          <RenderProfundidad
+            hojaW={ancho}
+            hojaH={alto}
+            scale={scale}
+            colors={colors}
+          />
+        )}
+
         {datosVidrio?.descri && (
           <Text
             text={datosVidrio.descri.toUpperCase()}

@@ -11,6 +11,10 @@ export const FILA_FIELDS = [
     camara: "camara_1",
     revest: "revest_1",
     direcc: "direcc_1",
+    vr: "vr_1",
+    hor: "hor_vr_1",
+    ver: "ver_vr_1",
+    activoVr: "activo_vr_1",
   },
   {
     interior: "interior_2",
@@ -19,6 +23,10 @@ export const FILA_FIELDS = [
     camara: "camara_2",
     revest: "revest_2",
     direcc: "direcc_2",
+    vr: "vr_2",
+    hor: "hor_vr_2",
+    ver: "ver_vr_2",
+    activoVr: "activo_vr_2",
   },
   {
     interior: "interior_3",
@@ -27,6 +35,10 @@ export const FILA_FIELDS = [
     camara: "camara_3",
     revest: "revest_3",
     direcc: "direcc_3",
+    vr: "vr_3",
+    hor: "hor_vr_3",
+    ver: "ver_vr_3",
+    activoVr: "activo_vr_3",
   },
   {
     interior: "interior_4",
@@ -35,6 +47,10 @@ export const FILA_FIELDS = [
     camara: "camara_4",
     revest: "revest_4",
     direcc: "direcc_4",
+    vr: "vr_4",
+    hor: "hor_vr_4",
+    ver: "ver_vr_4",
+    activoVr: "activo_vr_4",
   },
 ] as const;
 
@@ -62,13 +78,11 @@ export function useTipologiaLogic(
 
   // ── Variables Derivadas de Cruces ───────────────────────────────────────────
   const tipoCruce = detalle?.tipo_cruce ?? 0;
-
   const posH = [
     detalle?.horizontal_1,
     detalle?.horizontal_2,
     detalle?.horizontal_3,
   ].filter((v): v is number => typeof v === "number" && v > 0);
-
   const posV = [
     detalle?.vertical_1,
     detalle?.vertical_2,
@@ -83,7 +97,6 @@ export function useTipologiaLogic(
       : tipoCruce === 1
         ? (detalle?.cant_centrados_horizontal ?? 0) + 1
         : posH.length + 1;
-
   const panosCount = Math.min(cantFilasDeRelleno, 4);
 
   // ── Lógica de Modos de Relleno ──────────────────────────────────────────────
@@ -97,6 +110,7 @@ export function useTipologiaLogic(
   const [modoRelleno, setModoRelleno] = useState<ModoRelleno>(() =>
     modoDesdeDB(detalle),
   );
+
   useEffect(() => {
     setModoRelleno(modoDesdeDB(detalle));
   }, [detalle?.id]);
@@ -107,6 +121,7 @@ export function useTipologiaLogic(
     "simple",
     "simple",
   ]);
+
   useEffect(() => {
     if (!detalle) return;
     setModoRellenoByFila([
@@ -125,7 +140,6 @@ export function useTipologiaLogic(
     if (!detalle) return;
     let finalFields = { ...fields };
 
-    // CAMBIO SEMÁNTICO: Si es TRUE (Mismo Relleno), replicamos los cambios de la Fila 1 a las demás
     if (mismoRellenoPanel) {
       const mapeoReplicacion = [
         {
@@ -137,6 +151,13 @@ export function useTipologiaLogic(
         { origen: "camara_1", destinos: ["camara_2", "camara_3", "camara_4"] },
         { origen: "revest_1", destinos: ["revest_2", "revest_3", "revest_4"] },
         { origen: "direcc_1", destinos: ["direcc_2", "direcc_3", "direcc_4"] },
+        { origen: "vr_1", destinos: ["vr_2", "vr_3", "vr_4"] },
+        { origen: "hor_vr_1", destinos: ["hor_vr_2", "hor_vr_3", "hor_vr_4"] },
+        { origen: "ver_vr_1", destinos: ["ver_vr_2", "ver_vr_3", "ver_vr_4"] },
+        {
+          origen: "activo_vr_1",
+          destinos: ["activo_vr_2", "activo_vr_3", "activo_vr_4"],
+        },
       ] as const;
 
       mapeoReplicacion.forEach(({ origen, destinos }) => {
@@ -160,6 +181,7 @@ export function useTipologiaLogic(
   function cambiarModo(nuevo: ModoRelleno) {
     setModoRelleno(nuevo);
     const resetPatch: any = {};
+
     FILA_FIELDS.forEach((f) => {
       resetPatch[f.interior] = null;
       resetPatch[f.dvh1] = null;
@@ -167,17 +189,19 @@ export function useTipologiaLogic(
       resetPatch[f.camara] = null;
       resetPatch[f.revest] = null;
       resetPatch[f.direcc] = null;
+      // Al cambiar de modo, desactivamos VR en todas las filas
+      resetPatch[f.activoVr] = false;
     });
 
     if (nuevo === "revestimiento") {
       resetPatch.direcc_1 = "horizontal";
-      // CAMBIO SEMÁNTICO: Si mismoRellenoPanel es TRUE, seteamos la dirección por defecto en las filas activas
       if (mismoRellenoPanel) {
         if (panosCount >= 2) resetPatch.direcc_2 = "horizontal";
         if (panosCount >= 3) resetPatch.direcc_3 = "horizontal";
         if (panosCount >= 4) resetPatch.direcc_4 = "horizontal";
       }
     }
+
     upsertDetalle({ ...detalle, ...resetPatch });
   }
 
@@ -190,14 +214,22 @@ export function useTipologiaLogic(
       [f.camara]: null,
       [f.revest]: null,
       [f.direcc]: null,
+      [f.activoVr]: false, // Al cambiar modo, desactivamos VR
     };
+
     if (nuevo === "revestimiento") patch[f.direcc] = "horizontal";
+
     upsertDetalle({ ...detalle, ...patch });
+  }
+
+  // Nueva función para toggle de VR
+  function toggleVidrioRepartido(idx: number, activo: boolean) {
+    const f = FILA_FIELDS[idx];
+    upsertDetalle({ ...detalle, [f.activoVr]: activo } as any);
   }
 
   const handleToggleRellenoPorPanel = (porPanel: boolean) => {
     if (!detalle) return;
-
     setMismoRellenoPanel(porPanel);
 
     const patch: any = { mismo_relleno_panel: porPanel };
@@ -214,9 +246,6 @@ export function useTipologiaLogic(
     FILA_FIELDS.slice(1).forEach((f, index) => {
       const numeroDeFila = index + 2;
 
-      // CAMBIO SEMÁNTICO:
-      // Si porPanel es TRUE (Mismo Relleno), clonamos el contenido de la Fila 1 a las filas activas.
-      // Si porPanel es FALSE (Independiente), dejamos las filas siguientes limpias (null) para edición libre.
       if (porPanel && numeroDeFila <= limiteFilasActivas) {
         patch[f.interior] = detalle.interior_1 ?? null;
         patch[f.dvh1] = detalle.dvh_1_1 ?? null;
@@ -224,6 +253,10 @@ export function useTipologiaLogic(
         patch[f.camara] = detalle.camara_1 ?? null;
         patch[f.revest] = detalle.revest_1 ?? null;
         patch[f.direcc] = detalle.direcc_1 ?? null;
+        patch[f.vr] = detalle.vr_1 ?? null;
+        patch[f.hor] = detalle.hor_vr_1 ?? null;
+        patch[f.ver] = detalle.ver_vr_1 ?? null;
+        patch[f.activoVr] = detalle.activo_vr_1 ?? false;
       } else {
         patch[f.interior] = null;
         patch[f.dvh1] = null;
@@ -231,6 +264,10 @@ export function useTipologiaLogic(
         patch[f.camara] = null;
         patch[f.revest] = null;
         patch[f.direcc] = null;
+        patch[f.vr] = null;
+        patch[f.hor] = null;
+        patch[f.ver] = null;
+        patch[f.activoVr] = false;
       }
     });
 
@@ -296,17 +333,14 @@ export function useTipologiaLogic(
         direcc_2: null,
         direcc_3: null,
         direcc_4: null,
+        activo_vr_2: false,
+        activo_vr_3: false,
+        activo_vr_4: false,
       });
     } else if (mode === 1) {
-      upsertDetalle({
-        ...detalle,
-        tipo_cruce: 1,
-      });
+      upsertDetalle({ ...detalle, tipo_cruce: 1 });
     } else if (mode === 2) {
-      upsertDetalle({
-        ...detalle,
-        tipo_cruce: 2,
-      });
+      upsertDetalle({ ...detalle, tipo_cruce: 2 });
     }
   };
 
@@ -330,6 +364,7 @@ export function useTipologiaLogic(
       upd,
       cambiarModo,
       cambiarModoFila,
+      toggleVidrioRepartido,
       handleToggleRellenoPorPanel,
       savePosH,
       savePosV,
