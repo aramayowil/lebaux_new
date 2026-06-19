@@ -293,7 +293,7 @@ export default function InteriorFilaEditor({
               {String(
                 perfiles
                   .find((p) => String(p.id) === String(detalle[camaraKey]))
-                  ?.descri?.split("  ")[2]
+                  ?.descri?.split(" ")[2]
                   .split("mm")[0] || "Sin cámara",
               )}{" "}
               /{" "}

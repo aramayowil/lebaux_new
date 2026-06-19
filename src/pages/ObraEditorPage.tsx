@@ -276,7 +276,7 @@ export default function ObraEditorPage() {
         ancho: datos.ancho,
         alto: datos.alto,
 
-        mismo_relleno_panel: false,
+        mismo_relleno_panel: true,
         difiere_en_ancho: false,
         difiere_en_alto: false,
         ligado_ancho_tipologia: false,

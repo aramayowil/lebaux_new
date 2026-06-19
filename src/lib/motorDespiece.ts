@@ -1,7 +1,14 @@
 /**
- * Motor de Despiece – v3.1
+ * Motor de Despiece – v3.2
  *
- * Cambios vs v3:
+ * Cambios vs v3.1:
+ *   [NEW]  PASO 4.5: Vidrio Repartido (VR) — Contorno + Crucetas
+ *          Lógica de crucetas idéntica a la de cruces principales.
+ *          Las fórmulas se evalúan con ctxVR (ancho/alto del sub-paño
+ *          real, después de aplicar descuentos de cruces principales).
+ *   [NEW]  PASO 5.5: Accesorios de VR
+ *   [NEW]  NivelCorte: "VR Contorno" | "VR Cruceta"
+ *   [NEW]  NivelAccesorio: "VR"
  *   [FIX]  PASO 4: DVH ahora genera 2 ItemInterior por hoja (cara int. + cara ext.)
  *   [FIX]  PASO 4: Detección DVH por hoja usando dvh_N_1 / dvh_N_2 / camara_N
  *   [NEW]  ItemInterior: campos descripcion_vidrio, numero_hoja, cara, es_dvh, descripcion_camara
@@ -25,10 +32,12 @@ import type {
   DespiecePerfilContravidrio,
   DespieceCruce,
   DespieceInterior,
+  DespiecePerfilVidrioRepartido,
   DespieceAccesorioMarco,
   DespieceAccesorioHoja,
   DespieceAccesorioInterior,
   DespieceAccesorioCruce,
+  DespieceAccesorioVidrioRepartido,
 } from "@/types";
 
 // ─── Interfaces de Comunicación ──────────────────────────────────────────────
@@ -53,6 +62,21 @@ export interface DatosProducto {
   rules_cruces: DespieceCruce | null;
   rules_perfiles_contravidrio: DespiecePerfilContravidrio[];
 
+  // ── Vidrio Repartido ─────────────────────────────────────────────────────
+  /**
+   * Regla única de VR ligada al producto interior (id_vr = idInterior).
+   * null cuando el interior no tiene VR configurado.
+   */
+  rules_perfiles_vr: DespiecePerfilVidrioRepartido | null;
+  /** Accesorios de VR (todos comparten la misma regla del interior). */
+  rules_accesorios_vr: DespieceAccesorioVidrioRepartido[];
+  /**
+   * Paños con VR activo: [{ idx: 1, id: vrId }, ...].
+   * idx es 1-based (coincide con hor_vr_N, ver_vr_N, camara_N, dvh_N_1, etc.).
+   * id es el ID del VR asignado (= idInterior cuando la regla viene de allí).
+   */
+  vr_activos: { idx: number; id: number }[];
+
   /** Accesorios por nivel — paralelo a rules_perfiles_* */
   rules_accesorios_marco: DespieceAccesorioMarco[];
   rules_accesorios_hoja: DespieceAccesorioHoja[];
@@ -73,7 +97,10 @@ export type NivelCorte =
   | "Contravid. Int."
   | "Contravid. Ext."
   | "Cruces"
-  | "Interior";
+  | "Interior"
+  | "Cámara"
+  | "VR Contorno"
+  | "VR Cruceta";
 
 export interface CortePerfil {
   id: number;
@@ -96,7 +123,8 @@ export interface CortePerfil {
  *   - es_dvh: true cuando el paño es doble vidrio aislante
  *   - cara: "interior" | "exterior" para los dos vidrios del DVH; "simple" para vidrio monolítico
  *   - descripcion_vidrio: descripción del vidrio (ej. "Float 4mm", "Laminado 3+3")
- *   - descripcion_camara: separador de cámara (ej. "Aire 12mm", "Argón 16mm")
+ *   - descripcion_camara: separador de cámara resuelto desde catalog_perfiles
+ *     (camara_N), con fallback al id crudo si no se encuentra en catálogo
  *   - numero_hoja: 1-based — a qué hoja de la tipología pertenece este paño
  */
 export interface ItemInterior {
@@ -128,9 +156,14 @@ export interface ResumenPerfil {
   precio_total: number;
   longitud_tira: number;
   cortes: { medida_mm: number; cantidad: number; angulo: string }[];
+  /** true cuando este perfil es cámara/separador europeo: precio_total se
+   *  calculó como metros × $/m directo (peso_metro), no kg × $/kg. */
+  es_camara_europea?: boolean;
+  /** $/m usado cuando es_camara_europea = true (proviene de peso_metro). */
+  precio_metro?: number;
 }
 
-export type NivelAccesorio = "Marco" | "Hoja" | "Interior" | "Cruces";
+export type NivelAccesorio = "Marco" | "Hoja" | "Interior" | "Cruces" | "VR";
 
 export interface ItemAccesorio {
   id_accesorio: number;
@@ -204,6 +237,18 @@ function calcularPrecioCorte(
   cantidad: number,
 ): { precio_unitario: number; precio_total: number; kg: number } {
   if (!perfil) return { precio_unitario: 0, precio_total: 0, kg: 0 };
+
+  // Cámara europea: peso_metro guarda el PRECIO POR METRO LINEAL directo
+  // (no kg/m). No se pondera por precio_kg ni aporta kg → no entra en
+  // costo_tratamiento (el separador no se pinta/anodiza).
+  if (perfil.es_camara_europea) {
+    const precioMetro = perfil.peso_metro ?? 0;
+    const metros = medida_mm / 1000;
+    const precio_unitario = precioMetro * metros;
+    const precio_total = precio_unitario * cantidad;
+    return { precio_unitario, precio_total, kg: 0 };
+  }
+
   const pesoMetro = (perfil.peso_metro ?? 0) / 1000;
   const precioKg = perfil.precio_kg ?? 0;
   const kg = pesoMetro * medida_mm * cantidad;
@@ -602,6 +647,21 @@ export function calcularDespiece(
       };
 
       /**
+       * Busca el perfil separador de cámara (camara_N) en el catálogo de
+       * perfiles por ID numérico o nro_perfil. Mismo criterio que se usa
+       * para resolver perfiles de revestimiento (revestVal).
+       */
+      const resolveCamaraPerfil = (
+        idStr: string | null | undefined,
+      ): Perfil | undefined => {
+        if (!idStr || idStr === "null" || idStr === "undefined")
+          return undefined;
+        return datos.catalog_perfiles.find(
+          (p) => p.id.toString() === idStr || p.nro_perfil === idStr,
+        );
+      };
+
+      /**
        * Calcula precio por m² dado un vidrio del catálogo.
        * Usa base × altura del catálogo para calcular el m² de referencia.
        */
@@ -631,6 +691,10 @@ export function calcularDespiece(
 
         // Es DVH si ambas láminas están definidas
         const esDvh = !!(dvhIntId && dvhExtId);
+
+        // Perfil separador (cámara) asignado a este paño, si corresponde
+        const perfilCamara = esDvh ? resolveCamaraPerfil(camaraStr) : undefined;
+        const descCamara = perfilCamara?.descri ?? camaraStr ?? undefined;
 
         if (esDvh) {
           // ── DVH: 2 láminas (interior + exterior) ─────────────────────────
@@ -663,7 +727,7 @@ export function calcularDespiece(
             numero_hoja: paneNum,
             cara: "interior",
             es_dvh: true,
-            descripcion_camara: camaraStr ?? undefined,
+            descripcion_camara: descCamara,
           });
 
           // Lámina exterior
@@ -681,13 +745,56 @@ export function calcularDespiece(
             numero_hoja: paneNum,
             cara: "exterior",
             es_dvh: true,
-            descripcion_camara: camaraStr ?? undefined,
+            descripcion_camara: descCamara,
           });
 
           log.info(
             "interior",
-            `Hoja ${paneNum} DVH: int="${dvhIntId}"/${vidInt?.descri ?? "?"} | ext="${dvhExtId}"/${vidExt?.descri ?? "?"} | cámara: ${camaraStr ?? "—"}`,
+            `Hoja ${paneNum} DVH: int="${dvhIntId}"/${vidInt?.descri ?? "?"} | ext="${dvhExtId}"/${vidExt?.descri ?? "?"} | cámara: ${descCamara ?? "—"}`,
           );
+
+          // ── Separador de cámara: 1 perímetro por paño DVH ─────────────────
+          // Se calcula sobre la MISMA medida del recorte de vidrio
+          // (anchoRedondo × altoRedondo) y se integra como un corte de
+          // perfil más (PF), igual que marco/hoja/cruces. El precio sale
+          // de calcularPrecioCorte(), que internamente decide si
+          // peso_metro es kg/m (perfil común) o $/m directo (cámara
+          // europea) según el flag es_camara_europea del perfil.
+          if (camaraStr && !perfilCamara) {
+            log.warn(
+              "camara",
+              `Perfil de cámara id="${camaraStr}" no encontrado en catálogo (hoja ${paneNum})`,
+            );
+          } else if (perfilCamara) {
+            const perimetroMm = 2 * (anchoRedondo + altoRedondo);
+
+            if (perimetroMm > 0) {
+              const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
+                perfilCamara,
+                perimetroMm,
+                1,
+              );
+
+              cortes.push({
+                id: cortId++,
+                nivel: "Cámara",
+                nro_perfil: perfilCamara.nro_perfil?.toString() ?? "CAM",
+                descripcion_perfil: perfilCamara.descri ?? "Separador DVH",
+                angulo: "—",
+                cantidad: 1,
+                medida_mm: perimetroMm,
+                total_mm: perimetroMm,
+                kg,
+                precio_unitario,
+                precio_total,
+              });
+
+              log.info(
+                "camara",
+                `Hoja ${paneNum} cámara "${perfilCamara.descri ?? perfilCamara.nro_perfil}": perímetro ${perimetroMm}mm (${(perimetroMm / 1000).toFixed(2)}m) — ${perfilCamara.es_camara_europea ? "$/m directo" : "kg/m × $/kg"}`,
+              );
+            }
+          }
         } else {
           // ── Vidrio simple ─────────────────────────────────────────────────
           const vid = resolveVid(vidSimpleId);
@@ -716,6 +823,340 @@ export function calcularDespiece(
             "interior",
             `Hoja ${paneNum} vidrio simple: "${vidSimpleId ?? "sin id"}" / ${vid?.descri ?? "sin catálogo"}`,
           );
+        }
+      }
+    }
+  }
+
+  // ── PASO 4.5: Vidrio Repartido (VR) ─────────────────────────────────────
+  //
+  // Estructura de descuentos (dos capas independientes):
+  //
+  //   Capa 1 — Cruces DE VENTANA (datos.rules_cruces.descuento_de_si_mismo):
+  //     Los cruces de ventana que cruzan el paño cortan los perfiles del VR.
+  //     • Cruces H de ventana → cortan los perfiles VERTICALES (alto) del VR:
+  //         contorno V y cruceta V
+  //     • Cruces V de ventana → cortan los perfiles HORIZONTALES (ancho) del VR:
+  //         contorno H y cruceta H
+  //     Fórmula: (base - descentoCruce × cant_cruces) / (cant_cruces + 1)
+  //     Cantidad se multiplica por (cant_cruces + 1) para cubrir todas las secciones.
+  //
+  //   Capa 2 — Crucetas PROPIAS del VR (ruleVR.descuento_de_si_mismo):
+  //     Aplicada SÓLO a las crucetas V, igual que PASO 3 (cruces de ventana):
+  //     cada cruceta H del VR subdivide las V en (cantH + 1) trozos.
+  //     Fórmula: (altoTrasCruce - ruleVR.descuento_de_si_mismo × cantH_VR) / (cantH_VR + 1)
+  //     Trozos totales = cantV_VR × (cantH_VR + 1) × seccionesDeVentana
+  //
+  //   Interior VR (vidrio):
+  //     Se calcula como un panel entero usando las fórmulas del VR rule
+  //     (formula_ancho_interior, formula_alto_interior, formula_cantidad_interiores).
+  //     NO se subdivide por las crucetas internas del VR (se agrega como total).
+
+  if (datos.vr_activos?.length > 0 && datos.rules_perfiles_vr) {
+    const ruleVR = datos.rules_perfiles_vr;
+
+    // descuento_de_si_mismo de los CRUCES DE VENTANA:
+    // es el grosor del cruce que recorta los perfiles VR al cruzarlos
+    const descentoCruceVentana = datos.rules_cruces?.descuento_de_si_mismo ?? 0;
+
+    // ── Dimensiones del sub-paño donde vive el VR ────────────────────────
+    // Igual que PASO 4: partimos de las fórmulas del interior y restamos
+    // el descuento_vidrio de los cruces principales.
+    const anchoPanoBaseVR = datos.rules_perfiles_vr
+      ? calcularMedida(
+          datos.rules_perfiles_vr.formula_contorno_ancho ?? "ancho",
+          ctxBase,
+        )
+      : ancho;
+    const altoPanoBaseVR = datos.rules_perfiles_vr
+      ? calcularMedida(
+          datos.rules_perfiles_vr.formula_contorno_alto ?? "alto",
+          ctxBase,
+        )
+      : alto;
+
+    let anchoSubPano = anchoPanoBaseVR;
+    let altoSubPano = altoPanoBaseVR;
+
+    if (datos.rules_cruces?.descuento_vidrio) {
+      const dv = datos.rules_cruces.descuento_vidrio;
+
+      if (cant_cruces_h > 0)
+        altoSubPano =
+          (altoPanoBaseVR - dv * cant_cruces_h) / (cant_cruces_h + 1);
+      if (cant_cruces_v > 0)
+        anchoSubPano =
+          (anchoPanoBaseVR - dv * cant_cruces_v) / (cant_cruces_v + 1);
+    }
+
+    const anchoVR = Math.round(anchoSubPano);
+    const altoVR = Math.round(altoSubPano);
+
+    log.info(
+      "vr",
+      `Sub-paño VR: ${anchoVR}×${altoVR}mm (base ${anchoPanoBaseVR.toFixed(1)}×${altoPanoBaseVR.toFixed(1)}mm)`,
+    );
+
+    // ── Iterar sobre cada paño con VR activo ─────────────────────────────
+    for (const { idx: pañoIdx } of datos.vr_activos) {
+      const pañoNum = pañoIdx; // 1-based, directo de useDespiece
+
+      // Crucetas propias del VR para este paño
+      const cantCrucesH_VR = Math.max(
+        0,
+        Math.round(getDetalleNum(detalle, `hor_vr_${pañoNum}`) ?? 0),
+      );
+      const cantCrucesV_VR = Math.max(
+        0,
+        Math.round(getDetalleNum(detalle, `ver_vr_${pañoNum}`) ?? 0),
+      );
+
+      // ctxVR: las fórmulas del VR resuelven contra el sub-paño (anchoVR/altoVR)
+      // y contra las crucetas PROPIAS del VR (no los cruces de ventana).
+      // Los cruces de ventana se aplican como descuentos explícitos más abajo.
+      const ctxVR: ContextoCalculo = {
+        ...ctxBase,
+        ancho: ancho,
+        alto: alto,
+        cruces_h: cantCrucesH_VR,
+        cruces_v: cantCrucesV_VR,
+      };
+
+      log.info(
+        "vr",
+        `Paño ${pañoNum}: ${cantCrucesH_VR}H × ${cantCrucesV_VR}V crucetas VR | cruces ventana: ${cant_cruces_h}H × ${cant_cruces_v}V`,
+      );
+
+      // ── CONTORNO (perfiles perimetrales del VR) ───────────────────────
+      if (ruleVR.id_perfil_contorno) {
+        const perfilContorno = lkPerfil(ruleVR.id_perfil_contorno);
+        if (!perfilContorno) {
+          log.warn(
+            "vr",
+            `Perfil contorno id=${ruleVR.id_perfil_contorno} no encontrado (paño ${pañoNum})`,
+          );
+        } else {
+          // ── H (horizontales: top + bottom) ───────────────────────────
+          // Los horizontales quedan cortados por los cruces VERTICALES de ventana.
+          const cantContHBase = calcularCantidad(
+            ruleVR.formula_cantidad_contorno_ancho ?? "2",
+            ctxVR,
+          );
+          const medContHBase = calcularMedida(
+            ruleVR.formula_contorno_ancho ?? "ancho",
+            ctxVR,
+          );
+          let medContH = medContHBase;
+          let cantContH = cantContHBase;
+
+          if (cant_cruces_v > 0 && descentoCruceVentana > 0) {
+            medContH =
+              (medContHBase - descentoCruceVentana * cant_cruces_v) /
+              (cant_cruces_v + 1);
+            cantContH = cantContHBase * (cant_cruces_v + 1);
+          }
+
+          if (cantContH > 0 && medContH > 0) {
+            const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
+              perfilContorno,
+              medContH,
+              cantContH,
+            );
+
+            cortes.push({
+              id: cortId++,
+              nivel: "VR Contorno",
+              nro_perfil: perfilContorno.nro_perfil?.toString() ?? "VR-C",
+              descripcion_perfil: `${perfilContorno.descri ?? "Contorno VR"} — H P${pañoNum}`,
+              angulo: ruleVR.angulo ?? "90°/90°",
+              cantidad: cantContH,
+              medida_mm: medContH,
+              total_mm: medContH * cantContH,
+              kg,
+              precio_unitario,
+              precio_total,
+            });
+            log.info(
+              "vr",
+              `Paño ${pañoNum} Contorno H: ${cantContH}×${medContH.toFixed(1)}mm`,
+            );
+          }
+
+          // ── V (verticales: left + right) ──────────────────────────────
+          // Los verticales quedan cortados por los cruces HORIZONTALES de ventana.
+          const cantContVBase = calcularCantidad(
+            ruleVR.formula_cantidad_contorno_alto ?? "2",
+            ctxVR,
+          );
+          const medContVBase = calcularMedida(
+            ruleVR.formula_contorno_alto ?? "alto",
+            ctxVR,
+          );
+          let medContV = medContVBase;
+          let cantContV = cantContVBase;
+
+          if (cant_cruces_h > 0 && descentoCruceVentana > 0) {
+            medContV =
+              (medContVBase - descentoCruceVentana * cant_cruces_h) /
+              (cant_cruces_h + 1);
+          }
+
+          if (cantContV > 0 && medContV > 0) {
+            const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
+              perfilContorno,
+              medContV,
+              cantContV,
+            );
+
+            cortes.push({
+              id: cortId++,
+              nivel: "VR Contorno",
+              nro_perfil: perfilContorno.nro_perfil?.toString() ?? "VR-C",
+              descripcion_perfil: `${perfilContorno.descri ?? "Contorno VR"} — V P${pañoNum}`,
+              angulo: ruleVR.angulo ?? "90°/90°",
+              cantidad: cantContV,
+              medida_mm: medContV,
+              total_mm: medContV * cantContV,
+              kg,
+              precio_unitario,
+              precio_total,
+            });
+            log.info(
+              "vr",
+              `Paño ${pañoNum} Contorno V: ${cantContV}×${medContV.toFixed(1)}mm`,
+            );
+          }
+        }
+      }
+
+      // ── CRUCETAS (divisiones internas del VR) ─────────────────────────
+      //
+      // Crucetas H (horizontales) → longitud afectada por cruces V de ventana.
+      // Crucetas V (verticales)   → longitud afectada en DOS pasos:
+      //   Paso 1: cruces H de ventana (descentoCruceVentana)
+      //   Paso 2: crucetas H del propio VR (ruleVR.descuento_de_si_mismo)
+      //           → igual que PASO 3 de cruces de ventana
+      if (
+        ruleVR.id_perfil_cruce &&
+        (cantCrucesH_VR > 0 || cantCrucesV_VR > 0)
+      ) {
+        const perfilCruceta = lkPerfil(ruleVR.id_perfil_cruce);
+        if (!perfilCruceta) {
+          log.warn(
+            "vr",
+            `Perfil cruceta id=${ruleVR.id_perfil_cruce} no encontrado (paño ${pañoNum})`,
+          );
+        } else {
+          // ── Crucetas H ────────────────────────────────────────────────
+          if (cantCrucesH_VR > 0) {
+            const medCrucHBase = calcularMedida(
+              ruleVR.formula_cruce_ancho ?? "ancho",
+              ctxVR,
+            );
+            let medCrucH = medCrucHBase;
+            let cantCrucH = cantCrucesH_VR * hojas;
+
+            //canti_cruces_v > 0 significa que la abertura tiene cruces de tipologia V
+            if (cant_cruces_v > 0 && descentoCruceVentana > 0) {
+              medCrucH =
+                (medCrucHBase - descentoCruceVentana * cant_cruces_v) /
+                (cant_cruces_v + 1);
+              cantCrucH = cantCrucesH_VR * (cant_cruces_v + 1);
+            }
+            if (medCrucH > 0 && cantCrucH > 0) {
+              const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
+                perfilCruceta,
+                medCrucH,
+                cantCrucH,
+              );
+              cortes.push({
+                id: cortId++,
+                nivel: "VR Cruceta",
+                nro_perfil: perfilCruceta.nro_perfil?.toString() ?? "VR-X",
+                descripcion_perfil: `${perfilCruceta.descri ?? "Cruceta VR"} — H P${pañoNum}`,
+                angulo: ruleVR.angulo_cruce ?? "90°/90°",
+                cantidad: cantCrucH,
+                medida_mm: medCrucH,
+                total_mm: medCrucH * cantCrucH,
+                kg,
+                precio_unitario,
+                precio_total,
+              });
+              log.info(
+                "vr",
+                `Paño ${pañoNum} Cruceta H: ${cantCrucH}×${medCrucH.toFixed(1)}mm`,
+              );
+            }
+          }
+
+          // ── Crucetas V ────────────────────────────────────────────────
+          if (cantCrucesV_VR > 0) {
+            const medCrucVBase = calcularMedida(
+              ruleVR.formula_cruce_alto ?? "alto",
+              ctxVR,
+            );
+
+            // Paso 1: descuento por cruces HORIZONTALES de ventana
+            // Cada cruce H de ventana divide el alto del VR en secciones
+            let medCrucVTrasCruce = medCrucVBase;
+            let seccionesDeVentana = 1;
+
+            //cant_cruces_h > 0 significa que la abertura tiene cruces de tipologia H
+            if (cant_cruces_h > 0 && descentoCruceVentana > 0) {
+              medCrucVTrasCruce =
+                (medCrucVBase - descentoCruceVentana * cant_cruces_h) /
+                (cant_cruces_h + 1);
+              seccionesDeVentana = cant_cruces_h + 1;
+            }
+
+            // Paso 2: descuento por crucetas H PROPIAS del VR (= lógica PASO 3)
+            // Cada cruceta H del VR subdivide las V en trozos más cortos
+            let medCrucVFinal = medCrucVTrasCruce;
+            let trozosVPorSeccion = cantCrucesV_VR;
+
+            if (cantCrucesH_VR > 0 && ruleVR.descuento_de_si_mismo) {
+              medCrucVFinal =
+                (medCrucVTrasCruce -
+                  ruleVR.descuento_de_si_mismo * cantCrucesH_VR) /
+                (cantCrucesH_VR + 1);
+              trozosVPorSeccion = cantCrucesV_VR * (cantCrucesH_VR + 1);
+            }
+
+            const cantCrucVTotal = (cantCrucesH_VR + 1) * hojas;
+
+            if (medCrucVFinal > 0 && cantCrucVTotal > 0) {
+              const { kg, precio_unitario, precio_total } = calcularPrecioCorte(
+                perfilCruceta,
+                medCrucVFinal,
+                cantCrucVTotal,
+              );
+              cortes.push({
+                id: cortId++,
+                nivel: "VR Cruceta",
+                nro_perfil: perfilCruceta.nro_perfil?.toString() ?? "VR-X",
+                descripcion_perfil: `${perfilCruceta.descri ?? "Cruceta VR"} — V P${pañoNum}`,
+                angulo: ruleVR.angulo_cruce ?? "90°/90°",
+                cantidad: cantCrucVTotal,
+                medida_mm: medCrucVFinal,
+                total_mm: medCrucVFinal * cantCrucVTotal,
+                kg,
+                precio_unitario,
+                precio_total,
+              });
+              log.info(
+                "vr",
+                `Paño ${pañoNum} Cruceta V: ${cantCrucVTotal} trozos × ${medCrucVFinal.toFixed(1)}mm` +
+                  (seccionesDeVentana > 1
+                    ? ` (${seccionesDeVentana} secciones ventana × ${trozosVPorSeccion / seccionesDeVentana} trozos VR)`
+                    : ""),
+              );
+            } else if (medCrucVFinal <= 0) {
+              log.warn(
+                "vr",
+                `Paño ${pañoNum} Cruceta V: medida resultante ${medCrucVFinal.toFixed(1)}mm ≤ 0, descartada`,
+              );
+            }
+          }
         }
       }
     }
@@ -922,6 +1363,18 @@ export function calcularDespiece(
     }
   }
 
+  // VR
+  if (
+    datos.vr_activos &&
+    datos.vr_activos.length > 0 &&
+    datos.rules_accesorios_vr.length > 0
+  ) {
+    log.info("accesorios", `VR: ${datos.rules_accesorios_vr.length} reglas`);
+    for (const rule of datos.rules_accesorios_vr) {
+      addAccesorio("VR", rule.id_accesorio, rule.formula_cantidad);
+    }
+  }
+
   // ── PASO 6: Multiplicar por cantidad de tipologías ────────────────────────
 
   const mult = cantidad_tipologias ?? 1;
@@ -978,8 +1431,23 @@ export function calcularDespiece(
     );
     const opt = optimizarCortes(allCuts, longTira);
     const totalMm = allCuts.reduce((s, m) => s + m, 0);
-    const kg = perfil ? ((perfil.peso_metro ?? 0) / 1000) * totalMm : 0;
+
+    // Cámara europea: peso_metro es $/m directo. No pondera por precio_kg
+    // ni aporta kg (no entra en costo_tratamiento). Mismo criterio que
+    // calcularPrecioCorte(), reaplicado aquí porque el agrupado por barra
+    // recalcula desde cero a partir de totalMm.
+    const esCamaraEuropea = !!perfil?.es_camara_europea;
+    const precioMetro = perfil?.peso_metro ?? 0;
     const precioKg = perfil?.precio_kg ?? 0;
+
+    const kg = esCamaraEuropea
+      ? 0
+      : perfil
+        ? (precioMetro / 1000) * totalMm
+        : 0;
+    const precioTotal = esCamaraEuropea
+      ? (totalMm / 1000) * precioMetro
+      : kg * precioKg;
 
     resumenes.push({
       nro_perfil: nro,
@@ -990,10 +1458,12 @@ export function calcularDespiece(
       desperdicio_mm: opt.desperdicioMm,
       eficiencia: opt.eficiencia,
       kg,
-      precio_kg: precioKg,
-      precio_total: kg * precioKg,
+      precio_kg: esCamaraEuropea ? 0 : precioKg,
+      precio_total: precioTotal,
       longitud_tira: longTira,
       cortes: lista,
+      es_camara_europea: esCamaraEuropea,
+      precio_metro: esCamaraEuropea ? precioMetro : undefined,
     });
 
     log.info(

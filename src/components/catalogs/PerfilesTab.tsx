@@ -83,7 +83,7 @@ export default function PerfilesTab() {
       cubre: 0,
       minimo_reutilizable: 500,
       interior: false,
-      bloqueado: false,
+      es_camara_europea: false,
     }),
     [monedas, lineas, selectDefaultExt],
   );
@@ -206,8 +206,12 @@ export default function PerfilesTab() {
     if (hasSearchFilter) {
       filteredPerfiles = filteredPerfiles.filter(
         (perfil) =>
-          (perfil.nro_perfil ?? "").toLowerCase().includes(filterValue.toLowerCase()) ||
-          (perfil.descri ?? "").toLowerCase().includes(filterValue.toLowerCase()),
+          (perfil.nro_perfil ?? "")
+            .toLowerCase()
+            .includes(filterValue.toLowerCase()) ||
+          (perfil.descri ?? "")
+            .toLowerCase()
+            .includes(filterValue.toLowerCase()),
       );
     }
 
@@ -280,7 +284,10 @@ export default function PerfilesTab() {
             >
               {formatPesos(
                 toPesos(
-                  ((item.precio_kg ?? 0) * (item.peso_metro ?? 0) * (item.long_tira ?? 0)) / 1000,
+                  ((item.precio_kg ?? 0) *
+                    (item.peso_metro ?? 0) *
+                    (item.long_tira ?? 0)) /
+                    1000,
                   item.id_moneda ?? 1,
                 ),
               )}
@@ -650,38 +657,40 @@ export default function PerfilesTab() {
                     ))}
                   </Select>
                 </div>
-                {(newForm.peso_metro ?? 0) > 0 && (newForm.long_tira ?? 0) > 0 && (
-                  <div className="bg-steel-50 dark:bg-steel-800/60 rounded-lg px-4 py-3 grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-xs text-steel-400 mb-0.5">
-                        Peso de tira completa
-                      </p>
-                      <p className="font-mono font-semibold text-steel-700 dark:text-steel-200">
-                        {(
-                          ((newForm.peso_metro ?? 0) * (newForm.long_tira ?? 0)) /
-                          1000
-                        ).toFixed(3)}{" "}
-                        kg
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-steel-400 mb-0.5">
-                        Precio de tira completa
-                      </p>
-                      <p className="font-mono font-semibold text-steel-700 dark:text-steel-200">
-                        {formatPesos(
-                          toPesos(
-                            ((newForm.precio_kg ?? 0) *
-                              (newForm.peso_metro ?? 0) *
+                {(newForm.peso_metro ?? 0) > 0 &&
+                  (newForm.long_tira ?? 0) > 0 && (
+                    <div className="bg-steel-50 dark:bg-steel-800/60 rounded-lg px-4 py-3 grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-xs text-steel-400 mb-0.5">
+                          Peso de tira completa
+                        </p>
+                        <p className="font-mono font-semibold text-steel-700 dark:text-steel-200">
+                          {(
+                            ((newForm.peso_metro ?? 0) *
                               (newForm.long_tira ?? 0)) /
-                              1000,
-                            newForm.id_moneda ?? 1,
-                          ),
-                        )}
-                      </p>
+                            1000
+                          ).toFixed(3)}{" "}
+                          kg
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-steel-400 mb-0.5">
+                          Precio de tira completa
+                        </p>
+                        <p className="font-mono font-semibold text-steel-700 dark:text-steel-200">
+                          {formatPesos(
+                            toPesos(
+                              ((newForm.precio_kg ?? 0) *
+                                (newForm.peso_metro ?? 0) *
+                                (newForm.long_tira ?? 0)) /
+                                1000,
+                              newForm.id_moneda ?? 1,
+                            ),
+                          )}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </ModalBody>
               <ModalFooter>
                 <Button variant="light" onPress={onClose}>
@@ -691,7 +700,8 @@ export default function PerfilesTab() {
                   color="primary"
                   onPress={() => handleSave(onClose)}
                   isDisabled={
-                    !(newForm.nro_perfil ?? "").trim() || !(newForm.descri ?? "").trim()
+                    !(newForm.nro_perfil ?? "").trim() ||
+                    !(newForm.descri ?? "").trim()
                   }
                 >
                   {isEditMode ? "Guardar cambios" : "Crear perfil"}

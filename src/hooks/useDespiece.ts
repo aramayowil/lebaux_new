@@ -15,10 +15,12 @@ import type {
   DespiecePerfilHoja,
   DespiecePerfilMarco,
   DespieceInterior,
+  DespiecePerfilVidrioRepartido,
   DespieceAccesorioMarco,
   DespieceAccesorioHoja,
   DespieceAccesorioInterior,
   DespieceAccesorioCruce,
+  DespieceAccesorioVidrioRepartido,
 } from "@/types";
 
 // Catálogos generales
@@ -58,9 +60,28 @@ export function useDespiece(
   const idContravidrioExt = detalle?.contravidrios_ext;
   const idCruce = detalle?.cruce;
   const idMosquitero = detalle?.mosquitero;
+  const idVr = detalle?.vr_1;
 
   // Contravidrio específico o fallback al interior
   const idContravidrioEspecifico = detalle?.contravidrios ?? idInterior;
+
+  // ── Detectar paños con VR activo ──────────────────────────────────────────
+  // Recorre activo_vr_1..4 y extrae los IDs de VR donde el flag sea true.
+  // idx es 1-based para que coincida con camara_N, dvh_N_1, hor_vr_N, etc.
+  const vrActivos = useMemo(() => {
+    if (!detalle) return [] as { idx: number; id: number }[];
+    const result: { idx: number; id: number }[] = [];
+    for (let i = 1; i <= 4; i++) {
+      const activo = (detalle as any)[`activo_vr_${i}`];
+      const vrId = (detalle as any)[`vr_${i}`];
+      if (activo === true && vrId && Number(vrId) > 0) {
+        result.push({ idx: i, id: Number(vrId) });
+      }
+    }
+    return result;
+  }, [detalle]);
+
+  const vrIds = vrActivos.map((v) => v.id);
 
   const { data: despieceRules, isLoading: rulesLoading } = useQuery({
     queryKey: [
@@ -70,6 +91,8 @@ export function useDespiece(
       idInterior,
       idContravidrioEspecifico,
       idCruce,
+      // Invalida el caché cuando cambian los VR activos o sus IDs
+      ...vrIds,
     ],
     queryFn: async () => {
       if (!idMarco && !idHoja) return null;
@@ -87,6 +110,7 @@ export function useDespiece(
         rAccHoja,
         rAccInterior,
         rAccCruces,
+        rAccVR,
       ] = await Promise.all([
         // ── Perfiles ──────────────────────────────────────────────────────────
         idMarco
@@ -138,12 +162,16 @@ export function useDespiece(
               .select("*")
               .eq("id_contravidrio", idContravidrioExt)
           : null,
-        idInterior
+        // ── Vidrio Repartido: una sola regla ligada al interior ───────────
+        // La tabla despiece_perfiles_vidrio_repartido tiene una fila por
+        // producto interior (id_vr = idInterior). Solo se carga si hay
+        // al menos un paño con VR activo para evitar queries innecesarias.
+        idInterior && vrActivos.length > 0
           ? supabase
               .schema("opendata")
               .from("despiece_perfiles_vidrio_repartido")
               .select("*")
-              .eq("id_vr", idInterior)
+              .eq("id_vr", idVr)
           : null,
         // ── Accesorios ────────────────────────────────────────────────────────
         idMarco
@@ -174,6 +202,14 @@ export function useDespiece(
               .select("*")
               .eq("id_cruces", idCruce)
           : null,
+        // ── Accesorios VR ─────────────────────────────────────────────────────
+        idInterior && vrActivos.length > 0
+          ? supabase
+              .schema("opendata")
+              .from("despiece_accesorios_vidrio_repartido")
+              .select("*")
+              .eq("id_vr", idInterior)
+          : null,
       ]);
 
       return {
@@ -184,13 +220,14 @@ export function useDespiece(
         dpCruces: (rCruce?.data?.[0] ?? null) as DespieceCruce | null,
         dpCV: (rCV?.data ?? []) as DespiecePerfilContravidrio[],
         dpCVE: (rCVE?.data ?? []) as DespiecePerfilContravidrio[],
-        dpVR: rVR?.data ?? [],
+        dpVR: (rVR?.data?.[0] ?? null) as DespiecePerfilVidrioRepartido | null,
         // Accesorios
         dpAccMarco: (rAccMarco?.data ?? []) as DespieceAccesorioMarco[],
         dpAccHoja: (rAccHoja?.data ?? []) as DespieceAccesorioHoja[],
         dpAccInterior: (rAccInterior?.data ??
           []) as DespieceAccesorioInterior[],
         dpAccCruces: (rAccCruces?.data ?? []) as DespieceAccesorioCruce[],
+        dpAccVR: (rAccVR?.data ?? []) as DespieceAccesorioVidrioRepartido[],
       };
     },
     enabled: !!detalle && (!!idMarco || !!idHoja),
@@ -250,6 +287,11 @@ export function useDespiece(
           ...despieceRules.dpCVE,
         ] as DespiecePerfilContravidrio[],
 
+        // ── Vidrio Repartido ────────────────────────────────────────────────
+        rules_perfiles_vr: despieceRules.dpVR, // DespiecePerfilVidrioRepartido | null
+        rules_accesorios_vr: despieceRules.dpAccVR,
+        vr_activos: vrActivos,
+
         rules_accesorios_marco: despieceRules.dpAccMarco,
         rules_accesorios_hoja: despieceRules.dpAccHoja,
         rules_accesorios_interior: despieceRules.dpAccInterior,
@@ -304,6 +346,7 @@ export function useDespiece(
     detalle,
     despieceRules,
     cvMap,
+    vrActivos,
     perfiles,
     accesorios,
     vidrios,

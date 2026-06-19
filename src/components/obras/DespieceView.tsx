@@ -41,7 +41,14 @@ const NIVEL_COLOR: Record<string, string> = {
   Cruces:
     "bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300",
   Interior: "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300",
+  Cámara: "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300",
+  // ── Vidrio Repartido ──────────────────────────────────────────────────────
+  "VR Contorno":
+    "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300",
+  "VR Cruceta":
+    "bg-fuchsia-50 text-fuchsia-700 dark:bg-fuchsia-950/40 dark:text-fuchsia-300",
   // Niveles exclusivos de accesorios
+  VR: "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300",
   Contravidrio:
     "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
 };

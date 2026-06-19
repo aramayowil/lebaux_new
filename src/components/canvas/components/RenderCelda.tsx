@@ -166,7 +166,7 @@ export const RenderCelda = ({
           colors={colors}
         />
         {/* 4. Vidrio repartido (VR) si está activo */}
-        {activoVR && valorVR?.trim() && (horVR > 0 || verVR > 0) ? (
+        {activoVR && valorVR && (horVR > 0 || verVR > 0) ? (
           <RenderVidrioRepartido
             ancho={ancho}
             alto={alto}
